@@ -69,25 +69,28 @@ Full domain model in `.claude/rules/data-model.md`.
 - `User` - account owner; every universe belongs to one user and all queries are scoped by owner.
 - `Universe` - isolated knowledge base with a mode: `READER` (spoiler protection on) or `AUTHOR` (everything visible, boundaries still recorded for chronology).
 - `Work` - novel, manga, anime, film... inside a universe; defines its progress units.
-- `Entity` - character, location, organization, faction, object, ability, species or concept; supports aliases.
+- `Entity` - character, location, organization, faction, object, ability, species or concept; no description column; knowledge stored as KnowledgeEntry fragments; aliases in EntityAlias.
+- `NarrativeUnit` - ordered index of chapters or episodes from a play.
+- `KnowledgeEntry`
 - `Relationship` - directed, typed connection between two entities of the same universe.
+- `RelationshipType`
 - `Event` - narrative occurrence; participants via `EventParticipant` (eventId, entityId, role). Chronological order and discovery order are different fields.
 - `Source` - origin of information (chapter, episode, notes...); linked to entities, relationships and events through `Citation` with an optional locator.
 - `ReadingProgress` - user position per work.
 - `SpoilerBoundary` - work + comparable position.
 
 **Narrative positions**
-- Each work defines its units. A position is stored as a sortable ordinal plus a human label (e.g. `ordinal: 312, label: "Vol. 3, Ch. 12"`). Comparing positions means comparing ordinals.
+- Positions reference a NarrativeUnit. The user picks labels; ordinals are system-assigned and only used for comparisons.
 
 **Attributes (JSONB)**
 - Only for type-specific attributes, always validated with a Zod schema per entity type. Never a substitute for a proper model.
 - Domain types are independent from Prisma-generated types.
+- Never store information revealed as the story advances in attributes
 
 **Spoilers**
 - Narrative information is created together with its spoiler boundary. How to handle information without a boundary is an open decision.
 - Information is classified as confirmed, user note or speculation.
 - In `READER` universes, filtering happens in the backend before data reaches the frontend or an AI provider. Hiding it visually is not enough.
-- Information related to several works respects the progress of all of them.
 
 **Integrity and lifecycle**
 - Relationships across universes are not allowed.
