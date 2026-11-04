@@ -30,22 +30,25 @@ This file guides Claude and any AI agent working in this repository.
 
 ```
 src/
-├── app/                      # Next.js routes, layouts, Route Handlers (presentation)
+├── app/                      # Next.js routes, layouts, Route Handlers, Server Actions (presentation)
 ├── components/               # Shared UI components (shadcn/ui lives in components/ui)
-└── modules/<module>/
-    ├── domain/               # Entities, value objects, rules, repository interfaces, errors
-    ├── application/          # Use cases and application services
-    └── infrastructure/       # Prisma repositories, external providers
+├── modules/<module>/
+│   ├── domain/               # Entities, value objects, rules, repository interfaces, errors
+│   ├── application/          # Use cases and ports
+│   ├── infrastructure/       # Prisma repositories, external providers
+│   ├── composition.ts        # Wiring
+│   └── index.ts              # Public interface
+└── shared/                   # Cross-module kernel (errors, ViewerContext, UnitOfWork, Prisma client)
+tests/                        # Mirrors src/; support/ for fakes, e2e/ for Playwright
 prisma/                       # Schema and migrations
-tests/e2e/                    # Playwright tests
 docs/                         # spec.md, decisions/
 specs/<feature>/              # SDD artifacts per feature
 ```
-
 - Dependency direction: `presentation → application → domain ← infrastructure`. Details in `.claude/rules/architecture.md`.
 - Planned modules: universes, works, entities, relationships, events, sources, reading-progress, search, ai. A module is created only when its roadmap phase requires it.
 - Modules interact only through their public interface (`modules/<module>/index.ts`).
 - The structure is owned by the user: new top-level folders, modules or layers require approval.
+- Tests mirror src/: src/.../create-universe.ts → tests/.../create-universe.test.ts
 
 ## Conventions
 
