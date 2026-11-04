@@ -1,0 +1,265 @@
+/*
+ * LoreKeeper design tokens: the single source of truth for color, type, radius and motion.
+ * Components never use loose values; Tailwind is reset in the @theme block at the bottom so only
+ * these tokens exist as utilities.
+ *
+ * Themes are selected with two attributes on <html>:
+ *   data-bg   obsidian | midnight | nocturne | parchment
+ *   data-text vellum | ash | bright
+ * Dark and light variants of a text preset are resolved from data-bg, so every text preset is
+ * valid on every background. `scripts/check-contrast.mjs` parses this file and fails if any
+ * combination drops below WCAG AA.
+ */
+
+/* ---------- Runtime and scale ---------- */
+
+:root {
+  --text-scale: 1;
+
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-slow: 250ms;
+
+  --topbar-height: 2.5rem;
+  --rail-width: 3rem;
+  --sidebar-width: 16.5rem;
+  --sidebar-min-width: 12.5rem;
+  --sidebar-max-width: 25rem;
+  --inspector-width: 23.75rem;
+  --inspector-min-width: 18.75rem;
+  --inspector-max-width: 35rem;
+  --reading-measure: 65ch;
+}
+
+/* ---------- Backgrounds ---------- */
+
+:root,
+[data-bg="obsidian"] {
+  --canvas: #14110f;
+  --surface: #1c1815;
+  --raised: #251f1b;
+  --grain-opacity: 0.05;
+}
+
+[data-bg="midnight"] {
+  --canvas: #0e1218;
+  --surface: #151a22;
+  --raised: #1d232d;
+  --grain-opacity: 0.05;
+}
+
+[data-bg="nocturne"] {
+  --canvas: #15101a;
+  --surface: #1c1622;
+  --raised: #251d2c;
+  --grain-opacity: 0.05;
+}
+
+[data-bg="parchment"] {
+  --canvas: #f2e8d5;
+  --surface: #eadfc8;
+  --raised: #f8f1e2;
+  --grain-opacity: 0.04;
+}
+
+/* ---------- Text presets: dark values first, light values per preset below ---------- */
+
+:root,
+[data-text="vellum"] {
+  --ink: #e9e1d0;
+  --ink-muted: #b3a995;
+}
+
+[data-text="ash"] {
+  --ink: #d5d9de;
+  --ink-muted: #a3a9b2;
+}
+
+[data-text="bright"] {
+  --ink: #fbf8f0;
+  --ink-muted: #c9c3b6;
+}
+
+[data-bg="parchment"],
+[data-bg="parchment"][data-text="vellum"] {
+  --ink: #2a2218;
+  --ink-muted: #5e5240;
+}
+
+[data-bg="parchment"][data-text="ash"] {
+  --ink: #23262b;
+  --ink-muted: #53575e;
+}
+
+[data-bg="parchment"][data-text="bright"] {
+  --ink: #120e08;
+  --ink-muted: #3e3528;
+}
+
+/* ---------- Accent, entity types and states: dark backgrounds ---------- */
+
+:root {
+  color-scheme: dark;
+
+  --accent: #e3a93b;
+  --accent-hover: #edbb5a;
+  --accent-ink: #1a1204;
+  --danger: #f0877b;
+  --shadow-color: #00000066;
+
+  --entity-character: #e87c8e;
+  --entity-location: #4db5a8;
+  --entity-organization: #6f9be6;
+  --entity-faction: #ab8ee8;
+  --entity-object: #8fb86a;
+  --entity-ability: #5cc3ea;
+  --entity-species: #db84c6;
+  --entity-concept: #9ba5bc;
+
+  /* Light specks over dark surfaces. */
+  --grain-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.4 -0.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Accent, entity types and states: parchment ---------- */
+
+[data-bg="parchment"] {
+  color-scheme: light;
+
+  --accent: #7a4e00;
+  --accent-hover: #5f3c00;
+  --accent-ink: #fff8e6;
+  --danger: #a8261b;
+  --shadow-color: #2a221826;
+
+  --entity-character: #9e233d;
+  --entity-location: #0a5f55;
+  --entity-organization: #2852a0;
+  --entity-faction: #5b3aa6;
+  --entity-object: #3d5e1b;
+  --entity-ability: #095b7b;
+  --entity-species: #8e2a78;
+  --entity-concept: #4a5468;
+
+  /* Dark specks over the parchment. */
+  --grain-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.4 -0.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Derived tokens: adapt to whichever background and text preset is active ---------- */
+
+:root {
+  --line: color-mix(in srgb, var(--ink) 14%, var(--surface));
+  --line-control: color-mix(in srgb, var(--ink) 55%, var(--surface));
+  --hover: color-mix(in srgb, var(--ink) 8%, var(--surface));
+  --selection: color-mix(in srgb, var(--accent) 16%, var(--surface));
+
+  --entity-character-tint: color-mix(in srgb, var(--entity-character) 14%, var(--surface));
+  --entity-location-tint: color-mix(in srgb, var(--entity-location) 14%, var(--surface));
+  --entity-organization-tint: color-mix(in srgb, var(--entity-organization) 14%, var(--surface));
+  --entity-faction-tint: color-mix(in srgb, var(--entity-faction) 14%, var(--surface));
+  --entity-object-tint: color-mix(in srgb, var(--entity-object) 14%, var(--surface));
+  --entity-ability-tint: color-mix(in srgb, var(--entity-ability) 14%, var(--surface));
+  --entity-species-tint: color-mix(in srgb, var(--entity-species) 14%, var(--surface));
+  --entity-concept-tint: color-mix(in srgb, var(--entity-concept) 14%, var(--surface));
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0.01ms;
+    --motion-base: 0.01ms;
+    --motion-slow: 0.01ms;
+  }
+}
+
+/* ---------- Tailwind mapping: only these names exist as utilities ---------- */
+
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-line-control: var(--line-control);
+  --color-hover: var(--hover);
+  --color-selection: var(--selection);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-danger: var(--danger);
+
+  --color-entity-character: var(--entity-character);
+  --color-entity-location: var(--entity-location);
+  --color-entity-organization: var(--entity-organization);
+  --color-entity-faction: var(--entity-faction);
+  --color-entity-object: var(--entity-object);
+  --color-entity-ability: var(--entity-ability);
+  --color-entity-species: var(--entity-species);
+  --color-entity-concept: var(--entity-concept);
+  --color-entity-character-tint: var(--entity-character-tint);
+  --color-entity-location-tint: var(--entity-location-tint);
+  --color-entity-organization-tint: var(--entity-organization-tint);
+  --color-entity-faction-tint: var(--entity-faction-tint);
+  --color-entity-object-tint: var(--entity-object-tint);
+  --color-entity-ability-tint: var(--entity-ability-tint);
+  --color-entity-species-tint: var(--entity-species-tint);
+  --color-entity-concept-tint: var(--entity-concept-tint);
+
+  /* Names shadcn/ui components expect, pointed at the tokens above. */
+  --color-background: var(--canvas);
+  --color-foreground: var(--ink);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--raised);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-ink);
+  --color-secondary: var(--raised);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--hover);
+  --color-muted-foreground: var(--ink-muted);
+  --color-destructive: var(--danger);
+  --color-border: var(--line);
+  --color-input: var(--line-control);
+  --color-ring: var(--accent);
+
+  --font-serif: var(--font-alegreya), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-atkinson), system-ui, sans-serif;
+
+  --text-*: initial;
+  --text-2xs: 0.75rem;
+  --text-2xs--line-height: 1.125rem;
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.625rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.875rem;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 2.25rem;
+
+}
+
+/* Scale tokens without a runtime override: literal values, emitted as variables too. */
+@theme {
+  --radius-*: initial;
+  --radius-control: 4px;
+  --radius-popover: 8px;
+  --radius-panel: 0px;
+  --radius-pill: 9999px;
+
+  --shadow-*: initial;
+  --shadow-popover: 0 0.5rem 1.5rem var(--shadow-color);
+
+  --ease-*: initial;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}

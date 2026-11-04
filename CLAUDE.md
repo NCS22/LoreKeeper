@@ -43,6 +43,7 @@ tests/                        # Mirrors src/; support/ for fakes, e2e/ for Playw
 prisma/                       # Schema and migrations
 docs/                         # spec.md, decisions/
 specs/<feature>/              # SDD artifacts per feature
+design/prototype/             # Visual prototype (standalone, not part of the app)
 ```
 - Dependency direction: `presentation → application → domain ← infrastructure`. Details in `.claude/rules/architecture.md`.
 - Planned modules: universes, works, entities, relationships, events, sources, reading-progress, search, ai. A module is created only when its roadmap phase requires it.
