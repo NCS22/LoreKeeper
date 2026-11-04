@@ -3,7 +3,7 @@
 LoreKeeper is a knowledge management platform for fictional universes. It helps avid readers of dense works build their own interconnected knowledge bases to remember what they read without spoilers, and helps authors keep track of details of their own works written long ago.
 This file guides Claude and any AI agent working in this repository.
 
-**Current status:** Phase 0 - design. No application code exists yet. Nothing marked as pending may be implemented.
+**Current status:** Phase 0 - design. The only code is the UI shell migrated from the visual prototype: it runs on sample data in `src/mocks/`, with no backend, database, auth or business logic. Nothing marked as pending may be implemented.
 **Functional source of truth:** `docs/spec.md` (features, roadmap, out-of-scope list, open decisions).
 
 ---
@@ -31,7 +31,10 @@ This file guides Claude and any AI agent working in this repository.
 ```
 src/
 ├── app/                      # Next.js routes, layouts, Route Handlers, Server Actions (presentation)
-├── components/               # Shared UI components (shadcn/ui lives in components/ui)
+├── components/               # Shared UI components by feature (shadcn/ui lives in components/ui)
+├── messages/                 # Typed UI dictionary (en.ts), no i18n library
+├── mocks/                    # Temporary sample DTOs and data for the UI; removed as real modules arrive
+├── styles/                   # tokens.css: the only file that defines colors, radii, motion and type scale
 ├── modules/<module>/
 │   ├── domain/               # Entities, value objects, rules, repository interfaces, errors
 │   ├── application/          # Use cases and ports
@@ -43,7 +46,6 @@ tests/                        # Mirrors src/; support/ for fakes, e2e/ for Playw
 prisma/                       # Schema and migrations
 docs/                         # spec.md, decisions/
 specs/<feature>/              # SDD artifacts per feature
-design/prototype/             # Visual prototype (standalone, not part of the app)
 ```
 - Dependency direction: `presentation → application → domain ← infrastructure`. Details in `.claude/rules/architecture.md`.
 - Planned modules: universes, works, entities, relationships, events, sources, reading-progress, search, ai. A module is created only when its roadmap phase requires it.
@@ -114,7 +116,7 @@ Full domain model in `.claude/rules/data-model.md`.
 
 ## Commands
 
-To be confirmed when the project is initialized.
+Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`. The rest are confirmed when their tool is set up.
 
 | Command | Purpose |
 |---|---|
