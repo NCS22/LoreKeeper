@@ -45,7 +45,7 @@ src/
 tests/                        # Mirrors src/; support/ for fakes, e2e/ for Playwright
 prisma/                       # Schema and migrations
 docs/                         # spec.md, decisions/
-specs/<feature>/              # SDD artifacts per feature
+specs/NNN-feature/            # SDD artifacts per feature (e.g. specs/001-universe-crud/)
 ```
 - Dependency direction: `presentation → application → domain ← infrastructure`. Details in `.claude/rules/architecture.md`.
 - Planned modules: universes, works, entities, relationships, events, sources, reading-progress, search, ai. A module is created only when its roadmap phase requires it.
@@ -110,7 +110,7 @@ Full domain model in `.claude/rules/data-model.md`.
 - Before implementing: understand the affected code, identify modules, review the relevant rules and spec sections.
 - Design decisions are presented with alternatives and trade-offs; never silently choose the complex option.
 - Implement the smallest coherent solution, with its tests, without touching unrelated code.
-- Follow the SDD flow: specify → plan → tasks → implement, with artifacts in `specs/<feature>/` and the `/sdd-*` skills.
+- Follow the SDD flow: specify → plan → tasks → implement, with artifacts in `specs/NNN-feature/` and the `/sdd-*` commands. Rules in `.claude/rules/sdd.md`; run the full flow with `claude --agent coordinator`.
 - Closed decisions are recorded in `docs/decisions/` and removed from the open decisions in `docs/spec.md`.
 - Delegate broad exploration and reviews to subagents to keep the main context clean.
 
@@ -131,7 +131,7 @@ Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`
 | `pnpm prisma migrate dev` | Create and apply a migration |
 | `pnpm prisma generate` | Regenerate the Prisma client |
 
-Project skills: `/sdd-specify`, `/sdd-plan`, `/sdd-tasks`, `/sdd-implement` (to be defined).
+Project commands: `/sdd-constitution`, `/sdd-spec`, `/sdd-clarify`, `/sdd-plan`, `/sdd-tasks`, `/sdd-implement`, `/sdd-validate`, `/sdd-change`, `/sdd-status`. Subagents in `.claude/agents/`: planner, implementer, reviewer, hacker, explainer, plus the main agent coordinator.
 
 ## Rules
 

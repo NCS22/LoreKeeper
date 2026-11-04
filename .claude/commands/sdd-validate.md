@@ -1,10 +1,13 @@
 ---
-description: SDD · Valida la spec RF por RF (build+lint y prueba en navegador)
-agent: build
+description: SDD · Validate the spec FR by FR (typecheck, lint, tests and browser testing)
+argument-hint: <NNN-feature>
 ---
-Recorre specs/$1/spec.md requisito por requisito. Para cada RF indica cómo queda cubierto y el resultado de `npm run build` y `npm run lint`.
+The first word of $ARGUMENTS is the spec folder name. Delegate to the @reviewer subagent (Agent tool, subagent_type "reviewer"), following the "If asked to validate the implementation" section of its instructions, and pass it the folder.
 
-Los RF de interfaz o búsqueda, verifícalos con el MCP de chrome-devtools sobre `npm run dev`: código peninsular (28001) e isla (38628), número de resultados, orden por precio y distancias coherentes con el radio, sin errores en consola (snapshot del DOM y mensajes de consola); modo GPS emulando coordenadas y permiso denegado, incluida la vista móvil de 375 px.
+It goes through `specs/<folder>/spec.md` requirement by requirement. For each FR it indicates how it is covered (file:line, test) and the result of `pnpm typecheck`, `pnpm lint` and `pnpm test` (plus the spoiler suite when queries, visibility or reading progress changed, and `pnpm test:e2e` if a user flow changed and the script exists).
 
-Si algún RF no está cubierto o falla, dilo claramente. NO arregles nada todavía. Después comprueba los criterios de finalización y dame un veredicto:
-¿la spec está cumplida?
+UI FRs are checked on `pnpm dev` (http://localhost:3000): desktop first, then a narrow viewport, dark theme, no console errors. If the browser cannot be run, the FR is reported as "NOT VERIFIED IN BROWSER" with the exact steps for me.
+
+If any FR is not covered or fails, it says so clearly. Do NOT fix anything yet. Then it checks the completion criteria, the architecture rules and the spoiler rules, and gives me a verdict: is the spec fulfilled?
+
+Show me the result in Spanish, keeping its order and severity (use @explainer if it is too technical for me).

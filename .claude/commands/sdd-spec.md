@@ -1,14 +1,16 @@
 ---
-description: SDD · Entrevista y genera la spec (uso - /sdd-spec 002-nombre idea inicial)
-agent: plan
+description: SDD · Interview and generate the spec
+argument-hint: <feature-name | NNN-feature> <initial idea>
 ---
 
-NO escribas código en ningún momento. Lee docs/constitution.md y MEMORY.md, y usa la skill sdd.
+Do NOT write code at any point. Follow `.claude/rules/sdd.md`.
 
-Carpeta de la spec: specs/$1/
+The first word of $ARGUMENTS is the feature folder name (`specs/<folder>/`, e.g. `001-universe-crud`; if it has no number, @planner assigns the next free one); the rest is the initial idea. Full arguments: $ARGUMENTS
 
-Idea inicial (el texto que va después del nombre de la carpeta): $ARGUMENTS
-Tu trabajo:
-1. Hazme preguntas de UNA en UNA para eliminar ambigüedades (casos límite, errores, qué queda fuera de esta versión). Máximo 5 preguntas.
-2. Con mis respuestas, genera specs/$1/spec.md siguiendo la plantilla de la skill sdd, con los requisitos en EARS y "Estado: borrador".
-3. Solo el QUÉ y el POR QUÉ: nada de stack, arquitectura ni nombres de archivos.
+Delegate the writing to the @planner subagent (Agent tool, subagent_type "planner"), following the "If asked for the spec" section of its instructions. Subagents do not see this conversation: pass it the folder, the initial idea in my words, and the paths to read (`CLAUDE.md`, `.claude/rules/sdd.md`, `docs/spec.md` if it exists, the relevant rules).
+
+Your job (talk to me in Spanish):
+1. If @planner returns questions, ask me them ONE at a time (maximum 5) to remove ambiguities (edge cases, errors, spoiler behavior, what stays out of this version), then call @planner again with my answers.
+2. @planner generates `specs/<folder>/spec.md` following the `sdd.md` template, with the requirements in EARS, "Spoiler impact" and "Out of scope" filled, and "Status: draft". Anything that is out of scope, pending or an open decision in `CLAUDE.md` or `docs/spec.md` goes in as `[NEEDS CLARIFICATION]`, not as a decision.
+3. Only the WHAT and the WHY: no stack, architecture or file names.
+4. Show me the path and a summary, and STOP for my approval. Suggest `/sdd-clarify <folder>` as the next step.

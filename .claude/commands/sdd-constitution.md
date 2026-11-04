@@ -1,8 +1,14 @@
 ---
-description: SDD · Propone la constitución del proyecto (principios innegociables)
-agent: plan
+description: SDD · Review the project constitution (CLAUDE.md and rules) and propose amendments
+argument-hint: [additional context]
 ---
 
-Vamos a crear (o revisar, si ya existe) docs/constitution.md. Usa la skill sdd. Antes de proponer nada, lee AGENTS.md, MEMORY.md, README.md y el código del proyecto. Contexto adicional: $ARGUMENTS
+The constitution of this project is `CLAUDE.md` (Rules, Limits, NEVER, Verification) plus `.claude/rules/*`; there is no separate constitution file. Follow `.claude/rules/sdd.md`. Read `CLAUDE.md`, `.claude/rules/architecture.md`, `.claude/rules/data-model.md`, `docs/spec.md` (if it exists) and `README.md`. Additional context: $ARGUMENTS
 
-Proponme 7 principios innegociables, cortos y verificables, que cubran: arquitectura por capas (red en services/, CSS en estilos/), relación entre spec y código, TypeScript estricto con build+lint como puerta, datos del Ministerio y geocodificación, privacidad y ligereza (sin backend, caché 30 min, GPS una lectura) e idioma y móvil primero. Máximo 20 líneas. NO escribas el archivo todavía: espera mi aprobación.
+Review them and tell me, in Spanish, as a numbered list:
+1. Contradictions between `CLAUDE.md`, the rules files and `docs/spec.md`.
+2. Rules that cannot be verified (no measurable check) or that nothing in the verification gate enforces.
+3. Statements that are out of date (commands, status, structure) or missing for the current phase.
+4. For each item, a proposed amendment with its reason, short and verifiable.
+
+Maximum 20 lines. Do NOT edit any file: wait for my approval of each amendment.

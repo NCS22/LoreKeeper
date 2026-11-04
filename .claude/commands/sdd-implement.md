@@ -1,11 +1,12 @@
 ---
-description: SDD · Implementa UNA tarea, verifica con build+lint (uso - /sdd-implement 002-nombre T3)
-agent: build
+description: SDD · Implement ONE task, verify with typecheck, lint and tests
+argument-hint: <NNN-feature> [Tn]
 ---
-Implementa SOLO la tarea indicada en $ARGUMENTS (formato: 002-nombre Tn). Lee specs/002-nombre/tasks.md, specs/002-nombre/plan.md, docs/constitution.md, AGENTS.md y usa la skill sdd (sustituye 002-nombre por la carpeta indicada).
+Implement ONLY one task of the spec given in $ARGUMENTS (format: `NNN-feature Tn`; if `Tn` is omitted, take the first unchecked task in `tasks.md`). Delegate to the @implementer subagent (Agent tool, subagent_type "implementer"), passing it the folder and the task id. It must read `specs/<folder>/tasks.md`, `plan.md` and `spec.md`, `CLAUDE.md`, `.claude/rules/sdd.md` and the rules for the code it touches. If `plan.md` or `tasks.md` are not `approved`, stop and tell me.
 
-1. Escribe el código mínimo que cumpla la tarea, respetando las capas, `import type`, valores mágicos en `config/` y las trampas de dominio (parseCoordenada / parsePrecio, nunca Number() directo ni places[0]).
-2. Ejecuta `npm run build` y `npm run lint`, y muéstrame el resultado.
-3. Marca esa tarea como hecha en tasks.md e indica qué RF cubre.
+1. Write the minimum code that fulfills the task, with its tests, respecting the architecture rules (layers, Zod at the boundaries, spoiler filtering in the backend, descriptive names, no `any`).
+2. Run `pnpm typecheck`, `pnpm lint` and `pnpm test` (plus the spoiler suite or `pnpm test:e2e` when the task requires them) and show me the result.
+3. Mark that task as done in `tasks.md` and indicate which FRs it covers.
+4. If it needs something from CLAUDE.md "ASK FIRST" (dependency, module, schema change…), it stops and I decide.
 
-Después PÁRATE. No empieces la siguiente tarea.
+Then STOP and report to me in Spanish. Do not start the next task.
