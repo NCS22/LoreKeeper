@@ -19,9 +19,11 @@ export type WorkspaceState = {
   view: CentralView;
   // While true the central area shows the creation form instead of the current view.
   isCreatingEntity: boolean;
+  // While true the central area shows the universe creation form instead of the current view.
+  isCreatingUniverse: boolean;
 };
 
-type WorkspaceAction =
+export type WorkspaceAction =
   | { type: "universeSelected"; universeId: string }
   | { type: "workSelected"; universeId: string; workId: string }
   | { type: "entitySelected"; entityId: string | null }
@@ -29,9 +31,12 @@ type WorkspaceAction =
   | { type: "universeExpansionSet"; universeId: string; isExpanded: boolean }
   | { type: "viewChanged"; view: CentralView }
   | { type: "creationStarted" }
-  | { type: "creationCancelled" };
+  | { type: "creationCancelled" }
+  | { type: "universeCreationStarted" }
+  | { type: "universeCreationCancelled" }
+  | { type: "universeCreated"; universeId: string };
 
-function reduceWorkspaceState(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
+export function reduceWorkspaceState(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
   switch (action.type) {
     case "universeSelected":
       return {
@@ -42,6 +47,7 @@ function reduceWorkspaceState(state: WorkspaceState, action: WorkspaceAction): W
         selectedEntityId: action.universeId === state.selectedUniverseId ? state.selectedEntityId : null,
         highlightedEntityId: action.universeId === state.selectedUniverseId ? state.highlightedEntityId : null,
         isCreatingEntity: false,
+        isCreatingUniverse: false,
       };
     case "workSelected":
       return {
@@ -51,6 +57,7 @@ function reduceWorkspaceState(state: WorkspaceState, action: WorkspaceAction): W
         selectedEntityId: action.universeId === state.selectedUniverseId ? state.selectedEntityId : null,
         highlightedEntityId: action.universeId === state.selectedUniverseId ? state.highlightedEntityId : null,
         isCreatingEntity: false,
+        isCreatingUniverse: false,
       };
     case "entitySelected":
       return { ...state, selectedEntityId: action.entityId, highlightedEntityId: action.entityId };
@@ -66,6 +73,21 @@ function reduceWorkspaceState(state: WorkspaceState, action: WorkspaceAction): W
       return { ...state, isCreatingEntity: true };
     case "creationCancelled":
       return { ...state, isCreatingEntity: false };
+    case "universeCreationStarted":
+      return { ...state, isCreatingUniverse: true, isCreatingEntity: false };
+    case "universeCreationCancelled":
+      return { ...state, isCreatingUniverse: false };
+    case "universeCreated":
+      return {
+        ...state,
+        selectedUniverseId: action.universeId,
+        selectedWorkId: null,
+        // The new universe is empty, so nothing from the previous selection can apply to it.
+        selectedEntityId: null,
+        highlightedEntityId: null,
+        isCreatingEntity: false,
+        isCreatingUniverse: false,
+      };
   }
 }
 
@@ -85,6 +107,7 @@ export function WorkspaceStateProvider({ children }: { children: ReactNode }) {
     expandedUniverseIds: [getUniverses()[0].id],
     view: "graph",
     isCreatingEntity: false,
+    isCreatingUniverse: false,
   });
   const contextValue = useMemo(() => ({ state, dispatch }), [state]);
 

@@ -8,12 +8,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { WORK_MEDIUM_ICONS } from "@/components/sidebar/work-medium-config";
 import { useWorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { useWorkspaceState } from "@/components/workspace/workspace-state";
-import { getUniverses, getWorksOfUniverse } from "@/mocks/data/queries";
+import { useUniverses } from "@/components/universes/universes-provider";
+import { getWorksOfUniverse } from "@/mocks/data/queries";
 
 // Collapsed sidebar: universes of the user, then the works of the selected universe, as icons.
 export function SidebarRail() {
   const { toggleSidebar } = useWorkspaceLayout();
   const { state, dispatch } = useWorkspaceState();
+  const { universes } = useUniverses();
   const worksOfSelectedUniverse = getWorksOfUniverse(state.selectedUniverseId);
 
   return (
@@ -23,7 +25,7 @@ export function SidebarRail() {
       </Button>
 
       <div role="group" aria-label={en.sidebar.railUniverses} className="mt-1 flex flex-col items-center gap-1">
-        {getUniverses().map((universe) => (
+        {universes.map((universe) => (
           <RailButton
             key={universe.id}
             label={universe.name}

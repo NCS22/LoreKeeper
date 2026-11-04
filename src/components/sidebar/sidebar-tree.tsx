@@ -7,7 +7,8 @@ import { cn } from "@/components/ui/cn";
 import { WORK_MEDIUM_ICONS } from "@/components/sidebar/work-medium-config";
 import { useWorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { useWorkspaceState } from "@/components/workspace/workspace-state";
-import { getUniverses, getWorksOfUniverse } from "@/mocks/data/queries";
+import { useUniverses } from "@/components/universes/universes-provider";
+import { getWorksOfUniverse } from "@/mocks/data/queries";
 
 type TreeNode = {
   key: string;
@@ -36,7 +37,7 @@ export function SidebarTree({ expandedUniverseIds, setUniverseExpanded }: Sideba
   const { closeSidebarAfterNavigation } = useWorkspaceLayout();
   const groupIdPrefix = useId();
   const treeItemElements = useRef(new Map<string, HTMLElement>());
-  const universes = getUniverses();
+  const { universes } = useUniverses();
 
   const selectedKey =
     state.selectedWorkId !== null ? workKey(state.selectedWorkId) : universeKey(state.selectedUniverseId);
