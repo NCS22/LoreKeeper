@@ -50,8 +50,9 @@ export function GraphView() {
       <GraphCanvas
         entities={entities}
         relationships={relationships}
-        selectedEntityId={state.selectedEntityId}
+        highlightedEntityId={state.highlightedEntityId}
         onSelectEntity={selectEntity}
+        onClearHighlight={() => dispatch({ type: "entityHighlightCleared" })}
       />
       <GraphLegend />
     </div>

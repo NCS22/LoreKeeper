@@ -9,7 +9,11 @@ export type WorkspaceState = {
   selectedUniverseId: string;
   // Null means the whole universe, with the content of all its works.
   selectedWorkId: string | null;
+  // The entity whose details are shown in the inspector.
   selectedEntityId: string | null;
+  // The entity emphasised in the graph. It follows the selection but can be cleared on its own, so
+  // the inspector keeps showing the details after the user clicks away from the node.
+  highlightedEntityId: string | null;
   // Universes opened in the sidebar tree. Kept here so the choice survives the sidebar drawer closing.
   expandedUniverseIds: readonly string[];
   view: CentralView;
@@ -21,6 +25,7 @@ type WorkspaceAction =
   | { type: "universeSelected"; universeId: string }
   | { type: "workSelected"; universeId: string; workId: string }
   | { type: "entitySelected"; entityId: string | null }
+  | { type: "entityHighlightCleared" }
   | { type: "universeExpansionSet"; universeId: string; isExpanded: boolean }
   | { type: "viewChanged"; view: CentralView }
   | { type: "creationStarted" }
@@ -35,6 +40,7 @@ function reduceWorkspaceState(state: WorkspaceState, action: WorkspaceAction): W
         selectedWorkId: null,
         // An entity belongs to one universe, so it cannot stay selected in another.
         selectedEntityId: action.universeId === state.selectedUniverseId ? state.selectedEntityId : null,
+        highlightedEntityId: action.universeId === state.selectedUniverseId ? state.highlightedEntityId : null,
         isCreatingEntity: false,
       };
     case "workSelected":
@@ -43,10 +49,13 @@ function reduceWorkspaceState(state: WorkspaceState, action: WorkspaceAction): W
         selectedUniverseId: action.universeId,
         selectedWorkId: action.workId,
         selectedEntityId: action.universeId === state.selectedUniverseId ? state.selectedEntityId : null,
+        highlightedEntityId: action.universeId === state.selectedUniverseId ? state.highlightedEntityId : null,
         isCreatingEntity: false,
       };
     case "entitySelected":
-      return { ...state, selectedEntityId: action.entityId };
+      return { ...state, selectedEntityId: action.entityId, highlightedEntityId: action.entityId };
+    case "entityHighlightCleared":
+      return state.highlightedEntityId === null ? state : { ...state, highlightedEntityId: null };
     case "universeExpansionSet": {
       const otherIds = state.expandedUniverseIds.filter((universeId) => universeId !== action.universeId);
       return { ...state, expandedUniverseIds: action.isExpanded ? [...otherIds, action.universeId] : otherIds };
@@ -72,6 +81,7 @@ export function WorkspaceStateProvider({ children }: { children: ReactNode }) {
     selectedUniverseId: getUniverses()[0].id,
     selectedWorkId: null,
     selectedEntityId: null,
+    highlightedEntityId: null,
     expandedUniverseIds: [getUniverses()[0].id],
     view: "graph",
     isCreatingEntity: false,
