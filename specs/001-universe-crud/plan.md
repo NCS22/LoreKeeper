@@ -2,7 +2,7 @@
 
 Status: approved
 
-Spec: `specs/001-universe-crud/spec.md` (approved, no open questions).
+Spec: `specs/001-universe-crud/spec.md` (now `implemented`; it was approved with no open questions when this plan was written).
 
 Approvals already given by the user for this plan are recorded in section 10. Nothing in this plan is waiting for approval except the plan itself.
 

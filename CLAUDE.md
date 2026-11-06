@@ -3,8 +3,8 @@
 LoreKeeper is a knowledge management platform for fictional universes. It helps avid readers of dense works build their own interconnected knowledge bases to remember what they read without spoilers, and helps authors keep track of details of their own works written long ago.
 This file guides Claude and any AI agent working in this repository.
 
-**Current status:** Phase 0 - design. The only code is the UI shell migrated from the visual prototype: it runs on sample data in `src/mocks/`, with no backend, database, auth or business logic. Nothing marked as pending may be implemented.
-**Functional source of truth:** `docs/spec.md` (features, roadmap, out-of-scope list, open decisions).
+**Current status:** Phase 0 - design (`docs/roadmap.md`). The UI shell migrated from the visual prototype runs on sample data in `src/mocks/`, with no backend, database or auth. Screens for features that are still pending (entities, graph, timeline, reading position) are design-only on that sample data and store nothing. The only thing stored in the browser is the accessibility preferences (`localStorage`). Spec 001-universe-crud (create a universe) is implemented UI-only: the module `src/modules/universes` has the domain, use cases and an in-memory repository, wired through a temporary client provider; there is no backend, database, auth or persistence (created universes are lost on reload). Nothing marked as pending may be implemented: sample-data screens are allowed because they implement no behavior.
+**Where things live:** feature requirements in `specs/NNN-feature/spec.md`; phases and the project out-of-scope list in `docs/roadmap.md`; everything not decided yet in `docs/open-decisions.md`. There is no `docs/spec.md`.
 
 ---
 
@@ -17,14 +17,17 @@ This file guides Claude and any AI agent working in this repository.
 | Data fetching | React Server Components + Server Actions by default; TanStack Query only for interactive client views (graph, live search); Zustand only when shared client state is justified |
 | API | Next.js Route Handlers (REST), modular monolith |
 | Database | PostgreSQL (Docker Compose locally), Prisma ORM, JSONB for type-specific attributes |
+| Vector search | pgvector (pending, Phase 6, see OD-10 in `docs/open-decisions.md`) |
 | Auth | Better Auth (Prisma adapter, users stored in our PostgreSQL) |
 | Visualization | Cytoscape.js (knowledge graph), dedicated timeline component, Recharts only if statistics are needed |
 | Validation | Zod |
 | Testing | Vitest (unit, integration), Playwright (E2E) |
 | Tooling | pnpm, ESLint, Prettier, GitHub Actions |
 
-- Pending (see `docs/spec.md`): deployment target (Phase 6), AI provider details and pgvector (Phase 5), file uploads.
-- Exact versions are pinned when the project is initialized. No other dependency is added without approval.
+- Pending (see `docs/open-decisions.md`): deployment target (Phase 5), AI provider details and pgvector (Phase 6), file uploads.
+- Versions: `pnpm-lock.yaml` fixes what is installed; `package.json` pins `next` and `react` exactly and uses caret ranges for the rest. Upgrading a dependency needs approval.
+- UI shell dependencies, approved on 2026-11-06 because they came with the migrated interface and are in use: `cytoscape` and `d3-force` (graph canvas and its force layout), `react-resizable-panels` (resizable workspace panels), `tw-animate-css` (animations in `globals.css`), `@tailwindcss/turbopack` (Tailwind loader in `next.config.ts`). The `playwright` library is installed only for the browser checks agents run in disposable scripts; E2E tests are not set up (OD-17).
+- No other dependency is added without approval.
 
 ## Structure
 
@@ -42,16 +45,18 @@ src/
 │   ├── composition.ts        # Wiring
 │   └── index.ts              # Public interface
 └── shared/                   # Cross-module kernel (errors, ViewerContext, UnitOfWork, Prisma client)
-tests/                        # Mirrors src/; support/ for fakes, e2e/ for Playwright
-prisma/                       # Schema and migrations
-docs/                         # spec.md, decisions/
-specs/NNN-feature/            # SDD artifacts per feature (e.g. specs/001-universe-crud/)
+tests/                        # Mirrors src/; support/ for fakes, e2e/ for Playwright (not set up), lint/ for tests of the ESLint rules
+prisma/                       # Schema and migrations (not created yet)
+docs/                         # roadmap.md, open-decisions.md
+.claude/                      # Agent setup: agents/, commands/ (/sdd-*), rules/, hooks/, skills/ (a local link to .agents/skills; git stores both as identical copies)
+.agents/skills/               # Installed skills (frontend-design), locked in skills-lock.json
+specs/NNN-feature/            # SDD artifacts per feature: spec, plan, tasks and an optional decisions.md (e.g. specs/001-universe-crud/)
 ```
 - Dependency direction: `presentation → application → domain ← infrastructure`. Details in `.claude/rules/architecture.md`.
-- Planned modules: universes, works, entities, relationships, events, sources, reading-progress, search, ai. A module is created only when its roadmap phase requires it.
+- Planned modules: universes, works, entities, relationships, events, sources, reading-progress, search, ai. A module is created only when its phase in `docs/roadmap.md` requires it.
 - Modules interact only through their public interface (`modules/<module>/index.ts`).
 - The structure is owned by the user: new top-level folders, modules or layers require approval.
-- Tests mirror src/: src/.../create-universe.ts → tests/.../create-universe.test.ts
+- Tests mirror src/: src/.../create-universe.ts → tests/.../create-universe.test.ts. The only tests without a `src/` counterpart are the ones for tooling, in `tests/lint`.
 
 ## Conventions
 
@@ -61,7 +66,7 @@ specs/NNN-feature/            # SDD artifacts per feature (e.g. specs/001-univer
 - **Principles:** SOLID, KISS, YAGNI, DRY (without forcing unrelated code into shared abstractions), composition over inheritance, explicit over implicit.
 - **TypeScript:** strict mode, no `any` without written justification, minimal type assertions, immutability where practical, small focused functions, no deep nesting, no circular dependencies.
 - **Validation:** every external input is validated with Zod at system boundaries. Business rules are never duplicated between frontend and backend.
-- **Errors:** explicit error types: validation, authentication/authorization, not found, business rule violation, infrastructure failure, external provider failure. Never swallow errors; never expose stack traces, credentials or internals in responses.
+- **Errors:** explicit error types: validation, authentication, authorization, not found (also for resources of other users), business rule violation, infrastructure failure, external provider failure. Never swallow errors; never expose stack traces, credentials or internals in responses.
 - **UI:** dark-first, desktop-first responsive, accessible, a research workspace rather than an admin dashboard.
 
 ## Data
@@ -76,14 +81,14 @@ Full domain model in `.claude/rules/data-model.md`.
 - `Universe` - isolated knowledge base with a mode: `READER` (spoiler protection on) or `AUTHOR` (everything visible, boundaries still recorded for chronology).
 - `Work` - novel, manga, anime, film... inside a universe; defines its progress units.
 - `Entity` - character, location, organization, faction, object, ability, species or concept; no description column; knowledge stored as KnowledgeEntry fragments; aliases in EntityAlias.
-- `NarrativeUnit` - ordered index of chapters or episodes from a play.
-- `KnowledgeEntry`
+- `NarrativeUnit` - ordered index of chapters or episodes of a work.
+- `KnowledgeEntry` - a fragment of knowledge about an entity, revealed at a specific point (its spoiler boundary) and classified as confirmed, user note or speculation; an entity's description is the composition of its visible fragments.
 - `Relationship` - directed, typed connection between two entities of the same universe.
-- `RelationshipType`
+- `RelationshipType` - per-universe catalog of relationship kinds (a predefined seed plus user-created ones), with a label, an inverse label and a symmetric flag.
 - `Event` - narrative occurrence; participants via `EventParticipant` (eventId, entityId, role). Chronological order and discovery order are different fields.
 - `Source` - origin of information (chapter, episode, notes...); linked to entities, relationships and events through `Citation` with an optional locator.
 - `ReadingProgress` - user position per work.
-- `SpoilerBoundary` - work + comparable position.
+- `SpoilerBoundary` - value object (work + narrative unit) stored as two columns in each table that needs it; it is not an entity or a table.
 
 **Narrative positions**
 - Positions reference a NarrativeUnit. The user picks labels; ordinals are system-assigned and only used for comparisons.
@@ -110,22 +115,22 @@ Full domain model in `.claude/rules/data-model.md`.
 - Before implementing: understand the affected code, identify modules, review the relevant rules and spec sections.
 - Design decisions are presented with alternatives and trade-offs; never silently choose the complex option.
 - Implement the smallest coherent solution, with its tests, without touching unrelated code.
-- Follow the SDD flow: specify → plan → tasks → implement, with artifacts in `specs/NNN-feature/` and the `/sdd-*` commands. Rules in `.claude/rules/sdd.md`; run the full flow with `claude --agent coordinator`.
-- Closed decisions are recorded in `docs/decisions/` and removed from the open decisions in `docs/spec.md`.
+- Follow the SDD flow: spec → clarification → plan → tasks → implementation → validation → closing (and change when requirements change), with artifacts in `specs/NNN-feature/` and the `/sdd-*` commands. Every phase ends with a question to the user; approving it marks the document `approved` and starts the next phase, so there is no need to type the next command. Start with `/sdd-spec`, resume with `/sdd-status`, or run it all from `claude --agent coordinator`. Rules in `.claude/rules/sdd.md`.
+- A resolved open decision is recorded in the `plan.md` of the feature that resolves it (or in that spec's optional `decisions.md` when it is taken after the plan was approved; a cross-cutting one with no feature goes in this file) and removed from `docs/open-decisions.md`. There is no `docs/decisions/` folder.
 - Delegate broad exploration and reviews to subagents to keep the main context clean.
 
 ## Commands
 
-Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`. The rest are confirmed when their tool is set up.
+Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`. Not available yet because their tool is not installed: `docker compose` and `pnpm prisma ...` (Phase 1), `pnpm format` (Prettier) and `pnpm test:e2e` (Playwright, OD-17). Each is confirmed when its tool is set up.
 
 | Command | Purpose |
 |---|---|
 | `docker compose up -d` | Start local PostgreSQL |
 | `pnpm dev` | Development server |
 | `pnpm build` | Production build |
-| `pnpm lint` | ESLint |
+| `pnpm lint` | ESLint, fails on any warning |
 | `pnpm format` | Prettier |
-| `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm typecheck` | `next typegen && tsc --noEmit` |
 | `pnpm test` | Vitest unit and integration tests |
 | `pnpm test:e2e` | Playwright tests |
 | `pnpm prisma migrate dev` | Create and apply a migration |
@@ -146,7 +151,7 @@ Invariants of the system. They are never broken, whatever the task.
 - Every query is scoped to the authenticated user; authorization is checked in the backend.
 - API credentials live in environment variables and never reach the frontend.
 - No scraping or reproduction of copyrighted works.
-- Features listed as out of scope in `docs/spec.md` are not implemented.
+- Features listed as out of scope in `docs/roadmap.md` are not implemented.
 
 ## Limits
 
@@ -154,7 +159,7 @@ Invariants of the system. They are never broken, whatever the task.
 - Read the relevant rules and spec sections before touching a module.
 - Add or update tests with every change.
 - Leave the application working at the end of each task.
-- Update documentation and decision records when something changes.
+- Update the documentation, `docs/roadmap.md` and `docs/open-decisions.md` when something changes.
 - Report what changed, why, and what remains open.
 
 **ASK FIRST**

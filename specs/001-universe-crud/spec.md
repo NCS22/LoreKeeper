@@ -1,6 +1,6 @@
 # Spec 001 — Create Universe
 
-Status: approved
+Status: implemented
 
 ## Context and goal
 
@@ -45,7 +45,8 @@ Creation form
 Validation
 - FR-5: IF the name is empty or contains only whitespace, THEN THE SYSTEM SHALL not create the universe and SHALL show an error on the name field.
 - FR-6: IF the name, after removing surrounding whitespace, is longer than 120 characters, THEN THE SYSTEM SHALL not create the universe and SHALL show an error on the name field stating the maximum length.
-- FR-7: IF the description is longer than 2000 characters, THEN THE SYSTEM SHALL not create the universe and SHALL show an error on the description field stating the maximum length.- FR-8: THE SYSTEM SHALL accept an empty description.
+- FR-7: IF the description is longer than 2000 characters, THEN THE SYSTEM SHALL not create the universe and SHALL show an error on the description field stating the maximum length.
+- FR-8: THE SYSTEM SHALL accept an empty description.
 - FR-9: IF the mode is neither `READER` nor `AUTHOR`, THEN THE SYSTEM SHALL not create the universe.
 - FR-10: WHEN validation fails, THE SYSTEM SHALL keep the values the user typed and SHALL not create any universe.
 
@@ -101,7 +102,7 @@ The chosen mode only determines how future features will behave: `READER` univer
 
 ## Out of scope
 
-Checked against `CLAUDE.md` and `.claude/rules/*`; `docs/spec.md` is not used.
+Checked against `CLAUDE.md` and `.claude/rules/*`.
 
 - Editing or renaming a universe.
 - Switching the mode of an existing universe.
@@ -118,7 +119,7 @@ Checked against `CLAUDE.md` and `.claude/rules/*`; `docs/spec.md` is not used.
 
 ## Completion criteria
 
-- Every FR and NFR above is covered by a passing automated test, or by a manual check recorded in the validation report for the accessibility items (NFR-2 to NFR-4).
+- Every FR and NFR above is covered by a passing automated test, or, for the accessibility items (NFR-2 to NFR-4), by a manual check done by the user. There is no validation report file: manual checks are a convention of the user, who tells the agent about any problem found during them.
 - A user can open the form, create a `READER` universe and an `AUTHOR` universe, and see each one selected with the empty state right after creation.
 - A duplicate name shows a warning while the name is typed and still creates the universe on submit, with no second warning.
 - Reloading the page removes the created universes and shows only the sample ones.

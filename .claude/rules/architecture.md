@@ -14,7 +14,7 @@ How the code is organized and what may depend on what. Modular monolith with lay
 
 | Layer | Location | Contains | May import |
 |---|---|---|---|
-| Presentation | `src/app`, `src/components`, `src/shared/presentation` | Pages, layouts, Route Handlers, Server Actions, UI components, error-to-response mapping | Module public interfaces (`@/modules/<module>`), `src/shared` |
+| Presentation | `src/app`, `src/components`, `src/messages`, `src/styles`, `src/shared/presentation` | Pages, layouts, Route Handlers, Server Actions, UI components, UI dictionary, design tokens, error-to-response mapping | Module public interfaces (`@/modules/<module>`), `src/shared` |
 | Application | `src/modules/<module>/application` | Use cases, application services, ports to other modules | Own `domain`, `src/shared/domain`, `src/shared/application` |
 | Domain | `src/modules/<module>/domain` | Entities, value objects, domain rules, repository interfaces, domain errors | Own `domain`, `src/shared/domain` |
 | Infrastructure | `src/modules/<module>/infrastructure` | Prisma repositories, external providers | Own `domain` and `application`, `src/shared` |
@@ -36,6 +36,9 @@ src/
 ├── components/
 │   ├── ui/                           # shadcn/ui
 │   └── <feature>/                    # Components shared across routes
+├── messages/                         # Typed UI dictionary (en.ts), no i18n library
+├── mocks/                            # Temporary sample DTOs and data for the UI; removed as real modules arrive
+├── styles/                           # tokens.css: the only file that defines colors, radii, motion and type scale
 ├── modules/<module>/
 │   ├── domain/
 │   ├── application/
@@ -49,12 +52,15 @@ src/
     └── presentation/                 # Error mapper, response helpers
 tests/                                # Mirrors src/
 ├── modules/<module>/{domain,application,infrastructure}/
+├── components/                       # Component tests, mirroring src/components
+├── styles/                           # Design token tests (contrast)
 ├── shared/
 ├── support/                          # In-memory fakes, builders, database helpers
-└── e2e/                              # Playwright
+├── lint/                             # Tests of the ESLint rules; the only folder with no src/ counterpart
+└── e2e/                              # Playwright (not set up yet)
 ```
 
-`src/shared` only holds pieces used by several modules and without the business logic of any single module. Moving something into it requires a reason.
+`src/shared` only holds pieces used by several modules and without the business logic of any single module. Moving something into it requires a reason. Its subfolders are created when first needed; today only `src/shared/domain` exists.
 
 ## 3. Module anatomy
 
@@ -80,9 +86,12 @@ export type CreateUniverseDependencies = {
 
 export async function createUniverse(
   dependencies: CreateUniverseDependencies,
+  actor: ActingUser,
   command: CreateUniverseCommand,
 ): Promise<Universe> { ... }
 ```
+
+The acting user is always a separate parameter, never part of the command: the command holds only validated input, and the server sets the actor from the session, so an identity never travels inside data the client controls. (Spec 001 has no actor yet, a documented exception that ends when authentication arrives.)
 
 - No classes for use cases, no DI library, no inheritance between services.
 - `composition.ts` binds use cases to real implementations (`createUniverse.bind(null, { universeRepository: prismaUniverseRepository })` or an equivalent closure).
@@ -92,7 +101,9 @@ export async function createUniverse(
 
 - A module only imports another module through `@/modules/<module>`. Deep imports (`@/modules/entities/domain/...`) are forbidden.
 - When a use case needs another module, it declares a port in its own `application` folder (e.g. `EntityLookup` in `relationships`). `composition.ts` implements that port using the other module's public interface.
-- Modules never read or write another module's tables through their own repositories.
+- Modules never read or write another module's tables through their own repositories, with one exception for reads described below.
+- A write that crosses modules (soft delete and restore of an entity, a work or a universe) is orchestrated by one use case in the module that starts it. That use case calls the public interface of each other module inside one `UnitOfWork`, with the same timestamp.
+- Exception, only to apply spoiler visibility: the infrastructure of the module that owns an item may use read-only joins on another module's tables (for example, a relationship is visible only if both of its entities are). It covers visibility filters, not reading data to display. The spoiler suite covers every such join. The import-boundary lint cannot detect it, so code review checks that it stays read-only and limited to visibility.
 - No circular dependencies between modules.
 
 ## 5. Request flow
@@ -109,7 +120,7 @@ Route Handlers and Server Actions only do four things: get the session, validate
 
 - Every use case receives the acting user and checks universe ownership before doing anything else.
 - A resource that belongs to another user is reported as not found, never as forbidden, so its existence is not revealed.
-- Every read use case receives a `ViewerContext` as a required parameter: viewer user id, universe id, universe mode and progress per work. Omitting it is a compile error.
+- Every read use case receives a `ViewerContext` as a required parameter. Omitting it is a compile error. It is a pure data type in `src/shared/domain`: viewer user id, universe id, universe mode and a map from work id to the ordinal position the viewer has reached. It imports nothing from `reading-progress`; that module fills the progress when the context is built, in the composition.
 - The visibility rule lives in the domain (`SpoilerService`). Repositories receive the `ViewerContext` and apply the rule as a query filter. Filtering in memory after loading is only allowed when a test proves it equivalent.
 - Until reading progress exists (Phase 4), `ViewerContext` carries ownership data only; its spoiler fields are introduced in that phase.
 
@@ -122,7 +133,7 @@ Route Handlers and Server Actions only do four things: get the session, validate
 |---|---|---|
 | `ValidationError` | 400 | Includes field issues |
 | `AuthenticationError` | 401 | |
-| `AuthorizationError` | 403 | Only for actions on visible resources |
+| `AuthorizationError` | 403 | Only for actions on visible resources; only meaningful once sharing exists (OD-12 in `docs/open-decisions.md`) |
 | `NotFoundError` | 404 | Also used for resources of other users |
 | `BusinessRuleViolationError` | 422 | |
 | `InfrastructureError` | 500 | Generic message, details only in logs |
@@ -155,11 +166,11 @@ ESLint `no-restricted-imports` with overrides per folder:
 - Cytoscape.js lives in a single client adapter component that turns graph DTOs into Cytoscape elements. No other file imports Cytoscape.
 - TanStack Query only in client components that call Route Handlers. Zustand only with an approved reason.
 
-## 11. AI (Phase 5)
+## 11. AI (Phase 6)
 
 - The `ai` module defines an `AiProvider` port in its domain. Each provider is an adapter in its infrastructure.
 - Retrieval always receives the `ViewerContext`; nothing reaches a provider without spoiler filtering.
-- No further structure until Phase 5 is specified.
+- No further structure until Phase 6 is specified.
 
 ## 12. Tests
 

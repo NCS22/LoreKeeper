@@ -1,6 +1,6 @@
 Status: approved
 
-Spec: `specs/001-universe-crud/spec.md` (approved). Plan: `specs/001-universe-crud/plan.md` (approved).
+Spec: `specs/001-universe-crud/spec.md` (now `implemented`). Plan: `specs/001-universe-crud/plan.md` (approved).
 
 Rules for every task: it ends with `pnpm typecheck`, `pnpm lint` (no new warnings) and `pnpm test` passing, and touches only the files its plan section names. The spoiler suite is not required by any task (the plan, section 6, says this feature touches no narrative data). Items that only the interface can show are verified by hand because the user decided against UI test tooling (plan section 7, "Testing debt").
 
