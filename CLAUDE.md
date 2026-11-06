@@ -27,6 +27,7 @@ This file guides Claude and any AI agent working in this repository.
 - Pending (see `docs/open-decisions.md`): deployment target (Phase 5), AI provider details and pgvector (Phase 6), file uploads.
 - Versions: `pnpm-lock.yaml` fixes what is installed; `package.json` pins `next` and `react` exactly and uses caret ranges for the rest. Upgrading a dependency needs approval.
 - UI shell dependencies, approved on 2026-11-06 because they came with the migrated interface and are in use: `cytoscape` and `d3-force` (graph canvas and its force layout), `react-resizable-panels` (resizable workspace panels), `tw-animate-css` (animations in `globals.css`), `@tailwindcss/turbopack` (Tailwind loader in `next.config.ts`). The `playwright` library is installed only for the browser checks agents run in disposable scripts; E2E tests are not set up (OD-17).
+- Approved on 2026-11-06, to be installed by the first spec that needs each one (approval is recorded here; nothing is installed yet): `zod` (input shape at Server Actions and Route Handlers only) and `@playwright/test` (E2E, local runs). `jsdom` and testing-library are not approved.
 - No other dependency is added without approval.
 
 ## Structure
