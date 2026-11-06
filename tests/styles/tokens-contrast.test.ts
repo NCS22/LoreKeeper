@@ -47,6 +47,12 @@ describe.each(presetCombinations)("$background background with $text text", ({ t
     expect(worstContrast("--ink-muted", ["--hover"], tokenValues)).toBeGreaterThanOrEqual(MINIMUM_TEXT_CONTRAST);
   });
 
+  // The selected universe mode explanation (universe-creation-form.tsx) uses ink over the selection surface,
+  // because ink-muted on selection is below the minimum in the accessibility presets.
+  it("keeps the text used over the selected-option background readable", () => {
+    expect(worstContrast("--ink", ["--selection"], tokenValues)).toBeGreaterThanOrEqual(MINIMUM_TEXT_CONTRAST);
+  });
+
   it("keeps the accent, its hover state, danger and button text readable", () => {
     expect(worstContrast("--accent", SURFACE_TOKENS, tokenValues)).toBeGreaterThanOrEqual(MINIMUM_TEXT_CONTRAST);
     expect(worstContrast("--accent-hover", SURFACE_TOKENS, tokenValues)).toBeGreaterThanOrEqual(MINIMUM_TEXT_CONTRAST);

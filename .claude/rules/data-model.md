@@ -7,9 +7,9 @@ paths:
 
 # Data Model - LoreKeeper
 
-Domain model and persistence rules. `docs/spec.md` remains the functional source of truth; this file defines how that functionality is represented as data.
+Domain model and persistence rules. The requirements of each feature live in `specs/NNN-feature/spec.md` and the phases in `docs/roadmap.md`; this file defines how that functionality is represented as data.
 
-Nothing listed under "Open decisions" may be implemented until it is resolved.
+Nothing listed in `docs/open-decisions.md` may be implemented until it is resolved.
 
 ---
 
@@ -17,7 +17,8 @@ Nothing listed under "Open decisions" may be implemented until it is resolved.
 
 - Primary keys are UUIDs. Better Auth is configured to generate UUIDs for `User`.
 - Timestamps are `timestamptz`, stored in UTC and serialized as ISO 8601.
-- Every user-content table has `createdAt`, `updatedAt` and `deletedAt` (nullable, soft delete).
+- Every user-content table has `createdAt`, `updatedAt` and `deletedAt` (nullable, soft delete). The only exceptions are tables of user state, not content: `ReadingProgress` and `UserPreferences` have only `updatedAt` and are hard-deleted (with their work or user when it is purged).
+- `status` (`CONFIRMED | USER_NOTE | SPECULATION`) lives on `KnowledgeEntry`, `EntityAlias`, `Relationship` and `Event`; `Entity` has none because its knowledge already carries one per entry. `CONFIRMED` does not require a `Citation`; the interface flags confirmed items that have none as "without source".
 - Closed categories are enums. User-extensible categories are catalog tables (e.g. `RelationshipType`).
 - Foreign keys are always declared. Writes touching several records run in one transaction.
 - Every universe belongs to one user. Tables that hang directly from a universe carry `universeId`, so every query can be scoped by owner.
@@ -28,11 +29,12 @@ Nothing listed under "Open decisions" may be implemented until it is resolved.
 
 A spoiler boundary marks the point of a work where a piece of information is revealed.
 
-- Stored as two columns on each table that needs it: `boundaryWorkId` and `boundaryUnitId`.
+- In code it is the `SpoilerBoundary` value object (work + narrative unit, in `src/shared/domain`); there is no table of that name. It is stored as two columns on each table that needs it: `boundaryWorkId` and `boundaryUnitId`.
 - Composite foreign key `(boundaryUnitId, boundaryWorkId) → NarrativeUnit(id, workId)`, so the unit always belongs to the referenced work.
 - The work must belong to the same universe as the item.
-- One boundary per item. A user following several adaptations chooses one work as reference.
-- Boundary columns are `NOT NULL` for now (see open decisions).
+- One boundary per item. A user following several adaptations chooses one work as reference, and the boundary is compared only with the reading progress of its own work (`boundaryWorkId`). There is no mapping between adaptations.
+- In `AUTHOR` universes the boundary is still required and stored, because it orders information for chronology, but the visibility filter ignores it. When the author does not pick one, the interface proposes the last unit of the work.
+- Boundary columns are `NOT NULL` for now (see OD-1 in `docs/open-decisions.md`).
 
 Tables with a boundary: `Entity` (introduction), `KnowledgeEntry`, `EntityAlias`, `Relationship`, `Event` (discovery).
 
@@ -46,10 +48,10 @@ Managed by Better Auth (its own tables: user, session, account, verification). T
 |---|---|---|
 | id | uuid | |
 | ownerId | uuid | FK User |
-| name | text | 1-120 chars |
-| description | text? | |
+| name | text | 1-120 characters (Unicode code points), trimmed |
+| description | text? | at most 2000 characters (Unicode code points), trimmed; only whitespace counts as none |
 | coverImageUrl | text? | external URL only |
-| mode | enum `READER` \| `AUTHOR` | default `READER` |
+| mode | enum `READER` \| `AUTHOR` | default `READER`; cannot change after creation |
 | createdAt, updatedAt, deletedAt | timestamptz | |
 
 ### Work
@@ -66,7 +68,7 @@ Managed by Better Auth (its own tables: user, session, account, verification). T
 | createdAt, updatedAt, deletedAt | timestamptz | |
 
 ### NarrativeUnit
-Ordered index of the chapters or episodes of a work. Created by the user or by an agent on request, in bulk ("chapters 1-500") or one by one. The system never infers units.
+Ordered index of the chapters or episodes of a work. Created only by the user, in bulk ("chapters 1-500") or one by one. The system never infers units. AI may suggest units, but they exist only once the user approves them.
 
 | Field | Type | Notes |
 |---|---|---|
@@ -75,7 +77,7 @@ Ordered index of the chapters or episodes of a work. Created by the user or by a
 | ordinal | int | assigned by the system; unique per work |
 | label | text | what the user sees ("Vol. 2, Ch. 1", "Interlude") |
 | groupLabel | text? | grouping for selectors ("Volume 2", "Season 1") |
-| createdAt, updatedAt | timestamptz | |
+| createdAt, updatedAt, deletedAt | timestamptz | |
 
 - The user only sees and picks labels. `ordinal` is never user input and is only used for comparisons.
 - New units get ordinals with gaps (step 1000). Inserting between two units takes the midpoint; when no gap is left, the work's ordinals are rebalanced in one transaction.
@@ -118,6 +120,7 @@ A fragment of knowledge about an entity, revealed at a specific point.
 | entityId | uuid | FK Entity |
 | alias | text | |
 | normalizedAlias | text | indexed |
+| status | enum `CONFIRMED` \| `USER_NOTE` \| `SPECULATION` | a secret identity can be a speculation |
 | boundaryWorkId, boundaryUnitId | uuid | an alias can reveal an identity |
 | createdAt, updatedAt, deletedAt | timestamptz | |
 
@@ -128,14 +131,19 @@ Catalog per universe. Predefined types are seeded when a universe is created; th
 |---|---|---|
 | id | uuid | |
 | universeId | uuid | FK Universe |
-| key | text | UPPER_SNAKE_CASE, unique per universe |
+| key | text | UPPER_SNAKE_CASE, unique per universe among the non-deleted types |
 | label | text | "member of" |
 | inverseLabel | text | "has member" |
 | isSymmetric | boolean | if true, `inverseLabel` equals `label` |
 | isPredefined | boolean | seeded types cannot be deleted |
 | createdAt, updatedAt, deletedAt | timestamptz | |
 
-Proposed seed (to confirm in Phase 2): `MEMBER_OF`, `LEADER_OF`, `ALLY_OF` (symmetric), `ENEMY_OF` (symmetric), `PARENT_OF`, `SIBLING_OF` (symmetric), `LOCATED_IN`, `POSSESSES`.
+Proposed seed (to confirm in Phase 2, OD-16 in `docs/open-decisions.md`): `MEMBER_OF`, `LEADER_OF`, `ALLY_OF` (symmetric), `ENEMY_OF` (symmetric), `PARENT_OF`, `SIBLING_OF` (symmetric), `LOCATED_IN`, `POSSESSES`.
+
+Rules for user-created types:
+- `label` and `inverseLabel` can always be edited.
+- `isSymmetric` is locked while any relationship uses the type.
+- A type used by any relationship cannot be deleted until it is removed from those relationships. Predefined types can never be deleted.
 
 ### Relationship
 | Field | Type | Notes |
@@ -177,7 +185,7 @@ Proposed seed (to confirm in Phase 2): `MEMBER_OF`, `LEADER_OF`, `ALLY_OF` (symm
 | eventId | uuid | FK Event |
 | entityId | uuid | FK Entity, same universe as the event |
 | role | enum `PROTAGONIST` \| `PARTICIPANT` \| `AFFECTED` \| `LOCATION` \| `MENTIONED` | |
-| createdAt | timestamptz | |
+| createdAt, updatedAt, deletedAt | timestamptz | |
 
 Unique `(eventId, entityId, role)`.
 
@@ -207,7 +215,7 @@ Links a source to one piece of knowledge.
 | knowledgeEntryId | uuid? | FK KnowledgeEntry |
 | relationshipId | uuid? | FK Relationship |
 | eventId | uuid? | FK Event |
-| createdAt | timestamptz | |
+| createdAt, updatedAt, deletedAt | timestamptz | |
 
 `CHECK`: exactly one of the four target columns is not null. Source and target belong to the same universe.
 
@@ -222,6 +230,19 @@ Links a source to one piece of knowledge.
 
 Unique `(userId, workId)`. Only the current position is stored; no history.
 
+### UserPreferences
+Per-user accessibility preferences. Today they live in the browser (`localStorage`, key `lorekeeper.accessibility`); with accounts they move here so they follow the user. User state, not content.
+
+| Field | Type | Notes |
+|---|---|---|
+| userId | uuid | PK and FK User; no row means the defaults |
+| background | closed set of background presets | same values as the interface (`obsidian`, `midnight`, `nocturne`, `parchment`) |
+| text | closed set of text presets | same values as the interface (`vellum`, `ash`, `bright`) |
+| textScalePercent | numeric | between 87.5 and 137.5, step 2.5; 100 by default |
+| updatedAt | timestamptz | |
+
+The allowed values and the range have one definition, shared by the interface and the validation at the boundary.
+
 ## 4. Spoiler visibility
 
 Visibility is computed in the backend (`SpoilerService` in the domain, applied by repositories as query filters). Nothing is filtered in the frontend only.
@@ -229,23 +250,27 @@ Visibility is computed in the backend (`SpoilerService` in the domain, applied b
 1. Universe in `AUTHOR` mode → everything is visible.
 2. Universe in `READER` mode → an item with a boundary is visible only if the user has progress on `boundaryWorkId` and `ordinal(currentUnit) >= ordinal(boundaryUnit)`.
 3. No progress on a work → nothing bounded to that work is visible.
-4. Dependent visibility:
+4. Dependent visibility (applied with read-only joins on the other module's tables, see `architecture.md` section 4):
    - `KnowledgeEntry`, `EntityAlias`: own boundary **and** entity visible.
    - `Relationship`: own boundary **and** both entities visible.
    - `EventParticipant`: event visible **and** entity visible.
-   - `Citation`: its target visible.
-5. The same rules apply to every read path: pages, API, search, graph, timeline and AI retrieval.
+   - `Citation`: its target visible. Its `Source` and `locator` are included only when the `Source` is visible too: the locator inherits the visibility of its `Source`.
+5. Structure and sources, in `READER` universes:
+   - `Work`, the list of `NarrativeUnit` and `RelationshipType` are always visible. The unit labels are written by the user, and the reader needs the whole list to set a reading position.
+   - `Source`: visible once its narrative unit has been reached (the same comparison as a boundary, on its `workId`). Sources that have no unit are not decided yet (OD-20 in `docs/open-decisions.md`).
+6. The same rules apply to every read path: pages, API, search, graph, timeline and AI retrieval.
 
 Spoiler visibility rules have mandatory unit tests covering: boundary equal to progress, one unit before and after, no progress, `AUTHOR` mode, and every dependent case above.
 
 ## 5. Integrity and lifecycle
 
 - No cross-universe references: every FK between user-content tables must stay inside one universe (checked in the application layer and covered by integration tests).
-- **Soft delete:** deleting an item sets `deletedAt` on it and on all its dependents in one transaction, with the same timestamp. Restoring uses that timestamp to restore the same set. A child cannot be restored while its parent is deleted.
-  - Universe → works, units' dependents, entities, relationship types, relationships, events, sources.
+- **Soft delete:** deleting an item sets `deletedAt` on it and on all its dependents in one transaction, with the same timestamp. Restoring uses that timestamp to restore the same set. A child cannot be restored while its parent is deleted. The cascade crosses modules, so one use case orchestrates it through each module's public interface (`architecture.md` section 4).
+  - Universe → works and their narrative units, entities and everything below them, relationship types, relationships, events, sources, citations.
+  - Work → its narrative units. What happens to the items whose boundary points to that work is not decided yet (OD-19 in `docs/open-decisions.md`).
   - Entity → knowledge entries, aliases, relationships where it is source or target, event participations, citations.
 - **Purge:** explicit user action from the trash. Hard delete with database cascade.
-- **Duplicates:** creating an entity whose `normalizedName` matches an existing entity name or alias of the same type in the same universe returns a warning, not an error.
+- **Duplicates:** creating an entity whose `normalizedName` matches an existing entity name or alias of the same type in the same universe returns a warning, not an error. Universes follow the same idea: creating one whose normalized name matches a non-deleted universe of the same owner shows a warning and never blocks the creation.
 - `NarrativeUnit` in use cannot be deleted (section 3).
 
 ## 6. Attributes (JSONB)
@@ -288,13 +313,4 @@ This is an API DTO, not the database structure. Ordinals are never exposed.
 
 ## 8. Open decisions
 
-Tracked in `docs/spec.md`. Do not implement until resolved.
-
-- Information without a known boundary (columns are `NOT NULL` until decided).
-- End of a relationship (e.g. a character leaves an organization): end boundary or a new relationship.
-- Participation-level spoilers (a hidden participant in a visible event).
-- Links between related events.
-- Showing that locked information exists (counts or indicators) without revealing it.
-- Trash retention period and automatic purge.
-- Concrete attribute schemas per entity type (Phase 2).
-- Origin tracking for AI-approved suggestions (Phase 5).
+Tracked in `docs/open-decisions.md`. The ones that affect this model: OD-1 to OD-8 (information without a known boundary, end of a relationship, participation-level spoilers, links between events, indicators of locked information, trash retention, attribute schemas, origin tracking of AI suggestions), OD-16 (relationship type seed), OD-19 (trashing a work that has bounded items) and OD-20 (sources without a unit). Do not implement until resolved.

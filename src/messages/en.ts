@@ -24,6 +24,7 @@ export const en = {
     treeLabel: "Universes and works",
     railUniverses: "Universes",
     railWorks: "Works in the selected universe",
+    newUniverse: "New universe",
   },
   center: {
     viewSwitcherLabel: "View",
@@ -93,6 +94,43 @@ export const en = {
     save: "Save",
     notImplemented: "Saving is not implemented yet. This form only shows the design.",
   },
+  universeCreation: {
+    title: "New universe",
+    nameLabel: "Name",
+    namePlaceholder: "The name of the world",
+    descriptionLabel: "Description",
+    descriptionOptionalHint: "Optional",
+    descriptionPlaceholder: "What this universe is about",
+    modeLegend: "Mode",
+    modes: {
+      READER: {
+        label: "Reader",
+        explanation: "Protects you from spoilers: you only see what you have read so far.",
+      },
+      AUTHOR: {
+        label: "Author",
+        explanation: "Shows everything, while still recording boundaries for chronology.",
+      },
+    },
+    modeImmutableNote: "The mode cannot be changed after the universe is created.",
+    duplicateNameWarning: "A universe with this name already exists. You can still create this one.",
+    cancel: "Cancel",
+    create: "Create universe",
+    // Validation messages, keyed by the stable issue code. The limits come from the issue details.
+    issues: {
+      NAME_REQUIRED: "Enter a name for the universe.",
+      NAME_TOO_LONG: (maximumLength: number) => `The name can have at most ${maximumLength} characters.`,
+      DESCRIPTION_TOO_LONG: (maximumLength: number) =>
+        `The description can have at most ${maximumLength} characters.`,
+      MODE_INVALID: "Choose Reader or Author mode.",
+      UNKNOWN: "This value is not valid.",
+    },
+  },
+  universeEmptyState: {
+    noContentYet: "This universe has no content yet.",
+    nextStepsHint: "Its works and entities will appear here once they are added.",
+    createdAnnouncement: (universeName: string) => `Universe created: ${universeName}`,
+  },
   inspector: {
     emptyTitle: "Nothing selected",
     emptyText: "Choose an entity in the graph or the list to read what is known about it.",
@@ -126,7 +164,9 @@ export const en = {
     unavailable: "Not available in this prototype",
     universe: {
       label: "Universe",
-      items: ["New universe", "Rename universe", "Switch mode", "Move to trash"],
+      // The only enabled entry of the Universe menu; the items below stay disabled placeholders.
+      newUniverse: "New universe",
+      items: ["Rename universe", "Switch mode", "Move to trash"],
     },
     view: {
       label: "View",

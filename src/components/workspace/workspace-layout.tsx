@@ -201,13 +201,19 @@ function MobileWorkspaceLayout({ topbar, sidebar, inspector, children }: Workspa
   }, [isInspectorOpen]);
   const closeSidebarAfterNavigation = useCallback(() => setIsSidebarOpen(false), []);
 
+  // When a drawer closes because the user's action moved the focus elsewhere (for example the form
+  // that opens with "New universe"), that focus is kept; otherwise it goes back to the opener.
   const returnFocusToSidebarOpener = useCallback((event: Event) => {
     event.preventDefault();
-    sidebarOpenerRef.current?.focus();
+    if (document.activeElement === null || document.activeElement === document.body) {
+      sidebarOpenerRef.current?.focus();
+    }
   }, []);
   const returnFocusToInspectorOpener = useCallback((event: Event) => {
     event.preventDefault();
-    inspectorOpenerRef.current?.focus();
+    if (document.activeElement === null || document.activeElement === document.body) {
+      inspectorOpenerRef.current?.focus();
+    }
   }, []);
 
   const layoutState = useMemo<WorkspaceLayoutState>(
