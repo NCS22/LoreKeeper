@@ -14,6 +14,8 @@ For each task, delegate to the @implementer subagent (Agent tool, subagent_type 
 
 When a task finishes, check its report yourself: `pnpm typecheck`, `pnpm lint` and `pnpm test` must appear green with no new warnings (and the spoiler suite or `pnpm test:e2e` when the task requires them). If not, or if the implementer stopped for an approval or because the plan is wrong, tell me in Spanish and stop.
 
+Git (`.claude/rules/git.md`): once the report shows the verification gate green, commit the task yourself (`feat(NNN): Tn ...`: code, tests, checkbox and decisions together; one commit per task) and push the branch, before asking the gate. The @implementer must not run git commands that write; tell it so in its prompt. If a task stops half done, commit it as `wip(NNN): Tn partial`.
+
 Show me the report in Spanish and close with the Implementation gate (`sdd.md`, Approval gates), with these options:
 - "Siguiente tarea (Tn)": call @implementer again for the next unchecked task and ask the gate again. After the last task this option is "Pasar a la validación" and starts `/sdd-validate <folder>` through the `Skill` tool.
 - "Hacer el resto de las tareas sin parar": run the remaining tasks in order following "The rest without stopping" in `sdd.md`, with no gate between them. When they end, or it stops, show me one report for all of them and ask the gate again.

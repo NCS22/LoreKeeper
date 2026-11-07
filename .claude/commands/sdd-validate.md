@@ -12,6 +12,8 @@ Launch these two in the same message so they run in parallel, passing each the f
 
 Pass both reports through @explainer (always, as `sdd.md` requires), keeping their order and severity, and show me the result in Spanish.
 
+Git (`.claude/rules/git.md`): commit each fix pass (`fix(NNN): ...`) and the closing (`docs(NNN): close spec`), pushing the branch after each. After the closing summary, ask me separately about the pull request and the merge into `main`; never merge on your own.
+
 Close with the Validation gate (`sdd.md`, Approval gates):
 - Both clean (`VERDICT: APPROVED` and `SAFE`): options "Cerrar la spec" and "Parar aquí". On "Cerrar la spec", follow "Closing a spec" in `sdd.md`: @planner sets the spec to `implemented`, @implementer updates "Current status" in `CLAUDE.md`, `docs/open-decisions.md` and `docs/roadmap.md`. Then summarize in Spanish what was done, both verdicts and what is still pending.
 - Any problem: options "Corregir los problemas" and "Parar aquí". On "Corregir", follow the fix loop in `sdd.md` (Validation): at most 2 rounds, one @implementer pass for each report with findings, then run again only the checks that had findings, through @explainer, and ask the gate again. A finding that means the requirement is wrong goes through `/sdd-change <folder>` instead of a code fix.
