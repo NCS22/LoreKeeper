@@ -41,7 +41,9 @@ Tables with a boundary: `Entity` (introduction), `KnowledgeEntry`, `EntityAlias`
 ## 3. Entities
 
 ### User
-Managed by Better Auth (its own tables: user, session, account, verification). The domain only references `User.id`. No domain fields are added to Better Auth tables without approval.
+Managed by Better Auth (its own tables, named after the Prisma models with an initial capital: `User`, `Session`, `Account`, `Verification`). The domain only references `User.id`. No domain fields are added to Better Auth tables without approval.
+
+These four are identity and credential tables, not user content, so they carry no `deletedAt` (spec 002, decision D16; deleting an account is out of scope). They follow the other conventions of section 1: UUID primary keys and `timestamptz(3)` timestamps (UTC). `User.email` is stored in comparable form (trimmed, lower-case, at most 254 characters), unique and guarded by a `CHECK` constraint in the migration.
 
 ### Universe
 | Field | Type | Notes |

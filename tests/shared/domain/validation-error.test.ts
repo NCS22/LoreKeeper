@@ -21,6 +21,19 @@ describe("ValidationError", () => {
     expect(error.issues[1]?.maximumLength).toBeUndefined();
   });
 
+  it("carries the minimum and the maximum length of an issue together", () => {
+    const error = new ValidationError([
+      { field: "password", code: "PASSWORD_LENGTH_OUT_OF_RANGE", minimumLength: 8, maximumLength: 128 },
+    ]);
+
+    expect(error.issues[0]?.minimumLength).toBe(8);
+    expect(error.issues[0]?.maximumLength).toBe(128);
+  });
+
+  it("leaves the minimum length unset when the rule has none", () => {
+    expect(new ValidationError(issues).issues[0]?.minimumLength).toBeUndefined();
+  });
+
   it("has a stable code", () => {
     expect(new ValidationError(issues).code).toBe("VALIDATION_ERROR");
     expect(new ValidationError([]).code).toBe("VALIDATION_ERROR");

@@ -23,6 +23,8 @@ async function findImportBoundaryViolations(
 
 const domainFile = "src/modules/universes/domain/universe.ts";
 const applicationFile = "src/modules/universes/application/create-universe.ts";
+const sharedDomainFile = "src/shared/domain/acting-user.ts";
+const sharedApplicationFile = "src/shared/application/require-acting-user.ts";
 
 describe("import boundaries", () => {
   describe("domain files", () => {
@@ -82,6 +84,79 @@ describe("import boundaries", () => {
         const violations = await findImportBoundaryViolations(
           applicationFile,
           "../domain/universe",
+        );
+        expect(violations).toEqual([]);
+      },
+      LINT_TEST_TIMEOUT_IN_MILLISECONDS,
+    );
+  });
+
+  describe("shared domain files", () => {
+    it.each([
+      "react",
+      "next/navigation",
+      "@prisma/client",
+      "better-auth",
+      "@/shared/infrastructure/prisma-client",
+      "../infrastructure/prisma-client",
+      "@/shared/application/session-reader",
+    ])(
+      "report an import of %s",
+      async (importedPath) => {
+        const violations = await findImportBoundaryViolations(sharedDomainFile, importedPath);
+        expect(violations).toHaveLength(1);
+      },
+      LINT_TEST_TIMEOUT_IN_MILLISECONDS,
+    );
+
+    it(
+      "allow an import of a sibling shared domain file",
+      async () => {
+        const violations = await findImportBoundaryViolations(
+          sharedDomainFile,
+          "@/shared/domain/domain-error",
+        );
+        expect(violations).toEqual([]);
+      },
+      LINT_TEST_TIMEOUT_IN_MILLISECONDS,
+    );
+  });
+
+  describe("shared application files", () => {
+    it.each([
+      "react",
+      "next/navigation",
+      "@prisma/client",
+      "better-auth",
+      "@/shared/infrastructure/prisma-client",
+      "../infrastructure/prisma-client",
+    ])(
+      "report an import of %s",
+      async (importedPath) => {
+        const violations = await findImportBoundaryViolations(sharedApplicationFile, importedPath);
+        expect(violations).toHaveLength(1);
+      },
+      LINT_TEST_TIMEOUT_IN_MILLISECONDS,
+    );
+
+    it(
+      "allow an import of the shared domain",
+      async () => {
+        const violations = await findImportBoundaryViolations(
+          sharedApplicationFile,
+          "@/shared/domain/error-kinds",
+        );
+        expect(violations).toEqual([]);
+      },
+      LINT_TEST_TIMEOUT_IN_MILLISECONDS,
+    );
+
+    it(
+      "allow an import of a sibling shared application file",
+      async () => {
+        const violations = await findImportBoundaryViolations(
+          sharedApplicationFile,
+          "@/shared/application/session-reader",
         );
         expect(violations).toEqual([]);
       },
