@@ -6,6 +6,8 @@ Read `.claude/rules/sdd.md` first (Flow and Approval gates) and follow it.
 
 The first word of $ARGUMENTS is the spec folder name (`specs/<folder>/`); the rest is the new requirement. Full arguments: $ARGUMENTS
 
+Git (`.claude/rules/git.md`): work on the branch of the spec if it is still open; if the spec is already merged, check that the tree is clean and create `change-<folder>` from an up-to-date `main` first. Commit each approved document (spec, plan, tasks) and push the branch.
+
 Do NOT touch code. Delegate to the @planner subagent (Agent tool, subagent_type "planner"), following the "If asked for a change" section of its instructions, and pass it the folder and the requirement in my words:
 1. Update `specs/<folder>/spec.md`: new FR (or change to an existing one) in EARS, its edge cases, its "Spoiler impact" and what stays out of scope. If it touches something out of scope, pending or an open decision in `CLAUDE.md`, `docs/roadmap.md` or `docs/open-decisions.md`, mark it `[NEEDS CLARIFICATION]`.
 2. Indicate which parts of `plan.md` and `tasks.md` would have to change afterwards (without changing them).

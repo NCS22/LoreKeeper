@@ -11,4 +11,4 @@ Review them and tell me, in Spanish, as a numbered list:
 3. Statements that are out of date (commands, status, structure) or missing for the current phase.
 4. For each item, a proposed amendment with its reason, short and verifiable.
 
-Maximum 20 lines. Do NOT edit any file before I answer. Then ask me with `AskUserQuestion` (multiple choice, in groups of up to 4 amendments) which amendments to apply, plus the option "Ninguna". Apply only the ones I choose, editing `CLAUDE.md` or the rule files directly (through @implementer if you cannot edit), and tell me in Spanish what changed.
+Maximum 20 lines. Do NOT edit any file before I answer. Then ask me with `AskUserQuestion` (multiple choice, in groups of up to 4 amendments) which amendments to apply, plus the option "Ninguna". Apply only the ones I choose, editing `CLAUDE.md` or the rule files directly (through @implementer if you cannot edit), and tell me in Spanish what changed. Git (`.claude/rules/git.md`): make the amendments in a `docs-<name>` branch and commit them there.

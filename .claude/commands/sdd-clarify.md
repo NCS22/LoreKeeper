@@ -17,4 +17,5 @@ Do not propose solutions yet: only detect. Format: numbered list. Show me the re
 
 Then close with the Clarification gate (`sdd.md`, Approval gates):
 - No findings and no open `[NEEDS CLARIFICATION]`: options "Aprobar la spec y escribir el plan" (@planner sets `Status: approved` on `spec.md`, then start `/sdd-plan <folder>` through the `Skill` tool), "Pedir cambios", "Parar aquí".
+- Git (`.claude/rules/git.md`): when I approve the spec, commit it (`spec(NNN): ...`) and push the branch before starting `/sdd-plan`.
 - With findings or open questions: do not offer to approve. Options "Corregir la spec" (start `/sdd-change <folder>` with the findings as the requirement to resolve, and run `/sdd-clarify <folder>` again when the change is approved) and "Parar aquí".

@@ -1,7 +1,7 @@
 ---
 description: SDD · Where we are - current phase, pending approvals and next step of a spec (no argument: all specs)
 argument-hint: [NNN-feature]
-allowed-tools: Read, Glob, Grep, AskUserQuestion, Skill
+allowed-tools: Read, Glob, Grep, AskUserQuestion, Skill, Bash(git status:*), Bash(git log:*), Bash(git branch:*)
 ---
 Read `.claude/rules/sdd.md` first (Flow, Approval gates and the "Resuming" table).
 
@@ -14,6 +14,7 @@ Tell me in Spanish, in a few lines:
 2. What is waiting for my approval, and any open `[NEEDS CLARIFICATION]` questions.
 3. Tasks done and pending (x of y).
 4. The next step, taken from the "Resuming" table in `sdd.md`.
+5. Git (`.claude/rules/git.md`): the current branch, whether the tree is clean and the last commit (`git status -sb`, `git log --oneline -3`). If there are uncommitted changes, say so and ask what to do before continuing.
 
 Then ask me with `AskUserQuestion` whether to continue: "Continuar con <next step>" runs that command (or asks the pending gate again) through the `Skill` tool; "Parar aquí" ends. If the spec is `implemented`, offer instead to start a new spec with `/sdd-spec` or to change this one with `/sdd-change`.
 

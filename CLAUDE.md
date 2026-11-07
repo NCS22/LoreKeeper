@@ -120,6 +120,7 @@ Full domain model in `.claude/rules/data-model.md`.
 - Follow the SDD flow: spec → clarification → plan → tasks → implementation → validation → closing (and change when requirements change), with artifacts in `specs/NNN-feature/` and the `/sdd-*` commands. Every phase ends with a question to the user; approving it marks the document `approved` and starts the next phase, so there is no need to type the next command. Start with `/sdd-spec`, resume with `/sdd-status`, or run it all from `claude --agent coordinator`. Rules in `.claude/rules/sdd.md`.
 - A resolved open decision is recorded in the `plan.md` of the feature that resolves it (or in that spec's optional `decisions.md` when it is taken after the plan was approved; a cross-cutting one with no feature goes in this file) and removed from `docs/open-decisions.md`. There is no `docs/decisions/` folder.
 - Delegate broad exploration and reviews to subagents to keep the main context clean.
+- Git: every change goes in its own branch (never directly on `main`), is committed at the points defined in `.claude/rules/git.md` (each approved document and each verified task) and the branch is pushed after every commit. The main agent makes the commits, not the subagents. Merging into `main` is the user's decision, through a pull request.
 
 ## Commands
 
@@ -163,6 +164,7 @@ Invariants of the system. They are never broken, whatever the task.
 - Leave the application working at the end of each task.
 - Update the documentation, `docs/roadmap.md` and `docs/open-decisions.md` when something changes.
 - Report what changed, why, and what remains open.
+- Commit finished units of work on a branch, following `.claude/rules/git.md`.
 
 **ASK FIRST**
 - Adding, removing or upgrading a dependency.
@@ -176,7 +178,7 @@ Invariants of the system. They are never broken, whatever the task.
 - Implement features that were not requested or approved.
 - Read, edit or print `.env` files or secrets.
 - Silence errors, skip or delete tests, or relax strict mode to make something pass.
-- Push, force-push, rewrite git history or run destructive commands without permission.
+- Commit, push or merge on `main`, force-push, rewrite git history (`amend`, `reset`, `rebase`), delete branches or run destructive commands without permission. Creating branches, committing and pushing branches other than `main` is allowed by `.claude/rules/git.md`.
 - Store AI-generated content as verified knowledge.
 
 ## Verification

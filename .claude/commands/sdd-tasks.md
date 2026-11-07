@@ -12,3 +12,5 @@ The first word of $ARGUMENTS is the spec folder name. Delegate to the @planner s
 - Maximum 10 tasks: if more are needed, stop and propose splitting the spec.
 
 If the plan is not `approved`, stop and tell me. Show me a summary in Spanish and close with the Tasks gate (`sdd.md`, Approval gates): "Aprobar las tareas y empezar a implementar" (@planner sets `Status: approved` on `tasks.md`, then start `/sdd-implement <folder>` through the `Skill` tool), "Pedir cambios" (@planner edits the tasks and the gate is asked again), "Parar aquí".
+
+Git (`.claude/rules/git.md`): when I approve the tasks, commit them (`tasks(NNN): ...`) and push the branch before starting `/sdd-implement`.

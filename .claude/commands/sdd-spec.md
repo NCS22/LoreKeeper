@@ -7,6 +7,8 @@ Do NOT write code at any point. Read `.claude/rules/sdd.md` first (Flow and Appr
 
 The first word of $ARGUMENTS is the feature folder name (`specs/<folder>/`, e.g. `001-universe-crud`; if it has no number, @planner assigns the next free one); the rest is the initial idea. Full arguments: $ARGUMENTS
 
+Git (`.claude/rules/git.md`): before @planner writes anything, check that the tree is clean and create the branch `spec-<folder>` from an up-to-date `main`; if the folder has no number, take the next free three-digit number from `specs/` yourself and tell @planner. A spec that stays `draft` is committed only if I answer "Parar aquí"; it is committed as approved at the clarification gate.
+
 Delegate the writing to the @planner subagent (Agent tool, subagent_type "planner"), following the "If asked for the spec" section of its instructions. Subagents do not see this conversation: pass it the folder, the initial idea in my words, and the paths to read (`CLAUDE.md`, `.claude/rules/sdd.md`, `docs/roadmap.md`, `docs/open-decisions.md`, the relevant rules).
 
 Your job (talk to me in Spanish):
