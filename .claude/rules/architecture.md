@@ -60,7 +60,7 @@ tests/                                # Mirrors src/
 └── e2e/                              # Playwright (not set up yet)
 ```
 
-`src/shared` only holds pieces used by several modules and without the business logic of any single module. Moving something into it requires a reason. Its subfolders are created when first needed; today only `src/shared/domain` exists.
+`src/shared` only holds pieces used by several modules and without the business logic of any single module. Moving something into it requires a reason. Its subfolders are created when first needed; today `domain`, `application`, `infrastructure` and `presentation` exist. The Better Auth instance, the Prisma client (generated into `src/shared/infrastructure/generated/`, git-ignored), the session reader and the scrypt password hasher live in `src/shared/infrastructure`; the accounts module's infrastructure imports them from there.
 
 ## 3. Module anatomy
 
@@ -153,6 +153,7 @@ Route Handlers and Server Actions only do four things: get the session, validate
 
 ESLint `no-restricted-imports` with overrides per folder:
 
+- `src/shared/domain/**` and `src/shared/application/**` carry the same restrictions as the `domain` and `application` folders of the modules (domain: also no `application` path).
 - `src/modules/*/domain/**`: forbids `@prisma/client`, `next`, `next/*`, `react`, `better-auth`, any `infrastructure` or `application` path.
 - `src/modules/*/application/**`: forbids `@prisma/client`, `next`, `next/*`, `react`, `better-auth`, any `infrastructure` path.
 - Everywhere outside a module: forbids `@/modules/*/*` (only `@/modules/<module>` is allowed).

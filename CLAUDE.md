@@ -3,7 +3,7 @@
 LoreKeeper is a knowledge management platform for fictional universes. It helps avid readers of dense works build their own interconnected knowledge bases to remember what they read without spoilers, and helps authors keep track of details of their own works written long ago.
 This file guides Claude and any AI agent working in this repository.
 
-**Current status:** Phase 0 - design (`docs/roadmap.md`). The UI shell migrated from the visual prototype runs on sample data in `src/mocks/`, with no backend, database or auth. Screens for features that are still pending (entities, graph, timeline, reading position) are design-only on that sample data and store nothing. The only thing stored in the browser is the accessibility preferences (`localStorage`). Spec 001-universe-crud (create a universe) is implemented UI-only: the module `src/modules/universes` has the domain, use cases and an in-memory repository, wired through a temporary client provider; there is no backend, database, auth or persistence (created universes are lost on reload). Nothing marked as pending may be implemented: sample-data screens are allowed because they implement no behavior.
+**Current status:** Phase 0 - design (`docs/roadmap.md`). The UI shell migrated from the visual prototype runs on sample data in `src/mocks/`, and no page uses the database or an account yet. Screens for features that are still pending (entities, graph, timeline, reading position) are design-only on that sample data and store nothing. The only thing stored in the browser is the accessibility preferences (`localStorage`). Spec 001-universe-crud (create a universe) is implemented UI-only: the module `src/modules/universes` has the domain, use cases and an in-memory repository, wired through a temporary client provider; created universes are lost on reload until specs 004 and 005 store them. Spec 002-accounts (accounts engine, first spec of Phase 1) is implemented with no visible change in the application: PostgreSQL via Docker Compose, the Prisma 7 schema and migration, Better Auth with email and password and an own scrypt password hasher, sessions in a cookie backed by a database session (30 days, daily renewal), the three Server Actions for sign-up, sign-in and sign-out with their Zod input schemas, the shared error vocabulary and the acting-user check. There are no account pages yet: spec 003 adds the screens and depends on 002. Nothing marked as pending may be implemented: sample-data screens are allowed because they implement no behavior.
 **Where things live:** feature requirements in `specs/NNN-feature/spec.md`; phases and the project out-of-scope list in `docs/roadmap.md`; everything not decided yet in `docs/open-decisions.md`. There is no `docs/spec.md`.
 
 ---
@@ -27,7 +27,8 @@ This file guides Claude and any AI agent working in this repository.
 - Pending (see `docs/open-decisions.md`): deployment target (Phase 5), AI provider details and pgvector (Phase 6), file uploads.
 - Versions: `pnpm-lock.yaml` fixes what is installed; `package.json` pins `next` and `react` exactly and uses caret ranges for the rest. Upgrading a dependency needs approval.
 - UI shell dependencies, approved on 2026-11-06 because they came with the migrated interface and are in use: `cytoscape` and `d3-force` (graph canvas and its force layout), `react-resizable-panels` (resizable workspace panels), `tw-animate-css` (animations in `globals.css`), `@tailwindcss/turbopack` (Tailwind loader in `next.config.ts`). The `playwright` library is installed only for the browser checks agents run in disposable scripts; E2E tests are not set up (OD-17).
-- Approved on 2026-11-06, to be installed by the first spec that needs each one (approval is recorded here; nothing is installed yet): `zod` (input shape at Server Actions and Route Handlers only) and `@playwright/test` (E2E, local runs). `jsdom` and testing-library are not approved.
+- Installed by spec 002 (approved 2026-11-06): `zod` (input shape at Server Actions and Route Handlers only; today used only at the Server Action boundary), `better-auth`, `@prisma/client`, `@prisma/adapter-pg`, `pg`, `prisma` and `@types/pg`. The install-script allow-list `onlyBuiltDependencies` in `package.json` is limited to `prisma` and `@prisma/engines`.
+- Approved on 2026-11-06, to be installed by spec 003 (approval is recorded here; it is NOT installed yet): `@playwright/test` (E2E, local runs). `jsdom` and testing-library are not approved.
 - No other dependency is added without approval.
 
 ## Structure
@@ -45,9 +46,9 @@ src/
 │   ├── infrastructure/       # Prisma repositories, external providers
 │   ├── composition.ts        # Wiring
 │   └── index.ts              # Public interface
-└── shared/                   # Cross-module kernel (errors, ViewerContext, UnitOfWork, Prisma client)
+└── shared/                   # Cross-module kernel in domain, application, infrastructure and presentation (errors, acting user, session reader, Prisma client, Better Auth instance, error mapper; ViewerContext and UnitOfWork come later)
 tests/                        # Mirrors src/; support/ for fakes, e2e/ for Playwright (not set up), lint/ for tests of the ESLint rules
-prisma/                       # Schema and migrations (not created yet)
+prisma/                       # Schema (Better Auth tables) and migrations
 docs/                         # roadmap.md, open-decisions.md
 .claude/                      # Agent setup: agents/, commands/ (/sdd-*), rules/, hooks/, skills/ (a local link to .agents/skills; git stores both as identical copies)
 .agents/skills/               # Installed skills (frontend-design), locked in skills-lock.json
@@ -122,7 +123,7 @@ Full domain model in `.claude/rules/data-model.md`.
 
 ## Commands
 
-Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`. Not available yet because their tool is not installed: `docker compose` and `pnpm prisma ...` (Phase 1), `pnpm format` (Prettier) and `pnpm test:e2e` (Playwright, OD-17). Each is confirmed when its tool is set up.
+Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`, `docker compose` and `pnpm prisma ...`. `pnpm test` also runs database-backed tests, so it needs the local PostgreSQL running (`docker compose up -d`) and fails loudly without it; the generated Prisma client is not committed, so run `pnpm prisma generate` once after installing. Not available yet because their tool is not installed: `pnpm format` (Prettier) and `pnpm test:e2e` (Playwright, OD-17). Each is confirmed when its tool is set up.
 
 | Command | Purpose |
 |---|---|
