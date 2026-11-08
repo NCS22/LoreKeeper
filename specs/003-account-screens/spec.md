@@ -22,6 +22,8 @@ Today the workspace is open to anyone. This feature adds the sign-up and sign-in
 
 This feature does not link universes to users: universes keep running on sample data and in-memory creation exactly as today, and belong to nobody (that is the stored-universes spec). The accessibility preferences stay in the browser. Sign-in uses email and password only.
 
+Change after approval (2026-11-08, at the request of the plan): the definition of public resources now names the addresses served without a session (the static files, the optimized images and the site icon), FR-20 and FR-21 and their edge case and completion criteria follow it, and a new accepted risk records that the static files, which contain the sample data, can be requested without a session. No requirement was added or renumbered.
+
 This feature installs the browser test tooling whose use was approved on 2026-11-06 (OD-17, recorded in `CLAUDE.md`); that approval covers account flows only. Any other new dependency still needs approval, and the plan must flag it before anything is installed.
 
 ## Users
@@ -44,8 +46,8 @@ Both use the same account flows. There are no roles and no administrators.
 Terms defined in spec 002 keep their meaning here: account, session, use of a session, account actions, result, character, comparable email, valid email, acting user, acting-user check and error kinds.
 
 - **Workspace root**: the application's current single workspace entry page, at its root address. It is where a signed-in person lands by default.
-- **Public resources**: only the files that the sign-up page and the sign-in page need to be displayed and to work (their styles, scripts, fonts, images and the application's icon). None of them contains workspace content.
-- **Public pages**: the sign-up page, the sign-in page and the public resources.
+- **Public resources**: exactly the files the application serves to anyone, with or without a session, so that the sign-up page and the sign-in page can be displayed and can work: the application's static files (styles, scripts, fonts and images), served from the address `/_next/static`; the images the framework optimizes, served from the address `/_next/image`; and the site icon, at `/favicon.ico`. The framework serves the static files of every page, including the workspace page, from that one address, so these files include those of the workspace page, which contain the sample data (see the accepted risk in Out of scope). A public resource is a file, not a page: it never renders a workspace page and it is never redirected.
+- **Public pages**: the sign-up page, the sign-in page and the public resources. Nothing else is public.
 - **Workspace page**: any address of the application that is not a public page. Addresses that do not exist are workspace addresses for this purpose. A request to a workspace address counts whatever its method is and whether the person or the application itself made it (for example a background request that loads a page in advance).
 - **Return destination**: the path and query (never the fragment) of the workspace address that a signed-out person asked for before being sent to sign in. A return destination is valid only if it passes the rule of FR-20.
 - **Clean start**: the workspace in the same state as right after a full reload of the application: it shows only its sample data, no universe created earlier in memory, and all other in-memory state of the workspace (selection, open panels, positions) at its initial value. The accessibility preferences are not part of it (FR-33).
@@ -82,10 +84,10 @@ Access to pages
   - it contains a control character (for example a line break, a tab or the null character), raw or encoded;
   - it is longer than 2,048 characters;
   - it points to the sign-up or the sign-in page in any form: with a trailing slash, with any letter case ("/sign-in/", "/Sign-In") or with a query ("/sign-in?x=1");
-  - it points to a public resource;
+  - it points to a public resource (an address under `/_next/static` or `/_next/image`, or `/favicon.ico`);
   - its query already carries a return destination of its own.
   A fragment is never kept. The rule is verified over every case in this list and over these valid ones: "/", "/?x=1", "/a/b?x=1&y=2".
-- FR-21: THE SYSTEM SHALL answer a request of a signed-out person only for public pages; for any other request, whatever its method and whether it is a navigation or a background request, it SHALL produce no workspace content.
+- FR-21: THE SYSTEM SHALL answer a request of a signed-out person only for the sign-up page, the sign-in page and the public resources (which are answered as they are, never redirected); for any other request, whatever its method and whether it is a navigation or a background request, it SHALL produce no workspace content and SHALL answer it as FR-18 says (a redirect to the sign-in page).
 - FR-22: WHILE a person has a valid session, WHEN they open the sign-up or the sign-in page, or submit the sign-up or the sign-in form (for example from another browser tab) and the action answers that the person is already signed in (002 FR-19), THE SYSTEM SHALL take them to the return destination if it is valid or, if there is none, to the workspace root, and SHALL not treat this as a sign-in or sign-up (FR-32 does not apply).
 - FR-23: WHILE a person has a valid session, WHEN they ask for an address that does not exist, THE SYSTEM SHALL show a not-found page designed for the application, using the project's design tokens and respecting the accessibility preferences, with a clear message and a link back to the workspace root, and carrying the top bar and the user menu so that the person can sign out from it.
 - FR-24: IF the session of a request to a workspace page, to the sign-up page or to the sign-in page cannot be checked because of a failure (002 FR-22), THEN THE SYSTEM SHALL show a generic error page designed for the application, using the project's design tokens and respecting the accessibility preferences, with no workspace content and no user menu (the session is unknown), offering an action to try again, and SHALL not treat the person as signed out.
@@ -136,6 +138,7 @@ None. The screens of accounts do not read or write narrative information: there 
 - Person goes from sign-in to sign-up and back, or fails a submission: the return destination is not lost (FR-19).
 - Signed-out person asks for an address that does not exist: sent to sign-in, like any other workspace page (FR-18). Once signed in, that address shows the not-found page (FR-23).
 - Signed-out request that is not a navigation (another method, a background request): no workspace content is produced (FR-21).
+- Signed-out request for a public resource (a file under `/_next/static` or `/_next/image`, or `/favicon.ico`): answered as it is, not redirected, so the sign-up and sign-in pages load completely; every other signed-out request that is not for the sign-up or sign-in page is redirected to the sign-in page (FR-18, FR-21).
 - Signed-in person opens the sign-in page by typing its address: redirected to the workspace root, or to the return destination if one was given (FR-22).
 - Session deleted or tampered with: the request is treated as signed out and, on a workspace page, redirected to sign-in without showing any workspace text (002 FR-26; FR-18 and NFR-4 here).
 - Person who uses a workspace page every day: stays signed in beyond 30 days; a person who is absent for more than 30 days is signed out (FR-16).
@@ -167,6 +170,7 @@ Accepted risks (user decisions):
 - Invisible and direction-control characters are accepted in a display name by spec 002. This feature only shows them safely (FR-26); whether the display-name rule should refuse them is a change of spec 002.
 - A sign-up or sign-in repeated from two tabs or devices at the same moment is not prevented; the second submission shows what the account rules answer (FR-12).
 - A second tab keeps showing the workspace until its next request after the session ended elsewhere; it shows sample data only today.
+- Static files of the application (public resources): they can be requested without a session. Their names are generated and not guessable, and the files of the workspace page contain only the sample data, which is already public in the repository; no real data exists in them. Decided by the user on 2026-11-08, because the sign-up and sign-in pages would not load if a session were required for the files that every page shares. This risk must be revisited by the spec that first stores real data (the stored-universes spec).
 - The accessibility preferences stay on the device after a sign-out, so the next person who uses the device sees those settings (FR-33). They are display settings, not personal data.
 
 Other exclusions:
@@ -192,6 +196,7 @@ Other exclusions:
 - Wrong password and unknown email show the same generic message in the same place; empty fields show an error on each.
 - A signed-out person who types the address of a workspace page, including one with a query such as `/?x=1`, is sent to sign in and, after signing in, arrives at that address with the query kept; the rule of the return destination is verified by automated tests over every case listed in FR-20 and over the valid examples there, and the return destination is kept between sign-in and sign-up and after a failed submission.
 - The response to a signed-out request to a workspace page is a redirect whose body and headers contain none of the workspace's text; a signed-out request that is not a navigation (another method, a background request) gets no workspace content either.
+- A signed-out request for each public resource (a static file under `/_next/static`, an address under `/_next/image` and `/favicon.ico`) is not redirected and the sign-up and sign-in pages load completely with a signed-out browser; a signed-out request for any other address that is not the sign-up or the sign-in page is redirected (checked in a browser test or a response test).
 - A signed-out person who asks for an address that does not exist is sent to sign in; a signed-in person sees the not-found page.
 - A signed-in person who opens the sign-up or sign-in page is redirected to the valid return destination or, without one, to the workspace root, and one who submits the sign-up or sign-in form keeps their session and lands in the same place.
 - A failure while checking the session shows a generic error page with no workspace content and does not send the person to sign in, on a workspace page and on the sign-up and sign-in pages.
