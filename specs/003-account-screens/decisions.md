@@ -111,3 +111,47 @@ Note (not a decision): the writing tool turned the escape sequences for U+2028 a
 - **Decided:** messages such as "Creating account..." use three ASCII dots, like the rest of `en.ts` (for example "Loading graph...").
 - **Why:** consistency with the existing dictionary.
 - **Discarded:** the single ellipsis character.
+
+## T4 - Sign-in page and form (approved by the user at the T4 implementation gate, 2026-11-08)
+
+### D-T4-1. A pure function decides what the session confirmation means
+
+- **Decided:** a new function `interpretSessionConfirmation` in `src/components/accounts/interpret-session-confirmation.ts`, with a unit test of 9 cases, decides whether the session confirmation (FR-14, plan D7) means "session not kept". Only an explicit authentication error does. Sign-up reuses it in T5.
+- **Why:** T3 did not create it. Without it the rule would live inside the form component, covered only by the browser tests, and T5 would duplicate it.
+- **Discarded:** keeping the rule inside the form component.
+
+### D-T4-2. No new identifier in the forbidden list of the NFR-8 structural test
+
+- **Decided:** nothing was added to the list in `tests/lint/test-controls-absent.test.ts`. The new support helpers (`waitForFormHydration`, `isServerActionRequest`) provoke no failure, and `UNREACHABLE_DATA_SERVER_ADDRESS` is already covered by the substring `UNREACHABLE_DATA_SERVER`.
+- **Why:** the list exists only for identifiers that provoke failures (decision D-T1-5).
+- **Discarded:** adding the helpers to the list anyway.
+
+### D-T4-3. The redirect of a signed-in person who opens `/sign-in` is not done in the page
+
+- **Decided:** T4 does not redirect an already signed-in person who opens the sign-in page (FR-21, FR-22, the "opening the page" part). In T4 the guard is not on and the page works as a public page, as `tasks.md` says; the redirect belongs to the guard (T6) with its browser tests in T7. In T4, FR-22 is covered only for submitting the form from another tab.
+- **Why:** doing it in the page would duplicate T6 and force the page to handle `InfrastructureError`.
+- **Discarded:** a server-side redirect in the page itself.
+
+### D-T4-4. How the browser test sends the cross-site header and strips the cookie
+
+- **Decided:** Chromium ignores a `Sec-Fetch-Site` change made with `route.continue`, so the test performs the call itself with `route.fetch({ headers })` and answers with `route.fulfill`. The cookie-stripped case uses the same mechanism and calls `context.clearCookies()`, because `route.fetch` stores the cookies it receives in the browser context.
+- **Why:** it is the only way found to deliver a cross-site request and a response without the session cookie to the page, as the spec's cases require.
+- **Discarded:** `route.continue` with changed headers.
+
+### D-T4-5. A retry after 30 s without an answer waits for the stuck request
+
+- **Decided:** Server Action calls are queued in the Next.js client, so after 30 s without an answer a retry is not sent until the stuck request ends. The T4 browser test finishes the hanging request before it retries. The interface already warns "the session may still be open". Finding for T5 and T8, which have the same case.
+- **Why:** it is how the installed client behaves; the 30 s limit (plan D16) cannot cancel the call.
+- **Discarded:** not recorded.
+
+### D-T4-6. The form has `method="post"` and named fields
+
+- **Decided:** the form has `method="post"` and each field has a `name` attribute. If JavaScript had not loaded and the form were submitted natively, the password would go in the body and never in the URL.
+- **Why:** it keeps the password out of the address, the history and the logs in that case.
+- **Discarded:** no `method` or `name` attributes.
+
+### D-T4-7. The link to sign-up does not prefetch
+
+- **Decided:** the link to the sign-up page uses `next/link` with `prefetch={false}`.
+- **Why:** not recorded.
+- **Discarded:** the default prefetch.
