@@ -67,3 +67,47 @@ Note (not a decision): the writing tool turned the escape sequences for U+2028 a
 - **Decided:** `buildSignInAddress` and `buildSignUpAddress` pass the destination through `resolveReturnDestination` again: an unsafe destination produces the address without the parameter; for `/` they keep `?returnTo=%2F`, as the plan expects for T6; the function is idempotent for already-safe destinations.
 - **Why:** an address with a return destination can never be built from an unsafe value, whoever calls the builder.
 - **Discarded:** trusting the caller.
+
+## T3 - Form building blocks and session confirmation (approved by the user at the T3 implementation gate, 2026-11-08)
+
+### D-T3-1. `signed-out-action-response.ts` is created in T3, not in T6
+
+- **Decided:** `src/shared/presentation/signed-out-action-response.ts` is created in T3. It holds the constants of both refusals (401 with the text "Signed out." and 503 with the text "The session could not be checked.") and the `text/plain` content type. T6 must reuse this file, not recreate it. The two texts are new; if T6 wants others, they change in this one place.
+- **Why:** the result interpreter needs the exact text of the refusal (plan D5) and cannot depend on a file that does not exist yet.
+- **Discarded:** creating it in T6 and duplicating the strings in the interpreter.
+
+### D-T3-2. `build-account-form-vocabulary.ts` is a server-only file
+
+- **Decided:** an extra file, `src/components/accounts/build-account-form-vocabulary.ts`, builds the codes and field names that the pages pass to the forms as props. It is the only file in `src/components/accounts/` that imports `@/modules/accounts`; a client component importing it would fail the build.
+- **Why:** plan D13 requires the pages to pass codes and field names as props; T4 and T5 both need them, so they are built once (DRY).
+- **Discarded:** each page building its own vocabulary.
+
+### D-T3-3. Shape of the interpreter API
+
+- **Decided:** `interpretAccountActionResult(operation, outcome, vocabulary)` takes the `TimeLimitedOutcome` (`answered`, `timed-out` or `rejected`) and returns `succeeded`, `already-signed-in`, `field-errors` (with `messagesByField`) or `message` (a general message). The "could not confirm", wrong-password (FR-7) and generic-failure cases all come out as `message`.
+- **Why:** the forms only need to know whether to leave the page, show messages on fields, or show one general message.
+- **Discarded:** a richer result type per failure kind.
+
+### D-T3-4. A missing limit is never invented
+
+- **Decided:** if a display-name-too-long or password-length issue arrives without its limits, the neutral message "This value is not valid." is shown, instead of throwing or writing a number.
+- **Why:** the limits come from the account rules and the interface must not supply its own. The universes form throws in this case; here a render crash would be worse.
+- **Discarded:** throwing.
+
+### D-T3-5. A validation failure with no form field is a general message
+
+- **Decided:** a `VALIDATION_ERROR` with no form field (cross-site, `request`, `input`, unexpected keys, malformed issues) yields the general message of FR-9. On sign-in only the email and password fields are shown.
+- **Why:** FR-9 asks for one generic message when no field of the form is involved.
+- **Discarded:** showing unknown field names.
+
+### D-T3-6. `useAccountSubmission` does not release itself after a success
+
+- **Decided:** the form calls `releaseSubmission()` on any failure and leaves the submission locked when it is going to leave the page (FR-12). The hook has no unit tests (no jsdom); its browser behavior is covered in T4 and T5.
+- **Why:** a released control after a success would allow a second submission while the page is being left.
+- **Discarded:** automatic release after any outcome.
+
+### D-T3-7. Messages use ASCII "..." for the in-progress labels
+
+- **Decided:** messages such as "Creating account..." use three ASCII dots, like the rest of `en.ts` (for example "Loading graph...").
+- **Why:** consistency with the existing dictionary.
+- **Discarded:** the single ellipsis character.
