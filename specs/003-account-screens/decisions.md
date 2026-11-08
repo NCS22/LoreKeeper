@@ -240,3 +240,23 @@ Note (not a decision): the writing tool turned the escape sequences for U+2028 a
 - **Decided:** in `tests/e2e/smoke.spec.ts` the `/` test on 3100 now checks that a browser without a session ends at `/sign-in?returnTo=%2F`, and the one on 3101 expects a 303 to that address with no workspace text (before: 200 with the workspace). The sign-in and sign-up specs pass unchanged.
 - **Why:** the behavior the smoke test described (workspace open to anyone) is what this feature removes (legitimate change).
 - **Discarded:** not recorded.
+
+## T7 - The guard in the browser (approved by the user at the T7 implementation gate, 2026-11-08)
+
+### D-T7-1. 404 responses carry a longer `Cache-Control` than the guard's exact `no-store`
+
+- **Decided:** Next.js answers its not-found page with `private, no-cache, no-store, max-age=0, must-revalidate`. The test for an address that does not exist uses `toContain("no-store")`, while `/` and `/sign-in` are checked for the exact value the guard sets.
+- **Why:** the not-found page is produced by the framework after the guard, with its own header.
+- **Discarded:** forcing the exact value on the not-found page.
+
+### D-T7-2. The `source` of the security headers repeats the proxy matcher
+
+- **Decided:** the `source` pattern of `headers()` in `next.config.ts` repeats the regular expression of the proxy matcher (path-segment boundary exclusion of the public resources), with a comment saying so. At the T7 gate the user asked for a test that keeps the two equal; it is added right after T7 as its own small commit, and its entry will be added below when it lands.
+- **Why:** the configuration file cannot import the matcher, because `src/proxy.ts` imports application modules.
+- **Discarded:** importing the matcher into the configuration file.
+
+### D-T7-3. The body of a redirect to a HEAD request may be empty
+
+- **Decided:** for GET, POST, PUT and DELETE the body of the redirect is the destination address itself (decision D-T6-2); for HEAD it may be empty. The test accepts both forms and rejects anything else.
+- **Why:** a response to HEAD has no body by definition.
+- **Discarded:** not recorded.
