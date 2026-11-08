@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { en } from "../../src/messages/en";
 import { verifyPasswordAsTyped } from "../../src/shared/infrastructure/scrypt-password-hasher";
 import { seedAccountInDatabase } from "./support/seed-account-in-database";
 import { withTestDatabaseClient } from "./support/with-test-database-client";
@@ -7,20 +8,25 @@ const UNREACHABLE_DATA_SERVER_ADDRESS = "http://localhost:3101";
 const SAMPLE_UNIVERSE_NAME = "The Ember Concordat";
 
 test.describe("harness smoke test", () => {
-  test("the workspace root answers on the healthy server with its sample content", async ({ page }) => {
+  test("the healthy server sends a signed-out browser asking for the workspace root to the sign-in page", async ({
+    page,
+  }) => {
     const response = await page.goto("/");
 
     expect(response?.status()).toBe(200);
-    await expect(page.getByText(SAMPLE_UNIVERSE_NAME).first()).toBeVisible();
+    expect(page.url()).toBe("http://localhost:3100/sign-in?returnTo=%2F");
+    await expect(page.getByRole("heading", { name: en.accountForms.signIn.title })).toBeVisible();
+    await expect(page.getByText(SAMPLE_UNIVERSE_NAME)).toHaveCount(0);
   });
 
-  test("the workspace root also answers on the unreachable-data server (the guard does not exist yet)", async ({
+  test("the workspace root redirects a signed-out client to sign-in on the unreachable-data server too (the guard needs no data without a cookie)", async ({
     request,
   }) => {
-    const response = await request.get(`${UNREACHABLE_DATA_SERVER_ADDRESS}/`);
+    const response = await request.get(`${UNREACHABLE_DATA_SERVER_ADDRESS}/`, { maxRedirects: 0 });
 
-    expect(response.status()).toBe(200);
-    expect(await response.text()).toContain(SAMPLE_UNIVERSE_NAME);
+    expect(response.status()).toBe(303);
+    expect(response.headers()["location"]).toBe("/sign-in?returnTo=%2F");
+    expect(await response.text()).not.toContain(SAMPLE_UNIVERSE_NAME);
   });
 
   test("a seeded account is stored with a credential the application's hasher verifies", async () => {

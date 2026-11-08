@@ -254,6 +254,14 @@ export const en = {
       unknown: "This value is not valid.",
     },
   },
+  // The page shown when the session of a request cannot be checked (FR-24). It says nothing about
+  // the person's session or account, because it is unknown.
+  sessionCheckFailed: {
+    title: "We could not check your session",
+    description: "Something went wrong on our side. Your session has not been closed. Try again in a moment.",
+    tryAgain: "Try again",
+    metadataTitle: "Something went wrong",
+  },
 } as const;
 
 export type Messages = typeof en;
