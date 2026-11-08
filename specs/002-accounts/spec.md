@@ -1,6 +1,6 @@
 # Spec 002 — Accounts
 
-Status: approved
+Status: implemented
 
 ## Context and goal
 
