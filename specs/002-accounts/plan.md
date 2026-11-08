@@ -2,7 +2,7 @@
 
 Status: approved
 
-Spec: `specs/002-accounts/spec.md` (Status: approved, no open questions; 39 FRs and 2 NFRs). The screens, the page guard and the browser tests are spec 003 (`specs/003-account-screens/spec.md`); what moved there is listed in "Handed over to spec 003".
+Spec: `specs/002-accounts/spec.md` (Status: approved, no open questions; 42 FRs and 3 NFRs; FR-40 to FR-42 and NFR-3, the acting user details, were added on 2026-11-08, see "Changes approved after the plan gate"). The screens, the page guard and the browser tests are spec 003 (`specs/003-account-screens/spec.md`); what moved there is listed in "Handed over to spec 003".
 
 Every item that `CLAUDE.md` puts under "ASK FIRST" (dependencies, module, layers and folders, schema and migration, environment, edits to existing files, documentation follow-ups) was asked to the user one at a time and answered on 2026-11-06. The 14 answers are recorded, one numbered item each, in the final section "Approvals recorded", and the text of the plan refers to them as "item N". Where an answer leaves a check for the implementer (library versions and compatibility), the plan says what to confirm and that the implementer must stop and ask if the check fails.
 
@@ -46,14 +46,14 @@ There is no domain `Account` type, no repository and no account summary in this 
 |---|---|---|---|
 | Domain | `domain/error-kinds.ts` | The five new error classes next to the existing `DomainError` and `ValidationError`: `AuthenticationError`, `NotFoundError`, `BusinessRuleViolationError`, `InfrastructureError`, `ExternalProviderError`, each with its stable code (section 4). No `AuthorizationError` class is created (FR-38, decision D11). | 33, 35 to 38 |
 | Domain | `domain/validation-error.ts` (modified) | Additive: `ValidationIssue` gets an optional `minimumLength` (the password issue carries both limits, FR-6). Existing fields and tests are unchanged. | 6 |
-| Domain | `domain/acting-user.ts` | `ActingUser = { readonly userId: string }`. | 20 |
+| Domain | `domain/acting-user.ts` | `ActingUser = { readonly userId: string; readonly displayName: string; readonly email: string }`. `displayName` and `email` are the acting user details: the values stored for the account, passed through unchanged (the email is already in comparable form). Nothing else is added (no password, hash, token or other account field). Changed by the 2026-11-08 change (D30). | 20, 40, 41 |
 | Domain | `domain/session-policy.ts` | The only definition of the session numbers: lifetime 30 days, renewal interval 1 day (in seconds). | 23 to 25 |
-| Application | `application/session-reader.ts` | Port `SessionReader`: `readActiveSession(): Promise<{ userId: string } \| null>`. It takes no argument, so nothing the client sends can reach it (FR-21). | 21, 26 |
-| Application | `application/require-acting-user.ts` | The acting-user check: `requireActingUser({ sessionReader })` returns the `ActingUser` or throws `AuthenticationError`; a reader failure propagates as `InfrastructureError`. | 20 to 22 |
+| Application | `application/session-reader.ts` | Port `SessionReader`: `readActiveSession(): Promise<ActiveSession \| null>` with `ActiveSession = { userId, displayName, email }` (the same three values as `ActingUser`). It takes no argument, so nothing the client sends can reach it (FR-21). Changed by the 2026-11-08 change (D30): the session already comes joined with its account, so the port gains the two values and no second reader or second lookup is added. | 21, 26, 40, 41 |
+| Application | `application/require-acting-user.ts` | The acting-user check: `requireActingUser({ sessionReader })` returns the `ActingUser` (identifier, display name and email, copied one by one from the active session so nothing else can leak through) or throws `AuthenticationError`; a reader failure propagates as `InfrastructureError` and no details are given on a failure. Changed by the 2026-11-08 change. | 20 to 22, 40 to 42 |
 | Infrastructure | `infrastructure/prisma-client.ts` | The single Prisma client, created on first use (reused across hot reloads in development). | 31 |
 | Infrastructure | `infrastructure/server-environment.ts` | Reads and validates (Zod) `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` on first use; a missing value is an `InfrastructureError` with a generic message. | 36 |
 | Infrastructure | `infrastructure/better-auth-instance.ts` | The one Better Auth configuration (section 4, "Session cookie and library settings"). | 23 to 29 |
-| Infrastructure | `infrastructure/better-auth-session-reader.ts` | `createBetterAuthSessionReader(getRequestHeaders)` implementing `SessionReader`. | 20 to 22, 26 |
+| Infrastructure | `infrastructure/better-auth-session-reader.ts` | `createBetterAuthSessionReader(getRequestHeaders)` implementing `SessionReader`. Changed by the 2026-11-08 change (D30): it builds the active session from the user the library already returns with the session (`user.id`, `user.name` as `displayName`, `user.email` as `email`), with no transformation, no extra query and no write; the null, 401 and failure paths are untouched. | 20 to 22, 26, 40 to 42 |
 | Infrastructure | `infrastructure/request-session-reader.ts` | Binds the reader to the headers of the current Next.js request. | 20, 21 |
 | Infrastructure | `infrastructure/scrypt-password-hasher.ts` | Only if the installed Better Auth normalizes passwords (decision D10). Uses `node:crypto`, no dependency. | 8 |
 | Infrastructure | `infrastructure/server-error-logger.ts` | `logServerError(error, context)` to the server log; never receives request bodies. | 32, 36 |
@@ -62,7 +62,7 @@ There is no domain `Account` type, no repository and no account summary in this 
 | Presentation | `presentation/action-result.ts`, `run-action.ts` | `ActionResult<T>` and `runAction(work)`, which runs the work, maps errors, and rethrows the framework's control-flow errors (`unstable_rethrow`). | 39 |
 | Presentation | `presentation/parse-action-input.ts` | Runs a Zod schema over unknown input and converts a failure into `ValidationError` (issue code `INVALID_INPUT`). | 34, NFR-1 |
 | Presentation | `presentation/assert-same-site-request.ts` | Rejects a mutating request that comes from another site (FR-30, decision D14). | 30 |
-| Presentation | `presentation/get-acting-user.ts` | Wires `requireActingUser` to the request session reader: the single entry every future Server Action or Route Handler calls. | 20 to 22 |
+| Presentation | `presentation/get-acting-user.ts` | Wires `requireActingUser` to the request session reader: the single entry every future Server Action or Route Handler calls. Unchanged by the 2026-11-08 change: it returns the richer `ActingUser` through its existing return type. | 20 to 22, 40 |
 
 Dependencies follow `presentation → application → domain ← infrastructure`. `src/shared/application` and `src/shared/domain` import no Prisma, Next.js, React or Better Auth. `UnitOfWork` is not needed (every write is one library call) and is not created (D22).
 
@@ -114,6 +114,7 @@ Four Better Auth tables, written by hand from the library's documented core sche
 - The password is stored only as a salted hash in `Account.password`; nothing stores or logs it as typed (FR-32).
 - Prisma 7 form: `prisma/schema.prisma` with a generator whose output is inside `src/shared/infrastructure/` (git-ignored), so generated types physically sit where only infrastructure may import them; `prisma.config.ts` at the root; migrations in `prisma/migrations/` (the CHECK constraint is added by editing the generated migration before it is applied). The generated client is not committed and there is no `postinstall`: `pnpm prisma generate` is run once by hand after installing (see item 7).
 - The module `accounts` has no domain type that mirrors these tables in this spec (section 1).
+- **2026-11-08 change (acting user details, FR-40 to FR-42): no schema change, no migration, no new dependency, no new module, layer or folder.** `User.name` (display name, trimmed) and `User.email` (comparable email) are already stored for every account, and the session read already returns the user. Nothing here needs approval.
 
 ### Local database (approved, items 6 and 13)
 
@@ -132,8 +133,9 @@ One per file in `src/modules/accounts/application/` unless stated. The acting us
 | `signUp(dependencies, command)` | `accountAuthenticator`, `sessionReader` | `{ displayName, email, password, repeatPassword }` | `{ status: "signed-up" \| "already-signed-in" }` | `ValidationError` (all failing fields together), `EmailAlreadyRegisteredError` (business rule violation), `InfrastructureError` |
 | `signIn(dependencies, command)` | `accountAuthenticator`, `sessionReader` | `{ email, password }` | `{ status: "signed-in" \| "already-signed-in" }` | `ValidationError` (empty fields only), `InvalidCredentialsError` (same error for unknown email and wrong password), `InfrastructureError` |
 | `signOut(dependencies)` | `accountAuthenticator` | none | `void` (also when there was no valid session) | `InfrastructureError` |
-| `requireActingUser(dependencies)` (shared) | `sessionReader` | none | `ActingUser` | `AuthenticationError` when there is no valid session; `InfrastructureError` when it cannot be checked |
+| `requireActingUser(dependencies)` (shared) | `sessionReader` | none | `ActingUser` = `{ userId, displayName, email }` (since the 2026-11-08 change, FR-40, FR-41) | `AuthenticationError` when there is no valid session; `InfrastructureError` when it cannot be checked; in both failures no display name or email is given (FR-42) |
 
+- `signUp` and `signIn` only use the `sessionReader` to know whether a valid session exists; they ignore the display name and the email that the active session now carries, so their code, results and behavior do not change with the 2026-11-08 change (NFR-3).
 - Both `signUp` and `signIn` first ask the `sessionReader`; if a valid session exists they return `already-signed-in` and do nothing else: nothing is validated, created or started and the current session is left intact (FR-19). Otherwise they validate with the domain rules and then call the port.
 - The validation of `signUp` and `signIn` happens before any call to the port, so no account rule runs on malformed input (NFR-1).
 - Where the person goes after a success (a destination) is not decided here: it is spec 003.
@@ -201,7 +203,7 @@ None in this spec: no visible change. No page, route, form, menu or component is
 
 ## 6. Spoiler impact
 
-None. Accounts read and write no narrative information: no works, narrative units, reading progress or spoiler boundaries exist in this feature, nothing here is revealed progressively, and the `READER` and `AUTHOR` modes are not touched. No visibility rule is applied, no `ViewerContext` is built, and the mandatory spoiler suite is not required for any task of this plan. The acting-user check built here is the prerequisite for the ownership checks and filtering of later features.
+None. Accounts read and write no narrative information: no works, narrative units, reading progress or spoiler boundaries exist in this feature, nothing here is revealed progressively, and the `READER` and `AUTHOR` modes are not touched. No visibility rule is applied, no `ViewerContext` is built, and the mandatory spoiler suite is not required for any task of this plan. The acting-user check built here is the prerequisite for the ownership checks and filtering of later features. The acting user details added on 2026-11-08 (display name and email) are account data with no spoiler boundary, so they need no visibility rule either.
 
 ## 7. Tests
 
@@ -214,7 +216,7 @@ Vitest runs `tests/**/*.test.ts`. Database-backed tests need `docker compose up 
 | Shared domain | `tests/shared/domain/error-kinds.test.ts` | Each class has its stable code; the code list is closed; no authorization class (FR-33, FR-37, FR-38). |
 | Shared domain | `tests/shared/domain/validation-error.test.ts` (extended) | `minimumLength` carried; old behavior unchanged. |
 | Shared domain | `tests/shared/domain/session-policy.test.ts` | Constants equal 30 days and 1 day in seconds. |
-| Shared application | `tests/shared/application/require-acting-user.test.ts` | Valid session → actor; none → `AuthenticationError` and the dependent operation not run; reader failure → `InfrastructureError`, not an authentication error; an unrelated identifier in a request-like object is ignored by construction (FR-20 to FR-22). |
+| Shared application | `tests/shared/application/require-acting-user.test.ts` | Valid session → actor; none → `AuthenticationError` and the dependent operation not run; reader failure → `InfrastructureError`, not an authentication error; an unrelated identifier in a request-like object is ignored by construction (FR-20 to FR-22). Extended by the 2026-11-08 change: the actor carries the display name and the email of the session; its full content is compared, so it holds exactly `userId`, `displayName` and `email` and nothing else (no password, hash, token or extra field) (FR-40, FR-41); a name and an email in the request-like object are ignored; no session or a reader failure gives no details (FR-42); two checks give the same values (NFR-3). The existing assertions that compare the full actor (`toEqual({ userId })`) are updated only to include the two new values. |
 | Shared presentation | `tests/shared/presentation/map-error-to-response.test.ts` | Every class and unknown → code, status, generic message; `fieldErrors` keyed by field; no stack, query or credential in a body; infrastructure and unknown errors logged with the cause (spy) (FR-33 to FR-39). |
 | Shared presentation | `.../run-action.test.ts`, `parse-action-input.test.ts`, `assert-same-site-request.test.ts` | Result shape for success and each kind; control-flow errors rethrown; strict schemas reject unknown keys and non-strings; same-origin accepted, `Sec-Fetch-Site: cross-site` and foreign `Origin` rejected (FR-30, FR-39). |
 | Accounts domain | `tests/modules/accounts/domain/account-display-name.test.ts` | Empty, whitespace-only, exactly 120, 121, 120 after trimming, emoji as code points, `\n` inside and trailing, tab, U+2028, inner spaces kept, markup accepted as text (FR-2 to FR-4, FR-10). |
@@ -242,10 +244,11 @@ It runs against two implementations: the in-memory fake (its clock is injected) 
 ### Integration (real database)
 
 - `tests/modules/accounts/infrastructure/better-auth-account-authenticator.test.ts`: the contract suite on the real engine, plus two simultaneous sign-ups with the same comparable email create exactly one account and one returns `EmailAlreadyRegisteredError` (FR-11); a new Prisma client and a new library instance see the same accounts and sessions (FR-31, automated part); no readable password in any stored row, in the logger spy, or in any returned value, in success and failure cases (FR-32).
-- `tests/shared/infrastructure/better-auth-session-reader.test.ts`: reader with real cookies; a request carrying another account's identifier in header, query or body still reads the session's account (FR-21); a database failure becomes `InfrastructureError` (FR-22).
+- `tests/shared/infrastructure/better-auth-session-reader.test.ts`: reader with real cookies; a request carrying another account's identifier in header, query or body still reads the session's account (FR-21); a database failure becomes `InfrastructureError` (FR-22). Extended by the 2026-11-08 change (FR-40 to FR-42, NFR-3), against the real engine and database: an account signed up as `" Ana@Example.COM "` with the name `"  Ana  María "` is read as `ana@example.com` and `Ana  María`; two accounts with the same name are told apart by email and identifier; a name with markup, an emoji, a zero-width space and a 120-character name come back exactly as stored; a request carrying another account's identifier, name or email in a header, query or body still reads the details of the session's account; a missing, deleted, signed-out, expired (more than 30 days unused) or tampered session gives no details, and a database failure is an `InfrastructureError` with no details; the content of the active session is compared in full (exactly the three fields); the `User`, `Session` and `Account` rows are identical before and after a read that does not renew, and a second read gives the same values (read-only). The assertions that compared the previous shape are updated only to include the two new values.
 - `tests/shared/infrastructure/better-auth-instance.test.ts`: the cookie options for an `https://` base URL (`Secure`) and an `http://` one (FR-29, automated part), `HttpOnly`, `SameSite=Strict` (FR-27, FR-28).
 - `tests/app/sign-up/actions.test.ts`, `tests/app/sign-in/actions.test.ts`, `tests/app/actions.test.ts`: the actions with `next/headers` replaced by a helper in `tests/support/` that emulates a cookie jar and request headers, against the real composition and database: success values, each error kind in the result shape (FR-39), unknown input keys rejected, the `Set-Cookie` of sign-up and sign-in carries `HttpOnly` and `SameSite=Strict` (FR-27, FR-28), foreign `Origin` rejected and nothing created, no session started and no session ended (FR-30), a signed-in submission processes nothing and keeps the session (FR-19), an infrastructure failure (the authenticator replaced by a failing one) returns the generic result without echoing the password (FR-32, FR-36), sign-out ends only the session in use and succeeds without one (FR-16 to FR-18).
 - Lint: `tests/lint/import-boundaries.test.ts` gains the cases for `src/shared/domain` and `src/shared/application`.
+- **Files touched by the 2026-11-08 change in `tests/`** (all mirror `src/`; nothing new is needed besides the cases above): `tests/shared/application/require-acting-user.test.ts`, `tests/shared/presentation/get-acting-user.test.ts` (full actor now includes the two values; the wiring is unchanged), `tests/shared/infrastructure/better-auth-session-reader.test.ts`, `tests/shared/infrastructure/request-session-reader.test.ts` (only if it compares the shape of the session). The doubles of `SessionReader` must return the three values to compile with the port: `tests/support/fakes/fake-account-authenticator.ts` (it already stores the display name and the email of each account), `tests/support/database/real-account-authenticator-world.ts` and, where it builds or compares a session, `tests/support/contracts/account-authenticator-contract.ts`. The tests of the three use cases and of the three actions (`tests/modules/accounts/application/*.test.ts`, `tests/app/**`) change only where they build or compare an active session. NFR-3 is checked by the rest of the suite passing unchanged. Spoiler suite: not required.
 
 ### Manual checks by the user (as the spec states)
 
@@ -255,7 +258,7 @@ Spoiler suite: not required (no query or visibility over narrative data). Verifi
 
 ## 8. Decisions
 
-Ids are kept stable. D5, D6, D7, D20, D21, D23, D25, D26 and the screens part of D22 moved to spec 003 (see "Handed over to spec 003"). D29 is new.
+Ids are kept stable. D5, D6, D7, D20, D21, D23, D25, D26 and the screens part of D22 moved to spec 003 (see "Handed over to spec 003"). D29 is new. D30 is new (change of 2026-11-08).
 
 | # | Decision | Discarded alternative and why |
 |---|---|---|
@@ -280,6 +283,7 @@ Ids are kept stable. D5, D6, D7, D20, D21, D23, D25, D26 and the screens part of
 | D27 | Prisma client generated inside `src/shared/infrastructure`, git-ignored. | Default location in `node_modules` or a new `src/generated` folder: the first hides it from the lint boundary, the second is a new top-level source folder. |
 | D28 | Fakes live in `tests/support/fakes/`; the shared scenario suite in `tests/support/contracts/`. | Duplicating scenarios per implementation: they would drift and NFR-2 would stop being verifiable. |
 | D29 | The generic sentence of each error kind lives in `src/shared/presentation/error-messages.ts`, not in the UI dictionary `src/messages/en.ts`. The Server Action files sit in `src/app/sign-up`, `src/app/sign-in` and `src/app/actions.ts` (no page), where spec 003 will put its pages. | A new `errors` group in `en.ts`: edits a file this spec otherwise does not touch (the dictionary belongs to the screens). Actions in a private folder such as `src/app/_account-actions/`: they would have to move later to sit next to their routes, as `architecture.md` section 2 lays out. |
+| D30 (2026-11-08) | The acting user details travel in the existing path: the library's session read already returns the user, so `ActiveSession` and `ActingUser` gain `displayName` and `email` (`user.name`, `user.email`, passed through unchanged) and `requireActingUser` copies the three fields one by one. The email is therefore the comparable email as stored, and the display name is the trimmed name as stored. One read, one lookup, one failure path (FR-22 stays the only one). | A separate reader or port for "account details": it would add a second lookup and a second failure path for the same request, and a way for the details and the identity to disagree. Copying the name and the email into the session cookie: values could become stale (the cookie cache is off for that reason, D9) and the cookie would carry personal data. Returning the whole user row of the library: it would leak fields FR-41 excludes (verification flag, image, dates). Re-reading the account through the Prisma client in a new repository: new code and a new account read path that this spec avoids (YAGNI, see section 1); the first feature that needs to read accounts adds them. |
 
 Risks and notes
 - **Renewal of the cookie lifetime.** This spec renews the database session whenever the session reader finds it valid after 24 hours (FR-23, tested). A Server Component or an action cannot always refresh the cookie's own lifetime; without that, a person who keeps using the app would lose the cookie at 30 days after sign-in. Refreshing the cookie on page visits is the guard of spec 003 (its completion criterion on the controlled clock). If the library does not return the renewal cookie on its server API, spec 003 must stop and report; here it is only recorded.
@@ -291,7 +295,7 @@ Risks and notes
 
 ## 9. Coverage
 
-Every FR (1 to 39) and NFR (1 to 2) is covered.
+Every FR (1 to 42) and NFR (1 to 3) is covered.
 
 | Requirement | Covered by |
 |---|---|
@@ -311,7 +315,7 @@ Every FR (1 to 39) and NFR (1 to 2) is covered.
 | FR-16, FR-17 | `signOut` deletes only the current server session, cookie cache off; contract scenarios, `actions.test.ts`. |
 | FR-18 | `signOut` idempotent; contract scenario, `sign-out.test.ts`, `actions.test.ts`. |
 | FR-19 | `already-signed-in` in `signUp` and `signIn`; use case tests, action tests. |
-| FR-20 | `requireActingUser`; `require-acting-user.test.ts`. |
+| FR-20 | `requireActingUser` (now also with the details, FR-40); `require-acting-user.test.ts`. |
 | FR-21 | `SessionReader` takes no input; strict Zod schemas; `require-acting-user.test.ts`, `better-auth-session-reader.test.ts`, action tests. |
 | FR-22 | Reader failure becomes `InfrastructureError`; `require-acting-user.test.ts`, `better-auth-session-reader.test.ts`. |
 | FR-23, FR-24, FR-25 | `session-policy.ts`, library configuration (D8, item 10); clock-controlled lifetime suite on fake and real engine. |
@@ -330,6 +334,10 @@ Every FR (1 to 39) and NFR (1 to 2) is covered.
 | FR-39 | `ActionResult` built by the one mapper; `run-action.test.ts`, mapper test, action tests. |
 | NFR-1 | Zod shape then domain rules, one definition per rule, library limits neutralized, and the email grammar equal to the engine's own check (D18); `new-account.test.ts`, `sign-in-credentials.test.ts`, action tests, and the real-engine email scenario (every email the domain accepts also passes `registerAndSignIn`). |
 | NFR-2 | Port plus contract suite on the fake and the real engine. |
+| FR-40 | `ActiveSession` and `ActingUser` with `displayName` and `email` (D30); the session reader builds them from the library's user, `requireActingUser` copies them; `require-acting-user.test.ts`, `better-auth-session-reader.test.ts` (as stored, same-name accounts, markup and 120 characters, ignored client data), `get-acting-user.test.ts`. |
+| FR-41 | Exactly three fields, copied one by one; full-content comparison in `require-acting-user.test.ts` and `better-auth-session-reader.test.ts`. |
+| FR-42 | Failure paths of the reader and of `requireActingUser` are not changed and carry no details; `require-acting-user.test.ts`, `better-auth-session-reader.test.ts` (missing, deleted, signed-out, expired, tampered, database failure), `get-acting-user.test.ts`. |
+| NFR-3 | Read-only addition: no schema, migration, write or new lookup; `signUp` and `signIn` unchanged; rows identical before and after a read; the rest of the suite passes unchanged except the assertions that compare the full actor or session. |
 
 Completion criteria: the automated ones are covered by the rows above (including "nothing visible changes": spec 001 tests unchanged and the composition test); the manual ones (FR-29 over HTTPS, real restart) are listed in section 7 and are done by the user.
 
@@ -405,3 +413,4 @@ Open: none.
 ### Changes approved after the plan gate
 
 - **Change of 2026-11-07 (valid email), approved by the user on 2026-11-07 (answer to the Change gate, option 1).** The spec now defines a valid email as exactly what the authentication engine's own check accepts (examples and the NFR-1 clause included), because the engine validates the email before any hook and values accepted by the old domain rule ended as a generic 500. Applied to this plan in section 1 (`account-email.ts`), section 7 (`account-email.test.ts` and the real-engine contract scenario), section 8 (D18 changed, new discarded alternative), "Risks and notes" (engine rule can change), section 9 (FR-5 and NFR-1 rows) and the size check (9 work packages). The 14 approvals above are unchanged; this change adds no dependency, module, layer, folder, schema change or edit to an existing file, so it needs no further approval item. `tasks.md` is updated after the plan gate.
+- **Change of 2026-11-08 (acting user details), approved by the user on 2026-11-08 (answer to the Change gate, "approve the change and update the plan"), requested by spec 003.** The spec adds FR-40 to FR-42 and NFR-3: when the acting-user check succeeds it also gives the display name and the email of the account, as stored, taken only from the session, read-only. Applied to this plan in section 1 (rows `acting-user.ts`, `session-reader.ts`, `require-acting-user.ts`, `better-auth-session-reader.ts`, and a note on `get-acting-user.ts`), section 2 (no schema change), section 3 (`requireActingUser` row and a note on `signUp` and `signIn`), section 6 (one sentence), section 7 (tests and the list of files touched), section 8 (new D30 with its discarded alternatives) and section 9 (FR-20 row and new rows for FR-40 to FR-42 and NFR-3). It adds no dependency, module, layer, folder, schema change or migration, so it needs no approval item; the 14 approvals above are unchanged. `tasks.md` is updated after the plan gate (new task T10).
