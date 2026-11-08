@@ -155,3 +155,30 @@ Note (not a decision): the writing tool turned the escape sequences for U+2028 a
 - **Decided:** the link to the sign-up page uses `next/link` with `prefetch={false}`.
 - **Why:** not recorded.
 - **Discarded:** the default prefetch.
+
+## T5 - Sign-up page and form (approved by the user at the T5 implementation gate, 2026-11-08)
+
+### D-T5-1. Several messages on one field cannot be reached through the real form
+
+- **Decided:** the accounts engine (spec 002, not editable here) returns a single issue per field, by order of precedence, so a display name longer than 120 characters that also has a control character shows only the "not allowed" message. The browser test checks that real behavior. The case "all messages of a field together" stays covered by the unit test of `account-issue-messages` (T3).
+- **Why:** spec 002 is out of scope for this feature.
+- **Consequence to watch in validation:** the spec's edge case "a too long name with a line break: all its messages are shown" (FR-4, the edge cases and a completion criterion) cannot be demonstrated in a browser. The reviewer may flag it. The resolution is either accepting it or correcting the spec wording through `/sdd-change`.
+- **Discarded:** changing the accounts engine to return several issues per field.
+
+### D-T5-2. The sign-in to sign-up journey test reloads the page
+
+- **Decided:** after a client navigation from sign-in to sign-up, the test calls `page.reload()` before typing.
+- **Why:** with `cacheComponents`, Next keeps the previous page hidden in the document, so both forms are in the DOM and `getByLabel` finds two "Email" fields. It is a test matter only; the field ids do not clash. It is the same behavior that justified plan D6.
+- **Discarded:** not recorded.
+
+### D-T5-3. The shared helpers of the sign-in spec moved to a support file
+
+- **Decided:** the three identical local helpers `findSessionCookieValue`, `interceptServerActionsOfPage` and `createGate` moved from `tests/e2e/sign-in.spec.ts` to `tests/e2e/support/account-form-support.ts`. No test and no behavior changed.
+- **Why:** the sign-up spec needs the same helpers.
+- **Discarded:** not recorded.
+
+### D-T5-4. One new harness identifier in the NFR-8 list
+
+- **Decided:** the only new harness identifier is `interceptServerActionsOfPage`; it was added to the forbidden list of `tests/lint/test-controls-absent.test.ts` (decision D-T1-5). Nothing in `src/` references test-only controls.
+- **Why:** the helper intercepts and holds Server Action calls to provoke "no answer", so it is a failure-provoking control.
+- **Discarded:** not recorded.
