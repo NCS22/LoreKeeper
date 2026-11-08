@@ -1,5 +1,10 @@
 import { expect as baseExpect, test, type Locator, type Page, type Request, type Route } from "@playwright/test";
 import { en } from "../../src/messages/en";
+import {
+  createGate,
+  findSessionCookieValue,
+  interceptServerActionsOfPage,
+} from "./support/account-form-support";
 import { isServerActionRequest, isServerActionRequestWithText } from "./support/server-action-requests";
 import { seedAccountInDatabase } from "./support/seed-account-in-database";
 import { buildUniqueAccount, E2E_ACCOUNT_PASSWORD } from "./support/unique-account";
@@ -52,32 +57,12 @@ async function expectWorkspaceIsShown(page: Page): Promise<void> {
   await expect(page.getByText(SAMPLE_UNIVERSE_NAME).first()).toBeVisible();
 }
 
-async function findSessionCookieValue(page: Page): Promise<string | undefined> {
-  const cookies = await page.context().cookies();
-  return cookies.find((cookie) => cookie.name.endsWith("session_token"))?.value;
-}
-
 /** Runs `handleServerAction` for every Server Action call the page makes; everything else goes through. */
 async function interceptServerActions(
   page: Page,
   handleServerAction: (route: Route, request: Request) => Promise<void>,
 ): Promise<void> {
-  await page.route(SIGN_IN_PAGE_ADDRESS_PATTERN, async (route) => {
-    const request = route.request();
-    if (isServerActionRequest(request)) {
-      await handleServerAction(route, request);
-    } else {
-      await route.continue();
-    }
-  });
-}
-
-function createGate(): { wait: Promise<void>; open: () => void } {
-  let open!: () => void;
-  const wait = new Promise<void>((resolve) => {
-    open = resolve;
-  });
-  return { wait, open };
+  await interceptServerActionsOfPage(page, SIGN_IN_PAGE_ADDRESS_PATTERN, handleServerAction);
 }
 
 test.describe("sign-in: the way in", () => {

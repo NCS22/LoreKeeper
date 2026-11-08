@@ -24,6 +24,7 @@ const END_TO_END_FAILURE_IDENTIFIERS = [
   "withTestDatabaseClient",
   "buildUniqueAccount",
   "E2E_ACCOUNT",
+  "interceptServerActionsOfPage",
 ];
 
 const SOURCE_FILE_PATTERN = /\.(?:ts|tsx|js|jsx|mjs|cjs)$/;
