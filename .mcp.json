@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "@playwright/mcp@0.0.84",
+        "--isolated",
+        "--output-dir",
+        ".playwright-mcp"
+      ]
+    }
+  }
+}
