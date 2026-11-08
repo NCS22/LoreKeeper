@@ -182,3 +182,61 @@ Note (not a decision): the writing tool turned the escape sequences for U+2028 a
 - **Decided:** the only new harness identifier is `interceptServerActionsOfPage`; it was added to the forbidden list of `tests/lint/test-controls-absent.test.ts` (decision D-T1-5). Nothing in `src/` references test-only controls.
 - **Why:** the helper intercepts and holds Server Action calls to provoke "no answer", so it is a failure-provoking control.
 - **Discarded:** not recorded.
+
+## T6 - Guard engine, proxy and the session-check-failed page (approved by the user at the T6 implementation gate, 2026-11-08)
+
+### D-T6-1. First-step verification in the production build: plan D2 and D5 hold
+
+- **Decided:** the checks asked by T6 step (a) were made in the production build and passed; no spec 002 file was touched.
+  - D2: the Better Auth cookie plugin does not throw in the proxy scope. A GET with a session delayed by 1 day and 1 minute returned 200 with a single `Set-Cookie: better-auth.session_token=...; Max-Age=2592000; HttpOnly; SameSite=strict`; the browser stored it for 30 more days and the database moved `expiresAt` to 30 days ahead.
+  - D5: an operation call without a session gets `401`, `text/plain`, `no-store`, body "Signed out."; the Next client throws `Error("Signed out.")`. On the 3101 server with a valid cookie it gets `503` with "The session could not be checked.". If the call were let through, the action response would re-render the page, which justifies refusing it. With renewal pending plus a sign-out, the `Set-Cookie` order is the renewed cookie first and then the deletions, so the browser ends with no cookie.
+- **Why:** these were the reliances the plan declared unverified.
+- **Discarded:** not applicable (the plan's fallback for D2 was not needed).
+
+### D-T6-2. A proxy redirect does not have an empty body in Next.js 16.4.5
+
+- **Decided:** Next ends the proxy redirect with `res.end(destination)`, so the body is only the destination address (for example `/sign-in?returnTo=%2F`), with no workspace text, which satisfies NFR-4. The unit test asserts an empty body for the response the guard produces; the browser test asserts that the network body is only that address. Next requires an absolute URL for a proxy redirect (a relative one gives 500 "Invalid URL"), so the guard uses `NextResponse.redirect(new URL(location, request.url), 303)`, which Next emits as a relative address.
+- **Why:** it is how the installed Next.js behaves.
+- **Discarded:** not recorded.
+
+### D-T6-3. A proxy rewrite answers 200, not 503
+
+- **Decided:** `NextResponse.rewrite(url, { status: 503 })` is not honored by the framework, so the status option was removed to avoid misleading code. The error page is served with 200 and `no-store`. The spec asks for no specific status.
+- **Why:** plan section 4 allowed this outcome ("otherwise the page's own status").
+- **Discarded:** keeping the ignored `status` option.
+
+### D-T6-4. The guard uses its own Better Auth instance (important finding)
+
+- **Decided:** the proxy is bundled separately from pages and actions, but they share `globalThis`. With the shared Better Auth instance (key `lorekeeper.betterAuthInstance`), the `instanceof APIError` check of the accounts engine failed and a wrong password was read as `INFRASTRUCTURE_ERROR` (4 sign-in browser tests failed). The fix: `src/shared/infrastructure/read-session-for-guard.ts` builds its own instance with the already exported `createBetterAuthInstance` and keeps it under another global key (`lorekeeper.guardBetterAuthInstance`). The Prisma client stays the only shared object, because nothing checks its error classes. This is not the "without the plugin" variant of plan D2 (the instance has the plugin) and no spec 002 file changed.
+- **Why:** each bundle has its own copy of the library, so class identity checks fail across bundles when the instance is shared.
+- **Discarded:** sharing the instance.
+
+### D-T6-5. The Next.js testing helper has a different name in the installed version
+
+- **Decided:** the installed Next exports `unstable_doesMiddlewareMatch`, while its docs for the same version say `unstable_doesProxyMatch`. The existing function is used in the test helper.
+- **Why:** it is the one that exists.
+- **Discarded:** not recorded.
+
+### D-T6-6. The matcher of `src/proxy.ts`
+
+- **Decided:** `/((?!_next/static(?:/|$)|_next/image(?:/|$)|favicon\\.ico$).*)`, with the path-segment boundary of decision D-T2-2. `/_next/staticfoo` goes through the guard. `tests/proxy.test.ts` checks that the matcher equals `classifyAddress` over a broad list of addresses.
+- **Why:** the matcher and the policy must define the public resources in the same way.
+- **Discarded:** the usual pattern without segment boundary (see D-T2-2).
+
+### D-T6-7. Minor decisions of the guard
+
+- **Decided:**
+  - The guard defines structural types of the policy and of the reader locally, so it imports no module.
+  - The `_rsc` query parameter is removed by chunk filtering, without rebuilding the query.
+  - A repeated `returnTo` is treated as "no destination", like the page does.
+  - A `%20` in the query leaves the destination as `+`: Next normalizes it before the guard, and it is equivalent in a query.
+  - The text of the session-check-failed page is in a new group `sessionCheckFailed` of `src/messages/en.ts`.
+  - No identifier was added to the NFR-8 forbidden list.
+- **Why:** not recorded.
+- **Discarded:** not recorded.
+
+### D-T6-8. Existing browser tests changed because the guard is on
+
+- **Decided:** in `tests/e2e/smoke.spec.ts` the `/` test on 3100 now checks that a browser without a session ends at `/sign-in?returnTo=%2F`, and the one on 3101 expects a 303 to that address with no workspace text (before: 200 with the workspace). The sign-in and sign-up specs pass unchanged.
+- **Why:** the behavior the smoke test described (workspace open to anyone) is what this feature removes (legitimate change).
+- **Discarded:** not recorded.
