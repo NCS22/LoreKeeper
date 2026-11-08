@@ -98,6 +98,15 @@ export async function readSessionWith(
   }
 }
 
+/** The active session a stored account must read as: its identifier, display name and email, nothing else. */
+function activeSessionOf(storedAccount: StoredAccountSummary): ActiveSession {
+  return {
+    userId: storedAccount.userId,
+    displayName: storedAccount.displayName,
+    email: storedAccount.email,
+  };
+}
+
 function describeEmailForTestName(email: string): string {
   return email.length > 60 ? `an email of ${email.length} characters` : email;
 }
@@ -162,10 +171,8 @@ export function describeAccountAuthenticatorContract(
         const storedAccount = await readStoredAccount(world, DEFAULT_EMAIL);
         const sessionToken = world.getCurrentSessionToken();
         expect(sessionToken).not.toBeNull();
-        expect(await readSessionWith(world, sessionToken)).toEqual({ userId: storedAccount.userId });
-        expect(await world.sessionReader.readActiveSession()).toEqual({
-          userId: storedAccount.userId,
-        });
+        expect(await readSessionWith(world, sessionToken)).toEqual(activeSessionOf(storedAccount));
+        expect(await world.sessionReader.readActiveSession()).toEqual(activeSessionOf(storedAccount));
       });
 
       it("stores the comparable form of the email", async () => {
@@ -225,7 +232,7 @@ export function describeAccountAuthenticatorContract(
 
         const sessionToken = await signInAs(world, DEFAULT_EMAIL, DEFAULT_PASSWORD);
 
-        expect(await readSessionWith(world, sessionToken)).toEqual({ userId: storedAccount.userId });
+        expect(await readSessionWith(world, sessionToken)).toEqual(activeSessionOf(storedAccount));
       });
 
       it("finds the account whatever the case and the surrounding spaces of the typed email", async () => {
@@ -234,7 +241,7 @@ export function describeAccountAuthenticatorContract(
 
         const sessionToken = await signInAs(world, "  ANA@example.com ", DEFAULT_PASSWORD);
 
-        expect(await readSessionWith(world, sessionToken)).toEqual({ userId: storedAccount.userId });
+        expect(await readSessionWith(world, sessionToken)).toEqual(activeSessionOf(storedAccount));
       });
 
       it("answers a wrong password and an unknown email with the same error and starts no session", async () => {
@@ -321,9 +328,7 @@ export function describeAccountAuthenticatorContract(
         await world.accountAuthenticator.signOutCurrentSession();
 
         expect(await readSessionWith(world, firstDeviceToken)).toBeNull();
-        expect(await readSessionWith(world, secondDeviceToken)).toEqual({
-          userId: storedAccount.userId,
-        });
+        expect(await readSessionWith(world, secondDeviceToken)).toEqual(activeSessionOf(storedAccount));
       });
 
       it("succeeds when invoked twice in a row", async () => {
@@ -360,18 +365,18 @@ export function describeAccountAuthenticatorContract(
         return new Date(SIGN_UP_TIME.getTime() + milliseconds);
       }
 
-      let signedUpUserId: string;
+      let signedUpAccount: StoredAccountSummary;
 
       beforeEach(async () => {
         world.setTime(SIGN_UP_TIME);
         await registerAccount(world);
-        signedUpUserId = (await readStoredAccount(world, DEFAULT_EMAIL)).userId;
+        signedUpAccount = await readStoredAccount(world, DEFAULT_EMAIL);
       });
 
       it("keeps a session unused for exactly 30 days valid (FR-24)", async () => {
         world.setTime(timeAfterSignUp(THIRTY_DAYS_IN_MILLISECONDS));
 
-        expect(await world.sessionReader.readActiveSession()).toEqual({ userId: signedUpUserId });
+        expect(await world.sessionReader.readActiveSession()).toEqual(activeSessionOf(signedUpAccount));
       });
 
       it("treats a session unused for 30 days plus 1 millisecond as signed out (FR-24)", async () => {
@@ -384,15 +389,13 @@ export function describeAccountAuthenticatorContract(
         for (let dayNumber = 1; dayNumber <= 400; dayNumber += 1) {
           world.setTime(timeAfterSignUp(dayNumber * ONE_DAY_IN_MILLISECONDS));
 
-          expect(await world.sessionReader.readActiveSession()).toEqual({
-            userId: signedUpUserId,
-          });
+          expect(await world.sessionReader.readActiveSession()).toEqual(activeSessionOf(signedUpAccount));
         }
       }, 60_000);
 
       it("does not move the expiry when the session is used less than 24 hours after its last renewal (FR-23)", async () => {
         world.setTime(timeAfterSignUp(ONE_DAY_IN_MILLISECONDS - 1));
-        expect(await world.sessionReader.readActiveSession()).toEqual({ userId: signedUpUserId });
+        expect(await world.sessionReader.readActiveSession()).toEqual(activeSessionOf(signedUpAccount));
 
         // Had the use above extended the session, it would still be valid one millisecond after the original expiry.
         world.setTime(timeAfterSignUp(THIRTY_DAYS_IN_MILLISECONDS + 1));
@@ -402,16 +405,16 @@ export function describeAccountAuthenticatorContract(
 
       it("extends the expiry to 30 days from the moment of a use at 24 hours (FR-23)", async () => {
         world.setTime(timeAfterSignUp(ONE_DAY_IN_MILLISECONDS));
-        expect(await world.sessionReader.readActiveSession()).toEqual({ userId: signedUpUserId });
+        expect(await world.sessionReader.readActiveSession()).toEqual(activeSessionOf(signedUpAccount));
 
         world.setTime(timeAfterSignUp(ONE_DAY_IN_MILLISECONDS + THIRTY_DAYS_IN_MILLISECONDS));
 
-        expect(await world.sessionReader.readActiveSession()).toEqual({ userId: signedUpUserId });
+        expect(await world.sessionReader.readActiveSession()).toEqual(activeSessionOf(signedUpAccount));
       });
 
       it("ends the extended session 1 millisecond after its new expiry (FR-23, FR-24)", async () => {
         world.setTime(timeAfterSignUp(ONE_DAY_IN_MILLISECONDS));
-        expect(await world.sessionReader.readActiveSession()).toEqual({ userId: signedUpUserId });
+        expect(await world.sessionReader.readActiveSession()).toEqual(activeSessionOf(signedUpAccount));
 
         world.setTime(timeAfterSignUp(ONE_DAY_IN_MILLISECONDS + THIRTY_DAYS_IN_MILLISECONDS + 1));
 

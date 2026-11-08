@@ -74,7 +74,11 @@ describe("signInAction", () => {
       const storedAccount = await readStoredRowsClient().user.findUniqueOrThrow({
         where: { email: REGISTERED_EMAIL },
       });
-      expect(await getActingUser()).toEqual({ userId: storedAccount.id });
+      expect(await getActingUser()).toEqual({
+        userId: storedAccount.id,
+        displayName: storedAccount.name,
+        email: storedAccount.email,
+      });
     });
 
     it("signs in with the email typed in other case and with spaces", async () => {
@@ -259,7 +263,11 @@ describe("signInAction", () => {
       expect(result).toEqual({ ok: true, value: { status: "already-signed-in" } });
       expect(await readStoredRowsClient().session.count()).toBe(1);
       expect(emulatedBrowser.readCookieValue(TEST_SESSION_COOKIE_NAME)).toBe(sessionTokenBefore);
-      expect(await getActingUser()).toEqual({ userId: storedAccount.id });
+      expect(await getActingUser()).toEqual({
+        userId: storedAccount.id,
+        displayName: storedAccount.name,
+        email: storedAccount.email,
+      });
     });
   });
 

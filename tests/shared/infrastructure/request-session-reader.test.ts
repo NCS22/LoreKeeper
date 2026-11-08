@@ -17,9 +17,9 @@ vi.mock("next/headers", async () =>
 prepareRealCompositionOverTestDatabase();
 
 /** Signs an account up with the application's own library instance, which leaves the session cookie in the emulated browser. */
-async function signUpThroughTheApplicationInstance(email: string): Promise<string> {
+async function signUpThroughTheApplicationInstance(email: string, name = "Ana Torres"): Promise<string> {
   const { user } = await getBetterAuthInstance().api.signUpEmail({
-    body: { name: "Ana Torres", email, password: "correct horse" },
+    body: { name, email, password: "correct horse" },
   });
   return user.id;
 }
@@ -44,7 +44,11 @@ describe("requestSessionReader", () => {
   it("reads the account of the session cookie of the current request, through the real composition (FR-20)", async () => {
     const signedUpUserId = await signUpThroughTheApplicationInstance("ana@example.com");
 
-    expect(await requestSessionReader.readActiveSession()).toEqual({ userId: signedUpUserId });
+    expect(await requestSessionReader.readActiveSession()).toEqual({
+      userId: signedUpUserId,
+      displayName: "Ana Torres",
+      email: "ana@example.com",
+    });
   });
 
   it("reads no session when the current request carries no session cookie (FR-26)", async () => {
@@ -58,11 +62,19 @@ describe("requestSessionReader", () => {
     const firstUserId = await signUpThroughTheApplicationInstance("ana@example.com");
     const firstDeviceCookie = emulatedBrowser.readCookieValue(TEST_SESSION_COOKIE_NAME);
     emulatedBrowser.clear();
-    const secondUserId = await signUpThroughTheApplicationInstance("lia@example.com");
+    const secondUserId = await signUpThroughTheApplicationInstance("lia@example.com", "Lia Vega");
 
-    expect(await requestSessionReader.readActiveSession()).toEqual({ userId: secondUserId });
+    expect(await requestSessionReader.readActiveSession()).toEqual({
+      userId: secondUserId,
+      displayName: "Lia Vega",
+      email: "lia@example.com",
+    });
 
     emulatedBrowser.holdCookie(TEST_SESSION_COOKIE_NAME, firstDeviceCookie ?? "");
-    expect(await requestSessionReader.readActiveSession()).toEqual({ userId: firstUserId });
+    expect(await requestSessionReader.readActiveSession()).toEqual({
+      userId: firstUserId,
+      displayName: "Ana Torres",
+      email: "ana@example.com",
+    });
   });
 });

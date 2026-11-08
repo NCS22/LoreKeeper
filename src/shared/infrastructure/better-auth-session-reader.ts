@@ -40,7 +40,14 @@ export function createBetterAuthSessionReader(
         const sessionWithUser = await getBetterAuthInstance().api.getSession({
           headers: requestHeaders,
         });
-        return sessionWithUser === null ? null : { userId: sessionWithUser.user.id };
+        if (sessionWithUser === null) {
+          return null;
+        }
+        return {
+          userId: sessionWithUser.user.id,
+          displayName: sessionWithUser.user.name,
+          email: sessionWithUser.user.email,
+        };
       } catch (failure) {
         unstable_rethrow(failure);
         if (isSessionRemovedWhileRenewing(failure)) {
