@@ -33,3 +33,37 @@ Decisions taken after `plan.md` was approved, during implementation, that the pl
 - **Decided:** the list of identifiers used to provoke failures in the E2E harness, which no file under `src/` may contain, is a constant inside `tests/lint/test-controls-absent.test.ts`. Every later task that adds such an identifier to the E2E harness adds it to that list in the same commit.
 - **Why:** one place, next to the check that uses it, with no extra file.
 - **Discarded:** a separate shared list file (YAGNI).
+
+## T2 - Return-destination rule and page-access policy (approved by the user at the T2 implementation gate, 2026-11-08)
+
+Note (not a decision): the writing tool turned the escape sequences for U+2028 and U+2029 into literal characters inside a regular expression; the files were fixed back to escaped sequences.
+
+### D-T2-1. The public-resource constants live in `return-destination.ts`
+
+- **Decided:** `PUBLIC_RESOURCE_PATHS`, `isPublicResourcePath` and `MAXIMUM_RETURN_DESTINATION_LENGTH` are defined in `src/modules/accounts/domain/return-destination.ts`, next to `SIGN_IN_PATH` and `SIGN_UP_PATH`. `page-access-policy.ts` imports them from there.
+- **Why:** no circular dependency and no third file, and one single definition of "public resource" shared by the return-destination rule and the access policy.
+- **Discarded:** a third constants file.
+
+### D-T2-2. Public resources are matched on a path-segment boundary
+
+- **Decided:** `/_next/static` and `/_next/image` count only as the exact address or as what hangs below `/…/`; `/_next/staticfoo` is a workspace address; `/favicon.ico` is only the exact address. Consequence for T6: the matcher of `src/proxy.ts` must use the same boundary, because the usual pattern `/((?!_next/static|_next/image|favicon.ico).*)` would also exclude `/_next/staticfoo`; `tests/proxy.test.ts` must check that the matcher equals the policy.
+- **Why:** a prefix match would serve without a session an address that is not a public resource.
+- **Discarded:** prefix matching.
+
+### D-T2-3. Shape of `decidePageAccess`
+
+- **Decided:** the input is `{ pathname, search, method, isOperationCall, sessionState, returnToParameter }`; the policy classifies the pathname itself. The output is one of `pass`; `redirect{location}` (relative, the guard adds the 303); `rewrite{destinationPath}` to `SESSION_CHECK_FAILED_PATH = "/session-check-failed"`; `refuse-operation-call-signed-out` (the guard turns it into 401); `refuse-operation-call-check-failed` (503). The method is case-insensitive; a navigation is only GET or HEAD; on the sign-in and sign-up pages any other method always passes, also with a failed session check (as the plan table says).
+- **Why:** one place classifies addresses, so the caller cannot pass a class that disagrees with the path.
+- **Discarded:** letting the caller pass the address class.
+
+### D-T2-4. Extra prudence rules in `resolveReturnDestination`
+
+- **Decided:** beyond the literal list of FR-20, it also rejects U+2028, U+2029 and C1 control characters; it checks the raw and the once-decoded text and rejects controls and backslashes even when double-encoded (`%250a`); it compares the decoded, lower-cased path after resolving `.` and `..` segments and removing trailing or repeated slashes (so `/a/../sign-in`, `/%73ign-in` and `/sign-in//` are rejected); it detects a `returnTo` key in the query case-insensitively and in encoded form; an empty query (`/a?`) is returned as `/a`.
+- **Why:** each is a way to reach the sign pages, a public resource or another site that the literal list would let through.
+- **Discarded:** implementing only the literal list.
+
+### D-T2-5. The address builders re-apply the rule
+
+- **Decided:** `buildSignInAddress` and `buildSignUpAddress` pass the destination through `resolveReturnDestination` again: an unsafe destination produces the address without the parameter; for `/` they keep `?returnTo=%2F`, as the plan expects for T6; the function is idempotent for already-safe destinations.
+- **Why:** an address with a return destination can never be built from an unsafe value, whoever calls the builder.
+- **Discarded:** trusting the caller.
