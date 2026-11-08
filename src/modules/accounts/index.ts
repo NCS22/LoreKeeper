@@ -19,6 +19,30 @@ export {
   SIGN_IN_PASSWORD_REQUIRED_CODE,
 } from "./domain/sign-in-credentials";
 
+// Page addresses, the return-destination rule and the page-access policy (spec 003). The rule that
+// decides whether a destination is safe and the table that decides what a request gets live only here.
+export {
+  MAXIMUM_RETURN_DESTINATION_LENGTH,
+  PUBLIC_RESOURCE_PATHS,
+  RETURN_DESTINATION_PARAMETER,
+  SIGN_IN_PATH,
+  SIGN_UP_PATH,
+  buildSignInAddress,
+  buildSignUpAddress,
+  resolveReturnDestination,
+} from "./domain/return-destination";
+export {
+  SESSION_CHECK_FAILED_PATH,
+  classifyAddress,
+  decidePageAccess,
+} from "./domain/page-access-policy";
+export type {
+  AddressClass,
+  PageAccessDecision,
+  PageAccessRequest,
+  SessionState,
+} from "./domain/page-access-policy";
+
 // Length limits, so no consumer repeats the numbers.
 export { MAXIMUM_ACCOUNT_DISPLAY_NAME_LENGTH } from "./domain/account-display-name";
 export { MAXIMUM_ACCOUNT_EMAIL_LENGTH } from "./domain/account-email";
