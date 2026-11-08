@@ -25,6 +25,8 @@ const END_TO_END_FAILURE_IDENTIFIERS = [
   "buildUniqueAccount",
   "E2E_ACCOUNT",
   "interceptServerActionsOfPage",
+  "deleteSessionRowsInDatabase",
+  "expireSessionRowsInDatabase",
 ];
 
 const SOURCE_FILE_PATTERN = /\.(?:ts|tsx|js|jsx|mjs|cjs)$/;

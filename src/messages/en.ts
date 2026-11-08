@@ -254,6 +254,13 @@ export const en = {
       unknown: "This value is not valid.",
     },
   },
+  // The user menu of the top bar (FR-25, FR-26). The sign-out texts are in `accountForms.signOut`.
+  userMenu: {
+    triggerLabel: "Account menu",
+    panelTitle: "Account",
+    displayNameLabel: "Display name",
+    emailLabel: "Email",
+  },
   // The page shown when the session of a request cannot be checked (FR-24). It says nothing about
   // the person's session or account, because it is unknown.
   sessionCheckFailed: {
