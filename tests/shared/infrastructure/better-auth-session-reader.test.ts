@@ -1,6 +1,8 @@
 import { APIError, BASE_ERROR_CODES } from "better-auth";
 import { notFound, redirect } from "next/navigation";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { createBetterAuthAccountAuthenticator } from "@/modules/accounts/infrastructure/better-auth-account-authenticator";
+import { parseNewAccount } from "@/modules/accounts/domain/new-account";
 import { AuthenticationError, InfrastructureError } from "@/shared/domain/error-kinds";
 import { requireActingUser } from "@/shared/application/require-acting-user";
 import {
@@ -44,6 +46,32 @@ async function signUpThroughTheLibrary(email: string): Promise<string> {
   return user.id;
 }
 
+function buildAccountAuthenticator() {
+  return createBetterAuthAccountAuthenticator({
+    getBetterAuthInstance: () => betterAuthInstance,
+    getRequestHeaders: async () => emulatedBrowser.buildRequestHeaders(),
+  });
+}
+
+/**
+ * Signs an account up through the domain rules and the real authenticator, as the sign-up use case
+ * does, which leaves its session cookie in the emulated browser. Returns the cookie value.
+ */
+async function signUpThroughTheAuthenticator(typedSignUp: {
+  readonly displayName: string;
+  readonly email: string;
+}): Promise<string> {
+  const password = "correct horse";
+  await buildAccountAuthenticator().registerAndSignIn(
+    parseNewAccount({ ...typedSignUp, password, repeatPassword: password }),
+  );
+  const sessionCookieValue = emulatedBrowser.readCookieValue(SESSION_COOKIE_NAME);
+  if (sessionCookieValue === null) {
+    throw new Error("Signing up did not leave a session cookie in the emulated browser.");
+  }
+  return sessionCookieValue;
+}
+
 function buildSessionReader(getRequestHeaders: () => Promise<Headers>) {
   return createBetterAuthSessionReader({
     getBetterAuthInstance: () => betterAuthInstance,
@@ -67,6 +95,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe("the Better Auth session reader with real cookies", () => {
@@ -74,7 +103,11 @@ describe("the Better Auth session reader with real cookies", () => {
     const signedUpUserId = await signUpThroughTheLibrary("ana@example.com");
     const sessionReader = buildSessionReader(async () => emulatedBrowser.buildRequestHeaders());
 
-    expect(await sessionReader.readActiveSession()).toEqual({ userId: signedUpUserId });
+    expect(await sessionReader.readActiveSession()).toEqual({
+      userId: signedUpUserId,
+      displayName: "Ana Torres",
+      email: "ana@example.com",
+    });
   });
 
   it("reads no session when the request carries no cookie (FR-26)", async () => {
@@ -113,8 +146,175 @@ describe("the Better Auth session reader with real cookies", () => {
 
       const activeSession = await sessionReader.readActiveSession();
 
-      expect(activeSession).toEqual({ userId: otherUserId });
+      expect(activeSession).toEqual({
+        userId: otherUserId,
+        displayName: "Ana Torres",
+        email: "lia@example.com",
+      });
       expect(activeSession?.userId).not.toBe(sessionUserId);
+    });
+
+    it("is ignored, with its name and its email, when another account's values travel in a header, the query or the body (FR-41)", async () => {
+      await signUpThroughTheAuthenticator({ displayName: "Another Person", email: "other@example.com" });
+      emulatedBrowser.clear();
+      await signUpThroughTheAuthenticator({ displayName: "Lia Vega", email: "lia@example.com" });
+      const forgedRequest = new Request(
+        `${TEST_AUTH_BASE_URL}/anywhere?name=Another%20Person&email=other@example.com&displayName=Another%20Person`,
+        {
+          method: "POST",
+          headers: {
+            cookie: `${SESSION_COOKIE_NAME}=${emulatedBrowser.readCookieValue(SESSION_COOKIE_NAME)}`,
+            "x-user-name": "Another Person",
+            "x-user-email": "other@example.com",
+          },
+          body: JSON.stringify({
+            displayName: "Another Person",
+            email: "other@example.com",
+            name: "Another Person",
+          }),
+        },
+      );
+      const sessionReader = buildSessionReader(async () => forgedRequest.headers);
+
+      const activeSession = await sessionReader.readActiveSession();
+
+      expect(activeSession).toMatchObject({ displayName: "Lia Vega", email: "lia@example.com" });
+    });
+  });
+
+  describe("the display name and the email of the session's account (FR-40, FR-41, FR-42)", () => {
+    it("reads the email in comparable form and the display name without its surrounding whitespace, as stored", async () => {
+      await signUpThroughTheAuthenticator({ displayName: "  Ana  María ", email: " Ana@Example.COM " });
+      const sessionReader = buildSessionReader(async () => emulatedBrowser.buildRequestHeaders());
+
+      const activeSession = await sessionReader.readActiveSession();
+
+      expect(activeSession).toMatchObject({ displayName: "Ana  María", email: "ana@example.com" });
+    });
+
+    it("tells two accounts with the same display name apart by email and identifier", async () => {
+      const firstCookieValue = await signUpThroughTheAuthenticator({
+        displayName: "Ana Torres",
+        email: "ana.one@example.com",
+      });
+      emulatedBrowser.clear();
+      const secondCookieValue = await signUpThroughTheAuthenticator({
+        displayName: "Ana Torres",
+        email: "ana.two@example.com",
+      });
+      const sessionReader = buildSessionReader(async () => emulatedBrowser.buildRequestHeaders());
+
+      emulatedBrowser.holdCookie(SESSION_COOKIE_NAME, firstCookieValue);
+      const firstSession = await sessionReader.readActiveSession();
+      emulatedBrowser.holdCookie(SESSION_COOKIE_NAME, secondCookieValue);
+      const secondSession = await sessionReader.readActiveSession();
+
+      expect(firstSession).toMatchObject({ displayName: "Ana Torres", email: "ana.one@example.com" });
+      expect(secondSession).toMatchObject({ displayName: "Ana Torres", email: "ana.two@example.com" });
+      expect(firstSession?.userId).not.toBe(secondSession?.userId);
+    });
+
+    it.each([
+      ["markup", "<b>Ana</b> & <script>alert(1)</script>"],
+      ["an emoji", "Ana \u{1F319} Torres"],
+      ["a zero-width space", "Ana​Torres"],
+      ["120 characters", "a".repeat(120)],
+    ])("gives back a display name with %s exactly as it was stored", async (_label, displayName) => {
+      await signUpThroughTheAuthenticator({ displayName, email: "ana@example.com" });
+      const storedUser = await prismaClient.user.findUniqueOrThrow({ where: { email: "ana@example.com" } });
+      const sessionReader = buildSessionReader(async () => emulatedBrowser.buildRequestHeaders());
+
+      const activeSession = await sessionReader.readActiveSession();
+
+      expect(storedUser.name).toBe(displayName);
+      expect(activeSession?.displayName).toBe(displayName);
+    });
+
+    it("gives the same values on a second read and leaves the User, Session and Account rows unchanged by a read that does not renew", async () => {
+      await signUpThroughTheAuthenticator({ displayName: "Ana Torres", email: "ana@example.com" });
+      const sessionReader = buildSessionReader(async () => emulatedBrowser.buildRequestHeaders());
+      const readStoredRows = async () => ({
+        users: await prismaClient.user.findMany(),
+        sessions: await prismaClient.session.findMany(),
+        accounts: await prismaClient.account.findMany(),
+      });
+      const rowsBefore = await readStoredRows();
+
+      const firstRead = await sessionReader.readActiveSession();
+      const secondRead = await sessionReader.readActiveSession();
+
+      expect(firstRead).not.toBeNull();
+      expect(secondRead).toEqual(firstRead);
+      expect(await readStoredRows()).toEqual(rowsBefore);
+    });
+
+    it("carries only the identifier, the display name and the email, never a password, a hash or a token", async () => {
+      await signUpThroughTheAuthenticator({ displayName: "Ana Torres", email: "ana@example.com" });
+      const sessionReader = buildSessionReader(async () => emulatedBrowser.buildRequestHeaders());
+
+      const activeSession = await sessionReader.readActiveSession();
+
+      expect(Object.keys(activeSession ?? {}).sort()).toEqual(["displayName", "email", "userId"]);
+    });
+
+    describe("a session that is not valid gives no session and no details", () => {
+      const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
+
+      async function readWithTheCookieAs(sessionCookieValue: string | null) {
+        if (sessionCookieValue === null) {
+          emulatedBrowser.clear();
+        } else {
+          emulatedBrowser.holdCookie(SESSION_COOKIE_NAME, sessionCookieValue);
+        }
+        return buildSessionReader(async () => emulatedBrowser.buildRequestHeaders()).readActiveSession();
+      }
+
+      it("when the request carries no cookie", async () => {
+        await signUpThroughTheAuthenticator({ displayName: "Ana Torres", email: "ana@example.com" });
+
+        expect(await readWithTheCookieAs(null)).toBeNull();
+      });
+
+      it("when the session was deleted from the database", async () => {
+        const sessionCookieValue = await signUpThroughTheAuthenticator({
+          displayName: "Ana Torres",
+          email: "ana@example.com",
+        });
+        await prismaClient.session.deleteMany();
+
+        expect(await readWithTheCookieAs(sessionCookieValue)).toBeNull();
+      });
+
+      it("when the session was signed out", async () => {
+        const sessionCookieValue = await signUpThroughTheAuthenticator({
+          displayName: "Ana Torres",
+          email: "ana@example.com",
+        });
+        await buildAccountAuthenticator().signOutCurrentSession();
+
+        expect(await readWithTheCookieAs(sessionCookieValue)).toBeNull();
+      });
+
+      it("when the session was unused for more than 30 days", async () => {
+        const sessionCookieValue = await signUpThroughTheAuthenticator({
+          displayName: "Ana Torres",
+          email: "ana@example.com",
+        });
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(new Date(Date.now() + THIRTY_DAYS_IN_MILLISECONDS + 60_000));
+
+        expect(await readWithTheCookieAs(sessionCookieValue)).toBeNull();
+      });
+
+      it("when the cookie was tampered with", async () => {
+        const sessionCookieValue = await signUpThroughTheAuthenticator({
+          displayName: "Ana Torres",
+          email: "ana@example.com",
+        });
+        const tamperedCookieValue = `${sessionCookieValue.startsWith("A") ? "B" : "A"}${sessionCookieValue.slice(1)}`;
+
+        expect(await readWithTheCookieAs(tamperedCookieValue)).toBeNull();
+      });
     });
   });
 

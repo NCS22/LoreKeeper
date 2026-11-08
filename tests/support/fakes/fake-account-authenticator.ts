@@ -21,6 +21,8 @@ type FakeAccount = StoredAccountSummary & {
 
 type FakeSession = {
   readonly userId: string;
+  readonly displayName: string;
+  readonly email: string;
   expiresAt: Date;
 };
 
@@ -50,6 +52,8 @@ export function createFakeAccountAuthenticatorWorld(
     const sessionToken = randomUUID();
     sessionsByToken.set(sessionToken, {
       userId: account.userId,
+      displayName: account.displayName,
+      email: account.email,
       expiresAt: new Date(currentTime.getTime() + SESSION_LIFETIME_IN_MILLISECONDS),
     });
     currentSessionToken = sessionToken;
@@ -104,7 +108,7 @@ export function createFakeAccountAuthenticatorWorld(
       if (lastRenewalTime + SESSION_RENEWAL_INTERVAL_IN_MILLISECONDS <= currentTime.getTime()) {
         session.expiresAt = new Date(currentTime.getTime() + SESSION_LIFETIME_IN_MILLISECONDS);
       }
-      return { userId: session.userId };
+      return { userId: session.userId, displayName: session.displayName, email: session.email };
     },
   };
 

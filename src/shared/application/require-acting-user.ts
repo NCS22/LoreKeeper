@@ -21,5 +21,9 @@ export async function requireActingUser(
     throw new AuthenticationError("There is no valid session.");
   }
 
-  return { userId: activeSession.userId };
+  return {
+    userId: activeSession.userId,
+    displayName: activeSession.displayName,
+    email: activeSession.email,
+  };
 }

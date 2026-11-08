@@ -83,7 +83,11 @@ describe("signUpAction", () => {
         where: { email: "ana.maria@example.com" },
       });
       expect(storedAccount.name).toBe("Ana Torres");
-      expect(await getActingUser()).toEqual({ userId: storedAccount.id });
+      expect(await getActingUser()).toEqual({
+        userId: storedAccount.id,
+        displayName: storedAccount.name,
+        email: storedAccount.email,
+      });
     });
 
     it("sets a session cookie that scripts cannot read and that is not sent from other sites (FR-27, FR-28)", async () => {
