@@ -213,7 +213,11 @@ describe("the three actions together", () => {
     const storedAccount = await readStoredRowsClient().user.findUniqueOrThrow({
       where: { email: EMAIL },
     });
-    expect(await getActingUser()).toEqual({ userId: storedAccount.id });
+    expect(await getActingUser()).toEqual({
+      userId: storedAccount.id,
+      displayName: storedAccount.name,
+      email: storedAccount.email,
+    });
     const oldSessionToken = emulatedBrowser.readCookieValue(TEST_SESSION_COOKIE_NAME);
 
     expect(await signOutAction()).toEqual({ ok: true, value: null });
@@ -224,7 +228,11 @@ describe("the three actions together", () => {
 
     const signInResult = await signInAction({ email: EMAIL, password: PASSWORD });
     expect(signInResult).toEqual({ ok: true, value: { status: "signed-in" } });
-    expect(await getActingUser()).toEqual({ userId: storedAccount.id });
+    expect(await getActingUser()).toEqual({
+      userId: storedAccount.id,
+      displayName: storedAccount.name,
+      email: storedAccount.email,
+    });
     expect(emulatedBrowser.readCookieValue(TEST_SESSION_COOKIE_NAME)).not.toBe(oldSessionToken);
   });
 });

@@ -457,6 +457,8 @@ describe("Better Auth over PostgreSQL: what the contract does not cover", () => 
       });
       expect(await sessionReaderAfterRestart.readActiveSession()).toEqual({
         userId: storedAccount.id,
+        displayName: storedAccount.name,
+        email: storedAccount.email,
       });
 
       emulatedBrowser.clear();
@@ -467,6 +469,8 @@ describe("Better Auth over PostgreSQL: what the contract does not cover", () => 
       expect(emulatedBrowser.readCookieValue(SESSION_COOKIE_NAME)).not.toBe(sessionToken);
       expect(await sessionReaderAfterRestart.readActiveSession()).toEqual({
         userId: storedAccount.id,
+        displayName: storedAccount.name,
+        email: storedAccount.email,
       });
     });
   });

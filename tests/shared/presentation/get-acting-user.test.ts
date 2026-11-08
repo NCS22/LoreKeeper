@@ -18,9 +18,17 @@ describe("getActingUser", () => {
   });
 
   it("returns the account of the session of the request (FR-20)", async () => {
-    readActiveSession.mockResolvedValue({ userId: "user-of-the-session" });
+    readActiveSession.mockResolvedValue({
+      userId: "user-of-the-session",
+      displayName: "Ana Torres",
+      email: "ana@example.com",
+    });
 
-    expect(await getActingUser()).toEqual({ userId: "user-of-the-session" });
+    expect(await getActingUser()).toEqual({
+      userId: "user-of-the-session",
+      displayName: "Ana Torres",
+      email: "ana@example.com",
+    });
   });
 
   it("fails with an authentication error when the request has no valid session (FR-20)", async () => {

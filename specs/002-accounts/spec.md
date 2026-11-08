@@ -16,6 +16,8 @@ This feature does not link universes to users: universes keep running on sample 
 
 The feature also defines how failures are reported: a small, consistent set of error kinds with stable codes, and how each one is answered, so that every later feature reports problems the same way.
 
+Change after implementation: FR-40 to FR-42 and NFR-3 were added once this spec was implemented, at the request of spec 003 (account screens), whose user menu shows the display name and the email of the account in use so that the person knows which account they are in, even when two accounts share a display name. Until then the acting-user check gave only the identifier of the account. The addition is read-only: it changes no existing rule, stored data, session, error kind or account action, and no existing requirement was renumbered or reworded.
+
 The feature introduces new dependencies (stored data, authentication and validation of input) and a stored-data schema. The plan must flag each of them as needing approval before anything is installed or created.
 
 ## Users
@@ -33,6 +35,7 @@ Both use the same account operations. There are no roles and no administrators.
 - US-4. As a signed-in user, I want my session ended on the server when I sign out so that nobody else using my device can act as me.
 - US-5. As a developer of any later feature, I want one single way to know who is acting on a request, taken only from the session, so that no feature trusts what the client says about who it is.
 - US-6. As the owner of the project, I want every failure answered in one consistent, safe way so that no feature leaks internals or invents its own error format.
+- US-7. As a developer of the account screens, I want the acting-user check to also give the display name and the email of the account in use so that the interface can tell the person which account they are in, without a second way to read the session.
 
 The screens that let a person do these things, and the stories about them, are in spec 003.
 
@@ -54,6 +57,7 @@ The screens that let a person do these things, and the stories about them, are i
   - Not valid examples: "a@localhost", "a@b", "a@example.c", "a@example.c0m", "a@192.168.0.1", "a@[192.168.0.1]", "a..b@example.com", ".a@example.com", "a.@example.com", "a'@example.com", "{a}@example.com", "a!b@example.com", "a=b@example.com", "a@-example.com", "a@example..com", "a@example.com.", "a b@example.com", "a@@example.com", "añ@example.com", "a@exämple.com", and a value of 255 characters.
 - **Acting user**: the account that the server recognizes from the session of the current request. It is never taken from anything the client sends in the request body, parameters or headers.
 - **Acting-user check**: the single reusable way, shared by all features, to obtain the acting user of a request from its session.
+- **Acting user details**: the display name and the email of the acting user, exactly as they are stored for the account: the display name without surrounding whitespace and with its inner whitespace as typed (FR-10), and the email in its comparable form (lower-case, without surrounding whitespace), because that is the only form the account keeps. The capitalization the person typed at sign-up is not kept, so it cannot be given back.
 - **Error kinds**: validation, authentication, not found, business rule violation, infrastructure failure, external provider failure and unknown. Authorization is a reserved kind that this version never produces. Each kind has one stable error code. How each kind is mapped to a transport-level status is decided in the plan.
 
 ## Functional requirements
@@ -113,14 +117,20 @@ Error reporting
 - FR-38: THE SYSTEM SHALL not produce an authorization error in this version; that kind stays reserved for the day sharing exists.
 - FR-39: WHEN an action triggered from the interface fails, THE SYSTEM SHALL return a result with the stable error code, a human-readable message and, only for validation, the issues keyed by field name, built the same way for every error kind.
 
+Acting user details (added after implementation, at the request of spec 003; numbered after FR-39 so that no existing reference changes)
+- FR-40: WHEN the acting-user check succeeds, THE SYSTEM SHALL also give the acting user details (the display name and the email of the account in use, as stored for the account), taken only from the session of the request and never from anything the client sends in the request body, parameters or headers; the account identifier is given as before.
+- FR-41: THE SYSTEM SHALL give, with the acting user, only the account identifier, the display name and the email, and SHALL never include in it a password, a password hash, a session token or any other stored field of the account.
+- FR-42: IF the acting-user check fails because there is no valid session (FR-20, FR-26) or because the session cannot be checked (FR-22), THEN THE SYSTEM SHALL give no display name and no email, and the failure SHALL be the same one those requirements already define, with the same error kind.
+
 ## Non-functional requirements
 
 - NFR-1: THE SYSTEM SHALL validate the shape of every sign-up and sign-in input before any account rule runs, at the point where input enters the system, and SHALL apply the same rules for display name, email and password wherever an account can be created or signed in, with a single definition of those rules. In particular, an email that is valid (FR-5) SHALL never be refused later in the same sign-up because of its format: a sign-up whose input satisfies every rule never ends as an internal failure, and no email is accepted at sign-up that the way accounts are kept would refuse.
 - NFR-2: THE SYSTEM SHALL keep the rules of accounts and sessions independent of how they are stored. Verifiable: the same account scenarios (sign-up, sign-in outcomes, duplicate email) pass unchanged against two interchangeable ways of keeping accounts.
+- NFR-3: THE SYSTEM SHALL provide the acting user details (FR-40 to FR-42) as a read-only addition: giving them SHALL write nothing, SHALL not renew, extend or end the session any differently than before, and SHALL leave unchanged every rule, stored datum, session behavior, error kind, error code and result of the account actions defined by FR-1 to FR-39. Verifiable: every automated test that existed before this addition passes unchanged, except the ones that compare the full content of the acting user or of what the session check returns (they only gain the two new values and assert nothing else differently), and the stored data needs no change (the display name and the email are already kept for every account).
 
 ## Spoiler impact
 
-None. Accounts do not read or write narrative information: there are no works, narrative units, reading progress or spoiler boundaries involved, and nothing here is revealed progressively. The `READER` and `AUTHOR` modes are not touched. No spoiler filtering is applied or testable in this feature. Identifying the acting user is the prerequisite for the ownership checks and spoiler filtering that later features perform.
+None. Accounts do not read or write narrative information: there are no works, narrative units, reading progress or spoiler boundaries involved, and nothing here is revealed progressively. The `READER` and `AUTHOR` modes are not touched. No spoiler filtering is applied or testable in this feature. Identifying the acting user is the prerequisite for the ownership checks and spoiler filtering that later features perform. The acting user details added by FR-40 to FR-42 are the display name and the email of an account: they are account data, not narrative information, have no spoiler boundary and are not affected by the `READER` or `AUTHOR` mode, so the addition has no spoiler impact either.
 
 ## Edge cases
 
@@ -156,6 +166,15 @@ None. Accounts do not read or write narrative information: there are no works, n
 - Sign-up, sign-in or sign-out request coming from another site: rejected, nothing created or ended (FR-30).
 - Application or its stored data restarted: accounts and sessions are still there (FR-31).
 - Forgotten password: cannot be recovered in this version; this is expected (see Out of scope).
+- Acting user details of an account that signed up with " Ana@Example.COM " and the display name "  Ana  María ": the email is given as "ana@example.com" (the comparable email, the only form kept) and the display name as "Ana  María" (surrounding whitespace removed, inner double space kept) (FR-40, FR-10).
+- Two accounts with the same display name: each is given its own email and identifier, so they can be told apart (FR-40).
+- Display name that contains markup (for example `<b>Ana</b>`), emoji, or invisible and direction-control characters that this version accepts (see "Small known limits"): given exactly as stored, without escaping, removal or any other change. Showing it safely is the job of whoever shows it (spec 003, FR-26 there) (FR-40).
+- Display name of 120 characters: given in full, never shortened (FR-40).
+- Request that carries another account's identifier, display name or email in its body, parameters or headers: the details are those of the account of the session (FR-40, FR-21).
+- Session missing, deleted, ended by sign-out, expired (unused for more than 30 days) or tampered with: the request is signed out, the acting-user check fails with the authentication error and no display name or email is given (FR-42, FR-26).
+- The session cannot be checked because the stored data fail: the acting-user check fails with the infrastructure failure error, not as signed out, and no display name or email is given. The failure is the one of FR-22, with the same generic message and the details in the server log (FR-42, FR-36).
+- The details are given on every successful check, including one that renews the session and a second check in the same request: the same values each time, and a second check does not change the session more than the first (FR-40, NFR-3).
+- The acting user never contains a password or a password hash, and no response, log entry or stored record gains one because of this addition (FR-41, FR-32). The results of the three account actions stay as they are: they do not carry the details.
 
 ## Out of scope
 
@@ -198,7 +217,11 @@ Other exclusions:
 - Linking universes to the account, per-user separation of universes and ownership checks on universes (the stored-universes spec).
 - Editing, trash, restore and purge of universes (the universe-lifecycle spec).
 - Sharing a universe, collaboration, roles and administrators; one owner per universe (Phase 1 decision). The authorization error is not used.
-- Changing the display name, email or password, and deleting the account.
+- Changing the display name, email or password, and deleting the account. The acting user details (FR-40 to FR-42) are only read; nothing here lets anyone change them.
+- Everything visible about the acting user details: the user menu, how the display name and the email are shown, escaping them as text, truncating them for a narrow screen and any text around them (spec 003, which also decides how a request without a session is answered on a page). This feature only makes the two values available to the code that builds those screens.
+- Any other stored field of the account as part of the acting user (whether the email is verified, the profile image, creation or update dates, the password hash, session data): not given (FR-41). The profile image is also under OD-11 (file uploads); the email verification under OD-12 (Phase 5).
+- Giving the email in the capitalization typed at sign-up: not kept, so not given (see the definition of the acting user details).
+- Any change to existing rules, stored data (no change to what is stored or to its structure), sessions, error kinds, error codes or account actions caused by this addition (NFR-3).
 - Listing, viewing or ending other sessions of the account from the interface.
 - A maximum total lifetime of a session; renewal on every request.
 - Internationalized email addresses (letters outside A to Z, non-ASCII domains) and the rarer forms that email standards allow but this version does not (symbols such as `!` or `{` in the local part, quoted forms, bare host names such as "localhost", IP addresses as domains, top-level parts with digits). A stricter or looser rule is a later decision through the change flow.
@@ -233,6 +256,15 @@ This feature has no screens, so every criterion is checked without a browser: wi
 - After restarting the application and its stored data, an existing account can still sign in and a session created before is still valid (automated against a new connection to the stored data; the real restart is a manual check by the user, handed to the validation of spec 003).
 - The same account scenarios pass against two interchangeable ways of keeping accounts (NFR-2), and the input rules have a single definition (NFR-1).
 - Nothing visible changes: the spec 001 tests pass unchanged, and the application works as before without needing an account.
+- Acting user details (FR-40 to FR-42, NFR-3), checked without a browser:
+  - With a valid session, the acting-user check gives the identifier, the display name and the email of the account of the session; an account signed up with " Ana@Example.COM " and "  Ana  María " is given as "ana@example.com" and "Ana  María".
+  - Two accounts with the same display name are given with their own, different emails and identifiers.
+  - A display name containing markup, an emoji or a zero-width space, and one of exactly 120 characters, are given exactly as stored.
+  - A request carrying another account's identifier, display name or email in its body, parameters or headers is given the details of the account of its session.
+  - With no session, a deleted, ended, expired (unused for more than 30 days) or tampered session, the check fails with the authentication error and gives no display name or email; when the session cannot be checked it fails with the infrastructure failure error, not as signed out, and gives no display name or email.
+  - The acting user contains exactly the identifier, the display name and the email: it contains no password, no password hash, no session token and no other field of the account, checked by comparing its full content.
+  - Giving the details writes nothing and does not change the session beyond what a use of the session already did: the stored accounts and sessions are identical before and after a successful check that does not renew the session, and a second check gives the same values.
+  - Every test that existed before this addition passes unchanged, except the ones that compare the full content of the acting user or of what the session check returns, which only gain the two new values; no change to the stored data was needed (NFR-3). The sign-up, sign-in and sign-out actions, the session rules and the error kinds behave exactly as before, and the acting-user check keeps failing and succeeding in the same cases for every caller that only needs the account identifier.
 
 ## Open questions
 
