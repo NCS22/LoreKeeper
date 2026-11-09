@@ -153,7 +153,7 @@ When the task changes UI, `@frontend-tester` checks it in a real browser (Playwr
 - a task's report does not show `pnpm typecheck`, `pnpm lint` and `pnpm test` green with no new warnings (and the spoiler suite or `pnpm test:e2e` when the task requires them);
 - the implementer stops because the task needs something under CLAUDE.md "ASK FIRST", or because the plan or the task is wrong;
 - the report lists a decision the plan did not cover (it has to be shown to the user and recorded in `decisions.md`);
-- `@frontend-tester` still reports high-severity failures after one fix pass.
+- `@frontend-tester` still reports high-severity failures after one fix pass, or ends in `INCOMPLETE (DATABASE NEEDED)` (the user is asked to start the database or to go on without it; the agents never start it).
 When the tasks end, or it stops, the user gets the report of every task done and the gate again.
 
 ### Verification gate (from CLAUDE.md)
@@ -171,7 +171,7 @@ Validation (whole spec) repeats the verification gate and then goes through ever
 
 - `@reviewer` (FR by FR), `@hacker` (security and robustness, spoiler leaks, ownership and validation first) and, if the spec has UI FRs, `@frontend-tester` (real browser: desktop, 320 px, dark theme, console, keyboard) run in parallel.
 - All reports always go through `@explainer` before they are shown, keeping their order and severity. The original reports are kept for the technical team.
-- If all are clean (`VERDICT: APPROVED`, `SAFE` and `UI VERDICT: PASSES`), the gate offers to close the spec. Otherwise it offers to fix the problems.
+- If all are clean (`VERDICT: APPROVED`, `SAFE` and `UI VERDICT: PASSES`), the gate offers to close the spec. A `UI VERDICT: INCOMPLETE (DATABASE NEEDED)` counts as clean only after the user chose "Seguir sin ella" (the FRs on its list stay "not verified in browser"). Otherwise it offers to fix the problems.
 - Fix loop, at most 2 rounds: one `@implementer` pass for each report that asked for changes (its findings list is the task; nothing else is added, and the verification gate must pass), then only the checks that had findings run again, and the gate is asked again. If problems remain after the second round, stop and explain to the user what keeps failing; the options are then `/sdd-change` (the spec is wrong or incomplete) or stopping.
 - A finding that means the requirement itself is wrong is not fixed in code: it goes through `/sdd-change`.
 - There is no validation report file, and a spec must not refer to one. What cannot be checked by a test or by the reviewer (for example a screen-reader or keyboard check) is a manual check done by the user, who tells the agent about any problem found; the spec's completion criteria say "manual check by the user".
@@ -181,6 +181,7 @@ Validation (whole spec) repeats the verification gate and then goes through ever
 Closing runs only after validation has no pending problems and the user answered "Close the spec" at the validation gate. One actor per step:
 1. `@planner` sets the spec to `implemented`.
 2. `@implementer` updates "Current status" in `CLAUDE.md` (it stays a short paragraph: what is real and what is still sample data; the detail goes in `docs/roadmap.md`), removes the open decisions the spec resolved from `docs/open-decisions.md` (their text stays in the `plan.md` or `decisions.md`), and marks the phase in `docs/roadmap.md` when its last spec is done.
+3. The main agent empties the browser-check evidence, which is git-ignored scratch: `rm -f .playwright-mcp/*.log .playwright-mcp/*.yml .playwright-mcp/snapshot/*` (only those patterns, only in that folder; the folders stay). It needs no commit and runs only after the user's answer to "Close the spec"; on "Stop here" nothing is deleted, the evidence is what resuming needs. The closing summary says how many files were deleted.
 
 The implementer never closes a spec on its own, not even after the last task.
 

@@ -14,7 +14,7 @@ Then read only the names of the files in `tests/e2e/` (`Glob`, and `Grep -n "tes
 
 ## Getting the app up
 1. Check `http://localhost:3000` (`curl -s -o /dev/null -w "%{http_code}"`). If it does not answer, start `pnpm dev` in the background and wait until it does.
-2. If a route needs an account or the database, check that PostgreSQL is up (`docker compose ps`). If it is not, stop and tell the caller; do not start containers or run migrations.
+2. If a route needs an account or the database, check that PostgreSQL is up (`docker compose ps`). If it is not, do not start containers, open Docker or run migrations: first check everything that does not need the database, then list every requirement you could not check under "NO VERIFICADO - NECESITA BASE DE DATOS" (own list, with the route and the steps left) and end the report with `INCOMPLETE (DATABASE NEEDED)`. The caller asks the user to start it and may run you again only for that list.
 3. If you started the dev server, stop it when you finish. Close the browser with `browser_close`.
 
 ## How you check
@@ -34,4 +34,6 @@ Then read only the names of the files in `tests/e2e/` (`Glob`, and `Grep -n "tes
 2. One line per UI requirement: `FR-n - OK | FALLA | NO VERIFICADO`, with route, viewport and the evidence (snapshot text, console message or the path of the screenshot in `.playwright-mcp/snapshot/`). For each failure, severity (high: blocks the requirement; medium; low) and the exact steps to reproduce.
 3. Observations outside any FR.
 4. Test data left behind (accounts created).
-5. Final line: `UI VERDICT: PASSES` or `UI VERDICT: HAS FAILURES`.
+5. Final line: `UI VERDICT: PASSES`, `UI VERDICT: HAS FAILURES` or `UI VERDICT: INCOMPLETE (DATABASE NEEDED)` (the last one when the "NECESITA BASE DE DATOS" list is not empty and nothing failed).
+
+The files in `.playwright-mcp/` are deleted when the spec is closed, so quote the evidence in the report (snapshot text, console message) instead of relying on the screenshot being there later.
