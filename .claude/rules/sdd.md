@@ -43,7 +43,7 @@ How a gate works:
 | Plan (`/sdd-plan`) | `plan.md`, `draft` | Approve the plan and split it into tasks | plan `approved` | `/sdd-tasks` |
 | Tasks (`/sdd-tasks`) | `tasks.md`, `draft` | Approve the tasks and start implementing | tasks `approved` | `/sdd-implement` |
 | Implementation (`/sdd-implement`) | one task done | Next task, or the rest without stopping | none | next task; `/sdd-validate` after the last |
-| Validation (`/sdd-validate`) | reviewer and hacker reports | Close the spec | spec `implemented` (closing) | closing steps |
+| Validation (`/sdd-validate`) | reviewer, hacker and (UI specs) frontend-tester reports | Close the spec | spec `implemented` (closing) | closing steps |
 | Change (`/sdd-change`) | spec diff | Approve the change and update the plan | spec `approved` | plan, then tasks, each with its own gate |
 
 - Clarification with findings does not offer "Approve": it offers to fix the spec with `/sdd-change` and then runs `/sdd-clarify` again.
@@ -147,10 +147,13 @@ Design decisions with their discarded alternative live in section 8 of the `plan
 
 One task at a time: the minimum code that fulfills the task, with its tests. Then run the verification gate below, mark the task `- [x]` and stop; the command that called the implementer checks the report, commits the task (see "Git" below) and asks the approval gate. The implementer never runs git commands that write.
 
+When the task changes UI, `@frontend-tester` checks it in a real browser (Playwright MCP) after the verification gate is green; the implementer does not open a browser. Failures of high severity go back to the implementer as a findings list.
+
 "The rest without stopping" is an option of the implementation gate. The command then calls `@implementer` for each remaining task in order, with no gate between them, and stops at once, telling the user why, when:
 - a task's report does not show `pnpm typecheck`, `pnpm lint` and `pnpm test` green with no new warnings (and the spoiler suite or `pnpm test:e2e` when the task requires them);
 - the implementer stops because the task needs something under CLAUDE.md "ASK FIRST", or because the plan or the task is wrong;
-- the report lists a decision the plan did not cover (it has to be shown to the user and recorded in `decisions.md`).
+- the report lists a decision the plan did not cover (it has to be shown to the user and recorded in `decisions.md`);
+- `@frontend-tester` still reports high-severity failures after one fix pass, or ends in `INCOMPLETE (DATABASE NEEDED)` (the user is asked to start the database or to go on without it; the agents never start it).
 When the tasks end, or it stops, the user gets the report of every task done and the gate again.
 
 ### Verification gate (from CLAUDE.md)
@@ -166,9 +169,9 @@ When the tasks end, or it stops, the user gets the report of every task done and
 
 Validation (whole spec) repeats the verification gate and then goes through every FR and the completion criteria. It starts only when every task is `- [x]`.
 
-- `@reviewer` (FR by FR) and `@hacker` (security and robustness, spoiler leaks, ownership and validation first) run in parallel.
-- Both reports always go through `@explainer` before they are shown, keeping their order and severity. The original reports are kept for the technical team.
-- If both are clean (`VERDICT: APPROVED` and `SAFE`), the gate offers to close the spec. Otherwise it offers to fix the problems.
+- `@reviewer` (FR by FR), `@hacker` (security and robustness, spoiler leaks, ownership and validation first) and, if the spec has UI FRs, `@frontend-tester` (real browser: desktop, 320 px, dark theme, console, keyboard) run in parallel.
+- All reports always go through `@explainer` before they are shown, keeping their order and severity. The original reports are kept for the technical team.
+- If all are clean (`VERDICT: APPROVED`, `SAFE` and `UI VERDICT: PASSES`), the gate offers to close the spec. A `UI VERDICT: INCOMPLETE (DATABASE NEEDED)` counts as clean only after the user chose "Seguir sin ella" (the FRs on its list stay "not verified in browser"). Otherwise it offers to fix the problems.
 - Fix loop, at most 2 rounds: one `@implementer` pass for each report that asked for changes (its findings list is the task; nothing else is added, and the verification gate must pass), then only the checks that had findings run again, and the gate is asked again. If problems remain after the second round, stop and explain to the user what keeps failing; the options are then `/sdd-change` (the spec is wrong or incomplete) or stopping.
 - A finding that means the requirement itself is wrong is not fixed in code: it goes through `/sdd-change`.
 - There is no validation report file, and a spec must not refer to one. What cannot be checked by a test or by the reviewer (for example a screen-reader or keyboard check) is a manual check done by the user, who tells the agent about any problem found; the spec's completion criteria say "manual check by the user".
@@ -177,9 +180,24 @@ Validation (whole spec) repeats the verification gate and then goes through ever
 
 Closing runs only after validation has no pending problems and the user answered "Close the spec" at the validation gate. One actor per step:
 1. `@planner` sets the spec to `implemented`.
-2. `@implementer` updates "Current status" in `CLAUDE.md`, removes the open decisions the spec resolved from `docs/open-decisions.md` (their text stays in the `plan.md` or `decisions.md`), and marks the phase in `docs/roadmap.md` when its last spec is done.
+2. `@implementer` updates "Current status" in `CLAUDE.md` (it stays a short paragraph: what is real and what is still sample data; the detail goes in `docs/roadmap.md`), removes the open decisions the spec resolved from `docs/open-decisions.md` (their text stays in the `plan.md` or `decisions.md`), and marks the phase in `docs/roadmap.md` when its last spec is done.
+3. The main agent empties the browser-check evidence, which is git-ignored scratch: `rm -f .playwright-mcp/*.log .playwright-mcp/*.yml .playwright-mcp/snapshot/*` (only those patterns, only in that folder; the folders stay). It needs no commit and runs only after the user's answer to "Close the spec"; on "Stop here" nothing is deleted, the evidence is what resuming needs. The closing summary says how many files were deleted.
 
 The implementer never closes a spec on its own, not even after the last task.
+
+## Reading budget
+
+Spec, plan, tasks and decisions files grow to tens of KB; reading them whole on every task is the main token cost of the flow. Every agent follows this:
+- A file of more than ~150 lines is not read whole. Find the part first (`Grep -n "^#"` for headings, or the id: `FR-12`, `D-T4-2`, `T5`) and then `Read` with `offset` and `limit`.
+- The caller (command or coordinator) names in the prompt the task id, the FR/NFR ids and the plan sections that matter, so the subagent does not have to discover them.
+- `@implementer`: its own task in `tasks.md`, only the `plan.md` sections the task cites, only the FR/NFR it lists, only the `decisions.md` entries of its task and of the tasks it depends on; of `sdd.md`, only "Implementation" and the verification gate; of `architecture.md` and `data-model.md`, only the sections about the code it touches.
+- `@reviewer`: goes through `spec.md` FR by FR, but reads `plan.md` and `decisions.md` only by reference to the FR; `git diff --stat` first, then the diff file by file.
+- `@hacker`: only the files in its scope; search before reading.
+- Command output that can be long (test logs, builds, diffs) is cut with `tail` or `grep`, never read whole.
+
+## Session hygiene
+
+Everything the flow needs is in files (`Status:` lines, checkboxes, commits), so a new session resumes cheaply with `/sdd-status`. After "Parar aquí" and after closing a spec, remind the user in one line that `/clear` is safe now; before a long pause in the middle of a phase, suggest `/compact`. Closing sessions that are no longer needed is up to the user.
 
 ## Git
 

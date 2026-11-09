@@ -2,6 +2,7 @@
 name: planner
 description: SDD - writes the spec, the plan and the tasks of a request, without touching code
 tools: Read, Glob, Grep, Write, Edit
+model: sonnet
 hooks:
   PreToolUse:
     - matcher: "Write|Edit"
