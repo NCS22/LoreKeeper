@@ -412,16 +412,21 @@ test.describe("sign-out: the browser back action (FR-29, FR-30)", () => {
     await signInThroughTheForm(page, account);
     await signOutFromTheMenu(page);
     await expectSignedOutOnTheSignInPage(page);
+    // A signed-out request to the workspace is sent to sign in: it adds one more step to the history.
+    await page.goto("/?start=1");
+    await expect(page).toHaveURL("/sign-in?returnTo=%2F%3Fstart%3D1");
     await waitForFormHydration(page);
     await page.getByLabel(signInMessages.emailLabel).fill(account.email);
     await page.getByLabel(signInMessages.passwordLabel).fill(account.password);
     await page.getByRole("button", { name: signInMessages.submit, exact: true }).click();
-    await expect(page).toHaveURL("/");
+    await expect(page).toHaveURL("/?start=1");
 
     await page.goBack();
 
-    expect(page.url()).not.toContain("/sign-in");
-    expect(page.url()).not.toContain("/sign-up");
+    // The previous step is the plain sign-in page; with a session it sends the person to the workspace,
+    // so the person lands on the exact workspace address and never sees a sign-in page again.
+    await expect(page).toHaveURL("/");
+    await expectWorkspaceIsShown(page);
   });
 });
 

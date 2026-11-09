@@ -146,7 +146,9 @@ function interpretValidationFailure(
 }
 
 function readIssuesByFieldName(fieldErrors: unknown): Record<string, readonly AccountIssue[]> {
-  const issuesByFieldName: Record<string, readonly AccountIssue[]> = {};
+  // The field names come from the server and can be any text. An object with no prototype keeps a
+  // name such as `__proto__` as a plain key instead of letting it replace the object's prototype.
+  const issuesByFieldName: Record<string, readonly AccountIssue[]> = Object.create(null);
   if (!isRecord(fieldErrors)) return issuesByFieldName;
 
   for (const [fieldName, issues] of Object.entries(fieldErrors)) {

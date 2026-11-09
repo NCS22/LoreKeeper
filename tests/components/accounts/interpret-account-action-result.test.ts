@@ -174,6 +174,42 @@ describe("interpretAccountActionResult", () => {
       expect(interpret("sign-in", failure(VALIDATION_ERROR_CODE, { fieldErrors }))).toEqual(GENERAL_FAILURE);
     });
 
+    describe("field names that are special object keys, sent by the server", () => {
+      // JSON.parse creates `__proto__` as an own key, the way an answer built from text would carry it.
+      const FIELD_ERRORS_WITH_SPECIAL_KEYS = `{
+        "__proto__": [{ "code": "EMAIL_INVALID", "polluted": true }],
+        "constructor": [{ "code": "EMAIL_INVALID" }],
+        "toString": [{ "code": "EMAIL_INVALID" }]
+      }`;
+
+      it.each(["sign-up", "sign-in"] as const)(
+        "reads them as no field of the %s form and as the general failure, changing nothing",
+        (operation) => {
+          const fieldErrors: unknown = JSON.parse(FIELD_ERRORS_WITH_SPECIAL_KEYS);
+
+          const outcome = interpret(operation, failure(VALIDATION_ERROR_CODE, { fieldErrors }));
+
+          expect(outcome).toEqual(GENERAL_FAILURE);
+          expect(Object.getPrototypeOf({})).toBe(Object.prototype);
+          expect(Object.hasOwn(Object.prototype, "polluted")).toBe(false);
+          expect(Object.hasOwn(Object.prototype, "code")).toBe(false);
+        },
+      );
+
+      it("shows only the messages of the real fields when they come together with the special keys", () => {
+        const fieldErrors: unknown = JSON.parse(
+          `{ "__proto__": [{ "code": "EMAIL_INVALID" }], "constructor": [], "${fieldNames.email}": [{ "code": "${issueCodes.emailRequired}" }] }`,
+        );
+
+        const outcome = interpret("sign-in", failure(VALIDATION_ERROR_CODE, { fieldErrors }));
+
+        expect(outcome).toEqual({
+          status: "field-errors",
+          messagesByField: { email: [en.accountForms.issues.emailRequired] },
+        });
+      });
+    });
+
     it("reads a validation failure of a sign-out as the general failure", () => {
       const outcome = failure(VALIDATION_ERROR_CODE, {
         fieldErrors: { [fieldNames.email]: [{ code: issueCodes.emailInvalid }] },
