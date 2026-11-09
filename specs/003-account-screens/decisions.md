@@ -312,3 +312,41 @@ Note (not a decision): the writing tool turned the escape sequences for U+2028 a
 - **Why:** literal direction-control characters in source are invisible and fragile (same case as the note under T2).
 - **Discarded:** not recorded.
 - **Approval:** the user, on 2026-11-09, by asking to continue the tasks of the spec after the T8 report.
+
+## T9 - Not-found page, error page and reduced top bar (approved by the user at the T9 implementation gate, 2026-11-09)
+
+### D-T9-1. `error.tsx` uses `retry()` instead of `reset()`
+
+- **Decided:** the error page calls `retry()`, not `reset()` as `tasks.md` T9 said. Approved explicitly by the user.
+- **Why:** in the installed Next.js 16.4.5 the types and the local docs (`error.md`) give `retry()` as the recommended action: it asks the server for the content again and repaints it, while `reset()` repaints the same payload that already failed, which is exactly the `InfrastructureError` case of `UserMenuLoader`.
+- **Discarded:** `reset()` as written in `tasks.md`.
+
+### D-T9-2. `error.tsx` is verified without a browser
+
+- **Decided:** `error.tsx` cannot be reached in a browser. With NFR-8 (no test controls in `src/`) there is no legitimate way to make the render fail after the guard passes, and on the 3101 server the guard rewrites everything to `/session-check-failed`, which the browser tests cover. The file is verified by `tests/app/error.test.ts` (5 tests, `renderToStaticMarkup` in Node, no jsdom): the heading and the button are present, the error text is not shown, no menu, no workspace content, no "signed out", the click calls `retry` once, and no fixed colors. The file runs in Vitest's "database" project because the mirror folder `tests/app/**` is in that list; it works and only runs serially.
+- **Why:** NFR-8 forbids a failure switch in the application, and jsdom is not approved.
+- **Discarded:** not recorded.
+
+### D-T9-3. `PreferencesSync` lives in `MinimalTopbar`
+
+- **Decided:** `PreferencesSync` is mounted in `MinimalTopbar`, not in `not-found.tsx`.
+- **Why:** any use of the reduced top bar applies the changes made in its accessibility control (plan section 5).
+- **Discarded:** mounting it in `not-found.tsx`.
+
+### D-T9-4. Minimal refactor to avoid duplication
+
+- **Decided:** the menu placeholder moved to `src/components/topbar/user-menu-slot.tsx`, shared by `Topbar` and `MinimalTopbar`, and `src/app/session-check-failed/page.tsx` now uses `AccountPageShell` with the same markup. It stays within the edit permission for `topbar.tsx` of plan item 5.
+- **Why:** to avoid duplicating the placeholder and the page frame.
+- **Discarded:** not recorded.
+
+### D-T9-5. Sign-out from the not-found page works
+
+- **Decided:** the plan said nothing about how a Server Action called from a nonexistent address behaves; the browser test confirms that sign-out works from the not-found page.
+- **Why:** it was an open question in the plan; the test settles it.
+- **Discarded:** not applicable.
+
+### D-T9-6. Test details of `error-pages.spec.ts`
+
+- **Decided:** workspace texts are searched with `exact: true` because "Workspace" also matched "Back to the workspace"; the response of the call redirected to 3101 arrives with the 3100 URL, so it is identified by the `next-action` header and the 503 status.
+- **Why:** to make the assertions precise.
+- **Discarded:** not recorded.
