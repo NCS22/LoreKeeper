@@ -3,6 +3,7 @@ import { AccessibilityControl } from "@/components/topbar/accessibility-control"
 import { AppMenuBar } from "@/components/topbar/app-menu-bar";
 import { InspectorToggleButton } from "@/components/topbar/inspector-toggle-button";
 import { SidebarToggleButton } from "@/components/topbar/sidebar-toggle-button";
+import { UserMenuSlot } from "@/components/topbar/user-menu-slot";
 
 export function Topbar() {
   return (
@@ -16,6 +17,7 @@ export function Topbar() {
       </div>
       <div className="flex items-center gap-1">
         <AccessibilityControl />
+        <UserMenuSlot />
         <InspectorToggleButton />
       </div>
     </header>

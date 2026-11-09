@@ -198,6 +198,91 @@ export const en = {
       bright: "Bright",
     },
   },
+  accountForms: {
+    signUp: {
+      title: "Create your account",
+      displayNameLabel: "Display name",
+      emailLabel: "Email",
+      passwordLabel: "Password",
+      repeatPasswordLabel: "Repeat password",
+      submit: "Create account",
+      submitting: "Creating account...",
+      switchPrompt: "Already have an account?",
+      switchLink: "Sign in",
+      // The result is unknown: the account may exist, so the person is pointed to sign-in (FR-10).
+      resultUnknown:
+        "We could not confirm the result. If you already created your account, try signing in.",
+      // The account was created but the browser did not keep the session (FR-14).
+      storageBlocked:
+        "Your account was created, but this site needs to store data in your browser to keep you signed in. Allow it in your browser settings, then sign in.",
+    },
+    signIn: {
+      title: "Sign in",
+      emailLabel: "Email",
+      passwordLabel: "Password",
+      submit: "Sign in",
+      submitting: "Signing in...",
+      switchPrompt: "New to LoreKeeper?",
+      switchLink: "Create an account",
+      credentialsIncorrect: "Email or password incorrect.",
+      resultUnknown:
+        "We could not reach the application or confirm the result. Check your connection and try again.",
+      storageBlocked:
+        "This site needs to store data in your browser to keep you signed in. Allow it in your browser settings and try again.",
+    },
+    signOut: {
+      submit: "Sign out",
+      submitting: "Signing out...",
+      resultUnknown:
+        "We could not confirm that you signed out. Your session may still be open. Try again.",
+    },
+    generalFailure: "Something went wrong. Try again.",
+    emailAlreadyRegistered: "An account with this email already exists.",
+    // Validation messages, keyed by the meaning of the stable issue code. Limits come from the issue details.
+    issues: {
+      displayNameRequired: "Enter a display name.",
+      displayNameTooLong: (maximumLength: number) =>
+        `The display name can have at most ${maximumLength} characters.`,
+      displayNameInvalidCharacters:
+        "The display name cannot contain line breaks or other control characters.",
+      emailInvalid: "Enter a valid email address.",
+      emailRequired: "Enter your email.",
+      passwordLength: (minimumLength: number, maximumLength: number) =>
+        `The password must have between ${minimumLength} and ${maximumLength} characters.`,
+      passwordRequired: "Enter your password.",
+      repeatPasswordMismatch: "The passwords do not match.",
+      unknown: "This value is not valid.",
+    },
+  },
+  // The user menu of the top bar (FR-25, FR-26). The sign-out texts are in `accountForms.signOut`.
+  userMenu: {
+    triggerLabel: "Account menu",
+    panelTitle: "Account",
+    displayNameLabel: "Display name",
+    emailLabel: "Email",
+  },
+  // The page shown when the session of a request cannot be checked (FR-24). It says nothing about
+  // the person's session or account, because it is unknown.
+  sessionCheckFailed: {
+    title: "We could not check your session",
+    description: "Something went wrong on our side. Your session has not been closed. Try again in a moment.",
+    tryAgain: "Try again",
+    metadataTitle: "Something went wrong",
+  },
+  // The page shown to a signed-in person who asks for an address that does not exist (FR-23).
+  notFound: {
+    metadataTitle: "Page not found",
+    title: "We could not find that page",
+    description: "That address does not exist, or it may have moved. Go back to the workspace to keep working.",
+    backToWorkspace: "Back to the workspace",
+  },
+  // The page shown when rendering a page fails after the session was admitted (FR-24). It never
+  // shows the error itself and says nothing about the person's session, because it is unknown.
+  errorPage: {
+    title: "Something went wrong",
+    description: "This page could not be shown. Nothing was changed. Try again in a moment.",
+    tryAgain: "Try again",
+  },
 } as const;
 
 export type Messages = typeof en;
