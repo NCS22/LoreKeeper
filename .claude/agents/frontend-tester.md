@@ -18,7 +18,7 @@ Then read only the names of the files in `tests/e2e/` (`Glob`, and `Grep -n "tes
 3. If you started the dev server, stop it when you finish. Close the browser with `browser_close`.
 
 ## How you check
-- Use `browser_snapshot` (text accessibility tree) as the main tool: it is cheap and shows structure, labels, roles and states. Use `browser_take_screenshot` only to judge appearance, and only for the cases of the matrix below. Every file you save (screenshots, or a snapshot with `filename`) goes in `.playwright-mcp/snapshot/` (git-ignored): run `mkdir -p .playwright-mcp/snapshot` first and pass `filename` as `snapshot/<route>-<viewport>.png`, which the MCP resolves inside its output folder.
+- Use `browser_snapshot` (text accessibility tree) as the main tool: it is cheap and shows structure, labels, roles and states. Use `browser_take_screenshot` only to judge appearance, and only for the cases of the matrix below. Every file you save (screenshots, or a snapshot with `filename`) goes in `.playwright-mcp/snapshot/` (git-ignored): run `mkdir -p .playwright-mcp/snapshot` first and pass `filename` as `.playwright-mcp/snapshot/<route>-<viewport>.png` (the MCP resolves it against the repository root, so a bare `snapshot/...` would create a stray folder there).
 - Default matrix for each route and state you were given:
   1. Desktop, 1280 px wide, dark theme (`browser_emulate_media` with `colorScheme: dark`; the product is dark-first).
   2. Narrow, 320 px wide: no horizontal scroll, nothing cut or overlapping, every control reachable.
