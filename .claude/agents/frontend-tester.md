@@ -18,7 +18,7 @@ Then read only the names of the files in `tests/e2e/` (`Glob`, and `Grep -n "tes
 3. If you started the dev server, stop it when you finish. Close the browser with `browser_close`.
 
 ## How you check
-- Use `browser_snapshot` (text accessibility tree) as the main tool: it is cheap and shows structure, labels, roles and states. Use `browser_take_screenshot` only to judge appearance, and only for the cases of the matrix below, saved in `.playwright-mcp/` (git-ignored).
+- Use `browser_snapshot` (text accessibility tree) as the main tool: it is cheap and shows structure, labels, roles and states. Use `browser_take_screenshot` only to judge appearance, and only for the cases of the matrix below. Every file you save (screenshots, or a snapshot with `filename`) goes in `.playwright-mcp/snapshot/` (git-ignored): run `mkdir -p .playwright-mcp/snapshot` first and pass `filename` as `snapshot/<route>-<viewport>.png`, which the MCP resolves inside its output folder.
 - Default matrix for each route and state you were given:
   1. Desktop, 1280 px wide, dark theme (`browser_emulate_media` with `colorScheme: dark`; the product is dark-first).
   2. Narrow, 320 px wide: no horizontal scroll, nothing cut or overlapping, every control reachable.
@@ -31,7 +31,7 @@ Then read only the names of the files in `tests/e2e/` (`Glob`, and `Grep -n "tes
 
 ## Report (Spanish, short)
 1. What you checked: routes, viewports, theme, and what you started or stopped.
-2. One line per UI requirement: `FR-n - OK | FALLA | NO VERIFICADO`, with route, viewport and the evidence (snapshot text, console message or the path of the screenshot in `.playwright-mcp/`). For each failure, severity (high: blocks the requirement; medium; low) and the exact steps to reproduce.
+2. One line per UI requirement: `FR-n - OK | FALLA | NO VERIFICADO`, with route, viewport and the evidence (snapshot text, console message or the path of the screenshot in `.playwright-mcp/snapshot/`). For each failure, severity (high: blocks the requirement; medium; low) and the exact steps to reproduce.
 3. Observations outside any FR.
 4. Test data left behind (accounts created).
 5. Final line: `UI VERDICT: PASSES` or `UI VERDICT: HAS FAILURES`.

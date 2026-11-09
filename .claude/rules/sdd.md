@@ -43,7 +43,7 @@ How a gate works:
 | Plan (`/sdd-plan`) | `plan.md`, `draft` | Approve the plan and split it into tasks | plan `approved` | `/sdd-tasks` |
 | Tasks (`/sdd-tasks`) | `tasks.md`, `draft` | Approve the tasks and start implementing | tasks `approved` | `/sdd-implement` |
 | Implementation (`/sdd-implement`) | one task done | Next task, or the rest without stopping | none | next task; `/sdd-validate` after the last |
-| Validation (`/sdd-validate`) | reviewer and hacker reports | Close the spec | spec `implemented` (closing) | closing steps |
+| Validation (`/sdd-validate`) | reviewer, hacker and (UI specs) frontend-tester reports | Close the spec | spec `implemented` (closing) | closing steps |
 | Change (`/sdd-change`) | spec diff | Approve the change and update the plan | spec `approved` | plan, then tasks, each with its own gate |
 
 - Clarification with findings does not offer "Approve": it offers to fix the spec with `/sdd-change` and then runs `/sdd-clarify` again.
@@ -152,7 +152,8 @@ When the task changes UI, `@frontend-tester` checks it in a real browser (Playwr
 "The rest without stopping" is an option of the implementation gate. The command then calls `@implementer` for each remaining task in order, with no gate between them, and stops at once, telling the user why, when:
 - a task's report does not show `pnpm typecheck`, `pnpm lint` and `pnpm test` green with no new warnings (and the spoiler suite or `pnpm test:e2e` when the task requires them);
 - the implementer stops because the task needs something under CLAUDE.md "ASK FIRST", or because the plan or the task is wrong;
-- the report lists a decision the plan did not cover (it has to be shown to the user and recorded in `decisions.md`).
+- the report lists a decision the plan did not cover (it has to be shown to the user and recorded in `decisions.md`);
+- `@frontend-tester` still reports high-severity failures after one fix pass.
 When the tasks end, or it stops, the user gets the report of every task done and the gate again.
 
 ### Verification gate (from CLAUDE.md)

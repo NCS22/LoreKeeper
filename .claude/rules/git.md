@@ -4,7 +4,7 @@ How work gets from the working tree to `main`. Complements `CLAUDE.md` (Workflow
 
 ## Who does what
 
-- The main agent (the conversation, the `/sdd-*` command or the `coordinator`) makes every branch, commit and push. Subagents (`planner`, `implementer`, `reviewer`, `hacker`, `explainer`) never run a git command that writes: no `add`, `commit`, `switch`, `push`. Their prompts say so.
+- The main agent (the conversation, the `/sdd-*` command or the `coordinator`) makes every branch, commit and push. Subagents (`planner`, `implementer`, `reviewer`, `hacker`, `frontend-tester`, `explainer`) never run a git command that writes: no `add`, `commit`, `switch`, `push`. Their prompts say so.
 - The user decides what reaches `main`.
 
 ## Permissions
