@@ -115,7 +115,7 @@ The rewrite keeps the requested address in the browser and shows the error page 
 |---|---|---|---|
 | success (`signed-up` / `signed-in`) | confirm, then leave to the destination | same | leave to the sign-in page |
 | `already-signed-in` | leave to the destination, workspace untouched | same | not applicable |
-| `VALIDATION_ERROR` with issues on form fields | message on each field (FR-4); all messages of a field together | message on each empty field (FR-6) | generic (FR-9) |
+| `VALIDATION_ERROR` with issues on form fields | message on each field (FR-4); all messages received for a field together, in the order reported (the account rules report one issue per field today, so the browser shows one) | message on each empty field (FR-6) | generic (FR-9) |
 | `VALIDATION_ERROR` with no form field (`request`, `input`) | generic (FR-9) | generic | generic |
 | `BUSINESS_RULE_VIOLATION` | "an account with that email already exists" on the email field (FR-5) | generic | generic |
 | `AUTHENTICATION_ERROR` | generic | one credentials message, one place (FR-7) | generic |
@@ -165,7 +165,7 @@ None. Accounts, pages and the user menu read and write no narrative information:
 | Shared presentation | `tests/shared/presentation/page-access-guard.test.ts` | With a fake reader and real `NextRequest`: redirect `303` with `Location`, empty body and no workspace text in body or headers; `no-store`; cookie lines forwarded on pass and on redirect; `401` (no session) and `503` (session not checkable) text responses to operation calls, with the exact content type, the operation not run, body and headers free of workspace text, and the person not treated as signed out in the `503` case (FR-21 exception, FR-24 second sentence, NFR-4, the two operation-call edge cases and the completion criterion); rewrite on a failed check; every method (NFR-4, FR-21) |
 | Proxy | `tests/proxy.test.ts` | The matcher with `unstable_doesProxyMatch`: `/`, `/sign-in`, `/nope` match; `/_next/static/x.js`, `/_next/image` and `/favicon.ico` do not, so the matcher excludes exactly the three public resources of the spec and is kept equal to the policy's list. If that experimental helper is not available, the same list is checked against the matcher pattern directly |
 | Components | `tests/components/accounts/interpret-account-action-result.test.ts` | Every row of the table in section 4, including malformed results and codes not in the list (FR-4 to FR-10, FR-14, FR-28) |
-| Components | `.../account-issue-messages.test.ts` | Every issue code exported by the accounts module has a message; limits come from the issue, never from the interface; several issues on one field give all messages (FR-4, NFR-2) |
+| Components | `.../account-issue-messages.test.ts` | Every issue code exported by the accounts module has a message; limits come from the issue, never from the interface; several issues on one field give all messages in the order reported: this is the only place where the several-messages case of FR-4 is verified, because the account rules never report several issues for one field (FR-4, NFR-2) |
 | Components | `.../run-with-time-limit.test.ts` | Fake timers: answer before 30 s, silence at 30 s, a rejection, a late answer ignored (FR-10, FR-11) |
 | Lint | `tests/lint/test-controls-absent.test.ts` | NFR-8: no file under `src/` reads `process.env` except the server-environment reader, none imports from `tests/` or from Playwright, and `src/` contains none of the identifiers the E2E support uses to provoke failures |
 | Database-backed | `tests/shared/infrastructure/read-session-for-guard.test.ts` | Real engine: valid session, none, deleted, tampered and expired give `signed-in`/`signed-out`; with simulated `Date` at 24 hours the cookie lines contain the session cookie with `Max-Age=2592000`, `HttpOnly`, `SameSite=Strict` (FR-16, FR-17); a dead cookie yields cleanup lines; a database failure is `check-failed` and is logged (FR-24) |
@@ -232,7 +232,7 @@ Every FR (1 to 34), every NFR (1 to 8) and the manual checks are covered. "T" re
 |---|---|
 | FR-1, FR-2 | Sign-up and sign-in pages (T6, T7); `sign-up.spec.ts`, `sign-in.spec.ts` |
 | FR-3 | Forms without browser checks or limits (section 5, "Forms"; T6, T7); sign-up and sign-in specs through the real form |
-| FR-4, FR-5 | `interpret-account-action-result`, `account-issue-messages` (T5); sign-up form (T7); `sign-up.spec.ts` |
+| FR-4, FR-5 | `interpret-account-action-result`, `account-issue-messages` (T5), whose unit test covers the several-messages case; sign-up form (T7); `sign-up.spec.ts` covers the real behavior, one message per field (a 121-character name with a control character shows only "not allowed") |
 | FR-6, FR-7 | Same pure files (T5); sign-in form (T6); `sign-in.spec.ts` |
 | FR-8, FR-9, FR-10 | Pure interpreter and form state (T5, T6, T7); both specs |
 | FR-11 | `run-with-time-limit` and its test (T5); `sign-up.spec.ts` with the Playwright clock |
