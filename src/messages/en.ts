@@ -269,6 +269,20 @@ export const en = {
     tryAgain: "Try again",
     metadataTitle: "Something went wrong",
   },
+  // The page shown to a signed-in person who asks for an address that does not exist (FR-23).
+  notFound: {
+    metadataTitle: "Page not found",
+    title: "We could not find that page",
+    description: "That address does not exist, or it may have moved. Go back to the workspace to keep working.",
+    backToWorkspace: "Back to the workspace",
+  },
+  // The page shown when rendering a page fails after the session was admitted (FR-24). It never
+  // shows the error itself and says nothing about the person's session, because it is unknown.
+  errorPage: {
+    title: "Something went wrong",
+    description: "This page could not be shown. Nothing was changed. Try again in a moment.",
+    tryAgain: "Try again",
+  },
 } as const;
 
 export type Messages = typeof en;

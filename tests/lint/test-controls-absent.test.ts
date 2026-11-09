@@ -25,6 +25,7 @@ const END_TO_END_FAILURE_IDENTIFIERS = [
   "buildUniqueAccount",
   "E2E_ACCOUNT",
   "interceptServerActionsOfPage",
+  "redirectServerActionsToUnreachableDataServer",
   "deleteSessionRowsInDatabase",
   "expireSessionRowsInDatabase",
 ];

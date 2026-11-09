@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AccountPageShell } from "@/components/accounts/account-page-shell";
 import { en } from "@/messages/en";
 import { TryAgainButton } from "./_components/try-again-button";
 
@@ -13,19 +14,11 @@ export const metadata: Metadata = {
  */
 export default function SessionCheckFailedPage() {
   return (
-    <main className="flex min-h-dvh items-center justify-center p-4">
-      <div className="bg-surface border-line rounded-popover shadow-popover flex w-full max-w-md min-w-0 flex-col gap-6 border p-6">
-        <div className="flex flex-col gap-1">
-          <p className="text-ink-muted text-sm font-medium">{en.app.name}</p>
-          <h1 className="text-xl">{en.sessionCheckFailed.title}</h1>
-        </div>
-        <p className="text-ink text-sm">
-          {en.sessionCheckFailed.description}
-        </p>
-        <div>
-          <TryAgainButton />
-        </div>
+    <AccountPageShell title={en.sessionCheckFailed.title}>
+      <p className="text-ink text-sm">{en.sessionCheckFailed.description}</p>
+      <div>
+        <TryAgainButton />
       </div>
-    </main>
+    </AccountPageShell>
   );
 }
