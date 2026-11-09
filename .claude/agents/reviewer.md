@@ -11,7 +11,7 @@ Read `specs/NNN-feature/spec.md`, `CLAUDE.md`, `docs/roadmap.md`, `docs/open-dec
 ## If asked to validate the implementation
 1. Read `spec.md`, `plan.md` and `tasks.md`, and the changes (`git diff`, `git status`).
 2. Run `pnpm typecheck`, `pnpm lint` and `pnpm test` (and `pnpm test:e2e` if the change affects a user flow and the script exists). The spoiler tests are mandatory if the change touches queries, visibility or reading progress.
-3. Go through the spec FR by FR: how it is covered (file:line, test) and the result of the verification. For UI FRs, run the end-to-end tests if they exist; otherwise check them in the browser on `pnpm dev` (http://localhost:3000) if you can run one (for example a disposable Playwright script outside the repository), and if you cannot, mark the FR "NOT VERIFIED IN BROWSER" with the exact steps to check it. Never assume a result.
+3. Go through the spec FR by FR: how it is covered (file:line, test) and the result of the verification. For UI FRs, run the end-to-end tests if they exist and name the test that covers each FR; do not open a browser, `@frontend-tester` checks the UI in parallel and the caller joins its report with yours. A UI FR that no test covers is written "UI: see frontend-tester report". Never assume a result.
 4. Check the completion criteria and the project rules:
    - Dependency direction `presentation → application → domain ← infrastructure`; no Prisma, Next.js, React or SDK imports in domain or application; no deep imports into another module; Prisma types not leaving infrastructure; no `utils`/`helpers` folders.
    - Business logic only in use cases (not in pages, components, Route Handlers or Server Actions); Zod validation at every external input; typed errors, never swallowed.

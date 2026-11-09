@@ -140,7 +140,7 @@ Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`
 | `pnpm prisma migrate dev` | Create and apply a migration |
 | `pnpm prisma generate` | Regenerate the Prisma client |
 
-Project commands: `/sdd-constitution`, `/sdd-spec`, `/sdd-clarify`, `/sdd-plan`, `/sdd-tasks`, `/sdd-implement`, `/sdd-validate`, `/sdd-change`, `/sdd-status`. Subagents in `.claude/agents/`: planner, implementer, reviewer, hacker, explainer, plus the main agent coordinator.
+Project commands: `/sdd-constitution`, `/sdd-spec`, `/sdd-clarify`, `/sdd-plan`, `/sdd-tasks`, `/sdd-implement`, `/sdd-validate`, `/sdd-change`, `/sdd-status`. Subagents in `.claude/agents/`: planner, implementer, reviewer, hacker, frontend-tester, explainer, plus the main agent coordinator.
 
 ## Rules
 

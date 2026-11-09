@@ -147,6 +147,8 @@ Design decisions with their discarded alternative live in section 8 of the `plan
 
 One task at a time: the minimum code that fulfills the task, with its tests. Then run the verification gate below, mark the task `- [x]` and stop; the command that called the implementer checks the report, commits the task (see "Git" below) and asks the approval gate. The implementer never runs git commands that write.
 
+When the task changes UI, `@frontend-tester` checks it in a real browser (Playwright MCP) after the verification gate is green; the implementer does not open a browser. Failures of high severity go back to the implementer as a findings list.
+
 "The rest without stopping" is an option of the implementation gate. The command then calls `@implementer` for each remaining task in order, with no gate between them, and stops at once, telling the user why, when:
 - a task's report does not show `pnpm typecheck`, `pnpm lint` and `pnpm test` green with no new warnings (and the spoiler suite or `pnpm test:e2e` when the task requires them);
 - the implementer stops because the task needs something under CLAUDE.md "ASK FIRST", or because the plan or the task is wrong;
@@ -166,9 +168,9 @@ When the tasks end, or it stops, the user gets the report of every task done and
 
 Validation (whole spec) repeats the verification gate and then goes through every FR and the completion criteria. It starts only when every task is `- [x]`.
 
-- `@reviewer` (FR by FR) and `@hacker` (security and robustness, spoiler leaks, ownership and validation first) run in parallel.
-- Both reports always go through `@explainer` before they are shown, keeping their order and severity. The original reports are kept for the technical team.
-- If both are clean (`VERDICT: APPROVED` and `SAFE`), the gate offers to close the spec. Otherwise it offers to fix the problems.
+- `@reviewer` (FR by FR), `@hacker` (security and robustness, spoiler leaks, ownership and validation first) and, if the spec has UI FRs, `@frontend-tester` (real browser: desktop, 320 px, dark theme, console, keyboard) run in parallel.
+- All reports always go through `@explainer` before they are shown, keeping their order and severity. The original reports are kept for the technical team.
+- If all are clean (`VERDICT: APPROVED`, `SAFE` and `UI VERDICT: PASSES`), the gate offers to close the spec. Otherwise it offers to fix the problems.
 - Fix loop, at most 2 rounds: one `@implementer` pass for each report that asked for changes (its findings list is the task; nothing else is added, and the verification gate must pass), then only the checks that had findings run again, and the gate is asked again. If problems remain after the second round, stop and explain to the user what keeps failing; the options are then `/sdd-change` (the spec is wrong or incomplete) or stopping.
 - A finding that means the requirement itself is wrong is not fixed in code: it goes through `/sdd-change`.
 - There is no validation report file, and a spec must not refer to one. What cannot be checked by a test or by the reviewer (for example a screen-reader or keyboard check) is a manual check done by the user, who tells the agent about any problem found; the spec's completion criteria say "manual check by the user".

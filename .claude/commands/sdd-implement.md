@@ -14,6 +14,8 @@ For each task, delegate to the @implementer subagent (Agent tool, subagent_type 
 
 When a task finishes, check its report yourself: `pnpm typecheck`, `pnpm lint` and `pnpm test` must appear green with no new warnings (and the spoiler suite or `pnpm test:e2e` when the task requires them). If not, or if the implementer stopped for an approval or because the plan is wrong, tell me in Spanish and stop.
 
+UI check: if the task changes UI (files under `src/app/**` or `src/components/**`, or its FRs describe screens), launch @frontend-tester (Agent tool, subagent_type "frontend-tester") once the gate is green, passing it the folder, the task id, the UI FR ids and the routes and states from the implementer's report. A task without UI does not launch it. If it reports high-severity failures, send them to @implementer as a findings list (it fixes only those, same verification gate) and run the tester again only on those failures. Add its report to the one you show me.
+
 Git (`.claude/rules/git.md`): once the report shows the verification gate green, commit the task yourself (`feat(NNN): Tn ...`: code, tests, checkbox and decisions together; one commit per task) and push the branch, before asking the gate. The @implementer must not run git commands that write; tell it so in its prompt. If a task stops half done, commit it as `wip(NNN): Tn partial`.
 
 Show me the report in Spanish and close with the Implementation gate (`sdd.md`, Approval gates), with these options:
