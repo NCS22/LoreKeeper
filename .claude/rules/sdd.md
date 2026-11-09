@@ -181,6 +181,20 @@ Closing runs only after validation has no pending problems and the user answered
 
 The implementer never closes a spec on its own, not even after the last task.
 
+## Reading budget
+
+Spec, plan, tasks and decisions files grow to tens of KB; reading them whole on every task is the main token cost of the flow. Every agent follows this:
+- A file of more than ~150 lines is not read whole. Find the part first (`Grep -n "^#"` for headings, or the id: `FR-12`, `D-T4-2`, `T5`) and then `Read` with `offset` and `limit`.
+- The caller (command or coordinator) names in the prompt the task id, the FR/NFR ids and the plan sections that matter, so the subagent does not have to discover them.
+- `@implementer`: its own task in `tasks.md`, only the `plan.md` sections the task cites, only the FR/NFR it lists, only the `decisions.md` entries of its task and of the tasks it depends on; of `sdd.md`, only "Implementation" and the verification gate; of `architecture.md` and `data-model.md`, only the sections about the code it touches.
+- `@reviewer`: goes through `spec.md` FR by FR, but reads `plan.md` and `decisions.md` only by reference to the FR; `git diff --stat` first, then the diff file by file.
+- `@hacker`: only the files in its scope; search before reading.
+- Command output that can be long (test logs, builds, diffs) is cut with `tail` or `grep`, never read whole.
+
+## Session hygiene
+
+Everything the flow needs is in files (`Status:` lines, checkboxes, commits), so a new session resumes cheaply with `/sdd-status`. After "Parar aquí" and after closing a spec, remind the user in one line that `/clear` is safe now; before a long pause in the middle of a phase, suggest `/compact`. Closing sessions that are no longer needed is up to the user.
+
 ## Git
 
 Every spec lives in its own branch (`spec-NNN-name`, created from an up-to-date `main` before the first file is written) and is committed at defined points; all the rules are in `.claude/rules/git.md`. In short:

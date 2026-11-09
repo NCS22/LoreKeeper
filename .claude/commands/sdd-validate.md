@@ -6,7 +6,7 @@ Read `.claude/rules/sdd.md` first (Flow, Approval gates, Validation, Closing a s
 
 The first word of $ARGUMENTS is the spec folder name. Read `tasks.md`: if any task is not `- [x]`, tell me which ones and stop (the way forward is `/sdd-implement <folder>`).
 
-Launch these two in the same message so they run in parallel, passing each the folder:
+Launch these two in the same message so they run in parallel, passing each the folder (both follow "Reading budget" in `sdd.md`; give @hacker the file list, not just the folder):
 1. @reviewer (Agent tool, subagent_type "reviewer"), following the "If asked to validate the implementation" section of its instructions. It goes through `specs/<folder>/spec.md` requirement by requirement. For each FR it indicates how it is covered (file:line, test) and the result of `pnpm typecheck`, `pnpm lint` and `pnpm test` (plus the spoiler suite when queries, visibility or reading progress changed, and `pnpm test:e2e` if a user flow changed and the script exists). UI FRs are checked on `pnpm dev` (http://localhost:3000): desktop first, then a narrow viewport, dark theme, no console errors. If the browser cannot be run, the FR is reported as "NOT VERIFIED IN BROWSER" with the exact steps for me. If any FR is not covered or fails, it says so clearly and fixes nothing. Then it checks the completion criteria, the architecture rules and the spoiler rules and gives a verdict: is the spec fulfilled?
 2. @hacker (Agent tool, subagent_type "hacker"), scoped to the files this spec created or changed (look at the task list and `git status`). It audits security and robustness, spoiler leaks, ownership and validation first, and fixes nothing.
 
