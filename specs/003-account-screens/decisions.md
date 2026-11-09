@@ -392,3 +392,51 @@ Note (not a decision): the writing tool turned the escape sequences for U+2028 a
   - The 320 px checks are geometric (`scrollWidth <= clientWidth`, boxes inside 0 to 320), without screenshots.
 - **Why:** the plan and the tasks name the file this way; the limits are what the tools can prove.
 - **Discarded:** the name `narrow-viewport`.
+
+## Validation, round 1 (2026-11-09)
+
+Decisions taken after the validation reports, approved by the user at the validation gate and in the questions that followed on 2026-11-09. The original reports are kept by the technical team; there is no validation report file.
+
+### D-V1-1. B1 of the reviewer: the spec wording about several issues per field was corrected
+
+- **Decided:** FR-4, the edge case "several problems in one field" and one completion criterion were rewritten (spec change of 2026-11-09, committed as `spec(003): several issues per field depend on what the account rules report`). The accounts engine of spec 002 reports one issue per field by order of precedence. The several-messages case is verified by the unit test `tests/components/accounts/account-issue-messages.test.ts`, not in a browser. The finished text of T5 is not rewritten; a note in `tasks.md` ("Aligned changes after approval") gives the reading.
+- **Why:** the old wording promised something that cannot happen through the real form (see D-T5-1).
+- **Discarded:** accepting the mismatch as a risk without changing the spec; changing the spec 002 engine to return several issues.
+- **Approval:** the user, at the validation gate (2026-11-09).
+
+### D-V1-2. L3 of the hacker fixed: field names from the server are normal keys
+
+- **Decided:** fixed in a `fix(003)` commit. `readIssuesByFieldName` creates its object with `Object.create(null)`, so field names sent by the server such as `__proto__`, `constructor` or `toString` are normal keys.
+- **Why `Object.create(null)` and not `Map`:** `collectAccountFieldMessages` takes a `Record` and has its own tests; switching to `Map` would change that signature, outside the scope of the finding.
+- **Limit:** the old code was not visibly exploitable from the public result, so the new tests protect against regression and would also have passed with the old code.
+- **Discarded:** `Map`.
+- **Approval:** the user, at the validation gate (2026-11-09).
+
+### D-V1-3. O4 of the reviewer fixed: the back-after-sign-out browser test
+
+- **Decided:** fixed in a `fix(003)` commit. The test passed for the wrong reason (a single history entry, so `goBack` did not move). It now goes to `/?start=1` after signing out (the redirect to sign-in adds a history step), signs in, checks `/?start=1`, goes back and pins `/` with the workspace shown. It follows the same pattern as the sign-in and sign-up specs. Only that test changed.
+- **Why:** the test must prove FR-29 and FR-30, not pass by accident.
+- **Discarded:** not recorded.
+- **Approval:** the user, at the validation gate (2026-11-09).
+
+### D-V1-4. L1 of the hacker: accepted risk (user decision, option C)
+
+- **Decided:** the guard copies every `Set-Cookie` that Better Auth produces when it reads the session, including the deletion of a dead cookie. With two requests in flight that carry the same dead cookie, the later response can replace the new valid cookie that the person just got by signing in: the server session is valid but the browser has no cookie, so the person sees a spurious sign-out or the FR-14 message. The probability is low (narrow window), it was not reproduced, and it corrects itself by signing in again. The guard cannot know the browser's current cookie and a deletion is unconditional, so closing the race means not emitting the deletion at all. That contradicts `plan.md` (cleanup lines for a dead cookie), `tests/e2e/session-renewal.spec.ts` (31 days absent: a cleanup line with empty value and `max-age=0`), `tests/shared/infrastructure/read-session-for-guard.test.ts` and `tests/shared/presentation/page-access-guard.test.ts`.
+- **Why:** option C accepts the risk instead of changing the plan and four tests for a low-probability case.
+- **Discarded:** option A (stop emitting the deletion: a dead cookie would stay in the browser up to 30 days) and option B (emit it only on document requests: it reduces the window, does not remove it, and is a new rule that is not in the plan).
+- **To revisit:** if sessions become the access path to real data (the stored-universes spec).
+- **Approval:** the user (option C), 2026-11-09.
+
+### D-V1-5. L2 of the hacker: accepted limit; other findings left as reported
+
+- **Decided:** L2 is not fixed and was not chosen at the fix gate: the session-failure log has no rate limit or filter (`read-session-for-guard.ts`, `server-error-logger.ts`); the text never reaches the response; it is aligned with the abuse limits deferred to Phase 5. These remain as listed in the validation report: O3 (no `server-only` guard in `build-account-form-vocabulary.ts`; it would need a new dependency, which is ASK FIRST), O1 (`error.tsx` not seen in a browser; manual steps were given to the user) and O2 (decisions with "not recorded"). INFO 4 of the hacker (the guard is not an authorization boundary for Server Actions on public pages) must be remembered by the stored-universes spec: every entry point uses the acting-user check.
+- **Why:** not recorded.
+- **Discarded:** not recorded.
+- **Approval:** the user, at the validation gate (2026-11-09).
+
+### D-V1-6. An isolated E2E failure was not diagnosed
+
+- **Decided:** one of the six runs of the fix pass failed once (154 passed, 1 failed) and its log was not captured, so the cause is unknown. The other runs, including two by the coordinator, passed 155 of 155. It is recorded as an unexplained isolated failure to watch.
+- **Why:** to keep the evidence visible instead of ignoring it.
+- **Discarded:** not recorded.
+- **Approval:** the user, at the validation gate (2026-11-09).
