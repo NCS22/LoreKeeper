@@ -260,3 +260,55 @@ Note (not a decision): the writing tool turned the escape sequences for U+2028 a
 - **Decided:** for GET, POST, PUT and DELETE the body of the redirect is the destination address itself (decision D-T6-2); for HEAD it may be empty. The test accepts both forms and rejects anything else.
 - **Why:** a response to HEAD has no body by definition.
 - **Discarded:** not recorded.
+
+### D-T7-4. Test that keeps `next.config` headers and the proxy matcher equal (decision 40)
+
+- **Decided:** `tests/lint/next-config-headers.test.ts` (84 tests) evaluates the real `headers()` of `next.config.ts` and the proxy matcher, with the installed `unstable_doesMiddlewareMatch` helper, over 41 addresses. It proves that the headers are applied if and only if the proxy runs, and that both agree with `classifyAddress`. It is the test announced in D-T7-2.
+- **Why:** decision D-T7-2 (the regular expression is duplicated in two files).
+- **Limit:** it compares behavior with the proxy helper, not with Next's internal headers engine, so a change of that engine between versions would only be caught by the T7 browser check.
+- **Discarded:** comparing the two patterns as strings, because a rewrite that behaves the same would break the test.
+- **Approval:** the user, at the T7 implementation gate (2026-11-08).
+
+## T8 - User menu, sign-out and clean start (approved by the user on 2026-11-09, by asking to continue the tasks of the spec after the T8 report)
+
+### D-T8-1. A 503 in the user menu gives the FR-28 message
+
+- **Decided:** the task brief said "503: generic message", but plan section 4 (`error-pages.spec.ts`) and FR-24 say that for a sign-out the FR-28 message applies ("could not confirm, the session may still be open"). The implementation follows the spec and the existing interpreter: a 503 is a thrown error and gives the FR-28 message. The generic message (FR-9) stays for a well-formed failure result, covered by the unit tests of the interpreter.
+- **Why:** the spec and the plan are the requirement; the brief differed.
+- **Discarded:** not recorded.
+- **Approval:** the user, on 2026-11-09, by asking to continue the tasks of the spec after the T8 report.
+
+### D-T8-2. The sign-out state lives in `UserMenu` and the panel is controlled
+
+- **Decided:** if the panel is closed while the sign-out waits and the call fails, the panel reopens and focuses the message.
+- **Why:** not recorded.
+- **Discarded:** blocking the closing of the panel for up to 30 s.
+- **Approval:** the user, on 2026-11-09, by asking to continue the tasks of the spec after the T8 report.
+
+### D-T8-3. The placeholder of the menu is a disabled hidden button
+
+- **Decided:** the fallback shown while the menu loads is a disabled button with `aria-hidden`, so there are not two "Account menu" buttons in the accessibility tree.
+- **Why:** to avoid a duplicated control for assistive technologies.
+- **Discarded:** not recorded.
+- **Approval:** the user, on 2026-11-09, by asking to continue the tasks of the spec after the T8 report.
+
+### D-T8-4. "A failed sign-in in another tab" is covered as "already signed in"
+
+- **Decided:** with a session already created, sign-in answers "already signed in" before validating, so a real failure in another tab that has a workspace does not exist. The test covers "already signed in" in a tab of the same context. "A failed submission leaves the form as it is" is covered by `sign-in.spec` and `sign-up.spec`.
+- **Why:** the case as written in the plan cannot happen with the engine's order of checks (002 FR-19).
+- **Discarded:** not recorded.
+- **Approval:** the user, on 2026-11-09, by asking to continue the tasks of the spec after the T8 report.
+
+### D-T8-5. Hydration helper in the sign-out spec
+
+- **Decided:** a click before React attaches does nothing, so the spec waits for `__reactProps$` on the menu trigger and on the "New universe" button, like `waitForFormHydration` does for the forms.
+- **Why:** to avoid clicks lost before hydration.
+- **Discarded:** not recorded.
+- **Approval:** the user, on 2026-11-09, by asking to continue the tasks of the spec after the T8 report.
+
+### D-T8-6. Unicode escapes in the spec file
+
+- **Decided:** the writing tool and the shell turn escapes such as the right-to-left override into literal characters. Those literals were replaced by escapes with a Python script that builds the backslash with `chr(92)`; the file is ASCII only.
+- **Why:** literal direction-control characters in source are invisible and fragile (same case as the note under T2).
+- **Discarded:** not recorded.
+- **Approval:** the user, on 2026-11-09, by asking to continue the tasks of the spec after the T8 report.
