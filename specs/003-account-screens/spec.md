@@ -1,6 +1,6 @@
 # Spec 003 — Account screens
 
-Status: approved
+Status: implemented
 
 ## Context and goal
 

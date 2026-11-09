@@ -14,7 +14,7 @@ How the code is organized and what may depend on what. Modular monolith with lay
 
 | Layer | Location | Contains | May import |
 |---|---|---|---|
-| Presentation | `src/app`, `src/components`, `src/messages`, `src/styles`, `src/shared/presentation` | Pages, layouts, Route Handlers, Server Actions, UI components, UI dictionary, design tokens, error-to-response mapping | Module public interfaces (`@/modules/<module>`), `src/shared` |
+| Presentation | `src/app`, `src/proxy.ts` (page-access guard), `src/components`, `src/messages`, `src/styles`, `src/shared/presentation` | Pages, layouts, Route Handlers, Server Actions, UI components, UI dictionary, design tokens, error-to-response mapping | Module public interfaces (`@/modules/<module>`), `src/shared` |
 | Application | `src/modules/<module>/application` | Use cases, application services, ports to other modules | Own `domain`, `src/shared/domain`, `src/shared/application` |
 | Domain | `src/modules/<module>/domain` | Entities, value objects, domain rules, repository interfaces, domain errors | Own `domain`, `src/shared/domain` |
 | Infrastructure | `src/modules/<module>/infrastructure` | Prisma repositories, external providers | Own `domain` and `application`, `src/shared` |
@@ -57,7 +57,7 @@ tests/                                # Mirrors src/
 ├── shared/
 ├── support/                          # In-memory fakes, builders, database helpers
 ├── lint/                             # Tests of the ESLint rules; the only folder with no src/ counterpart
-└── e2e/                              # Playwright (not set up yet)
+└── e2e/                              # Playwright
 ```
 
 `src/shared` only holds pieces used by several modules and without the business logic of any single module. Moving something into it requires a reason. Its subfolders are created when first needed; today `domain`, `application`, `infrastructure` and `presentation` exist. The Better Auth instance, the Prisma client (generated into `src/shared/infrastructure/generated/`, git-ignored), the session reader and the scrypt password hasher live in `src/shared/infrastructure`; the accounts module's infrastructure imports them from there.

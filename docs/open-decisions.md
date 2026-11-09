@@ -27,7 +27,7 @@ Items marked "Decided" are closed but stay here until the `plan.md` of the spec 
 
 | ID | Decision | Before phase | Notes |
 |---|---|---|---|
-| OD-12 | Authentication and access: sign-in methods, sessions, whether universes can be shared or edited by several users, and with that the error model (`AuthenticationError` 401, `AuthorizationError` 403 versus "not found") | 1 | **Decided 2026-11-06, executed by specs 002 (engine) and 003 (screens):** Better Auth with email and password, session in a cookie backed by a database session, one owner per universe, no sharing in Phase 1. `AuthenticationError` 401 is used from the start; a resource of another user is reported as not found (404); `AuthorizationError` 403 stays reserved until sharing exists. Social sign-in, email verification and password recovery are deferred to Phase 5 (they need an email provider, which depends on OD-9); until then a forgotten password cannot be recovered. |
+| OD-12 | Sign-in with social accounts, email verification and password recovery or reset (the rest of authentication and access was decided 2026-11-06 and executed by specs 002 and 003) | 5 | They need an email provider, which depends on the deployment target (OD-9). Until then a forgotten password cannot be recovered. |
 | OD-13 | Search: engine, scope and spoiler-safe indexing | 4 | Normalized names already exist for duplicate detection. |
 | OD-9 | Deployment target, hosting and CI/CD | 5 | `.gitignore` already lists `.vercel`; no target is decided. |
 | OD-14 | Public API for external consumers and models: authentication, versioning, documentation | 5 | Prerequisite of phase 6. |
@@ -45,6 +45,5 @@ Items marked "Decided" are closed but stay here until the `plan.md` of the spec 
 
 | ID | Decision | Before phase | Notes |
 |---|---|---|---|
-| OD-17 | UI test tooling (jsdom and testing-library, Playwright). Until then the UI is verified manually, as recorded in the spec 001 plan (section 7). | 1 | **Decided 2026-11-06, executed by spec 003 (account screens, where the browser tests live; spec 002 is verified without a browser):** only `@playwright/test` (E2E, run locally; GitHub Actions is still OD-22). `jsdom` and testing-library are deferred until a component with enough logic justifies them. It is installed by the first spec that needs it, and spec 003 uses it only for the account flows. Turning the manual list of the spec 001 plan (section 7) into automated tests is left to a short later spec (user decision, 2026-11-06, while specifying 002). |
 | OD-21 | Permission rules in `.claude/settings.json` so that chaining the SDD phases (the `Skill` and `Agent` tools) does not ask for confirmation at every step | first run of the new flow (spec 002) | Decide by watching which prompts really appear. That first run also proves that chaining between commands works at all. |
 | OD-22 | When Prettier (`pnpm format`) and GitHub Actions are set up | none | `CLAUDE.md` lists both in the stack, but neither exists and no phase includes them. Docker Compose is already in phase 1 of the roadmap. |
