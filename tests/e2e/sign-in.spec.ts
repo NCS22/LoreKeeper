@@ -8,7 +8,9 @@ import {
 import { isServerActionRequest, isServerActionRequestWithText } from "./support/server-action-requests";
 import { seedAccountInDatabase } from "./support/seed-account-in-database";
 import { buildUniqueAccount, E2E_ACCOUNT_PASSWORD } from "./support/unique-account";
+import { UNREACHABLE_DATA_SERVER_ADDRESS } from "./support/test-servers";
 import { waitForFormHydration } from "./support/wait-for-form-hydration";
+import { expectWorkspaceIsShown } from "./support/workspace-content";
 
 // Sign-in page and form, driven as a person would (FR-2, FR-6 to FR-14, FR-19, FR-22, FR-30,
 // NFR-1, NFR-2, NFR-5). Accounts are created directly in the test database; every test has its own.
@@ -16,8 +18,6 @@ import { waitForFormHydration } from "./support/wait-for-form-hydration";
 // Sign-in runs a deliberately slow password hash, and tests run in parallel.
 const expect = baseExpect.configure({ timeout: 15_000 });
 
-const UNREACHABLE_DATA_SERVER_ADDRESS = "http://localhost:3101";
-const SAMPLE_UNIVERSE_NAME = "The Ember Concordat";
 const messages = en.accountForms;
 const SIGN_IN_PAGE_ADDRESS_PATTERN = /\/sign-in(\?.*)?$/;
 
@@ -51,10 +51,6 @@ async function typeCredentials(page: Page, email: string, password: string): Pro
 async function signInThroughTheForm(page: Page, email: string, password: string): Promise<void> {
   await typeCredentials(page, email, password);
   await findSubmitButton(page).click();
-}
-
-async function expectWorkspaceIsShown(page: Page): Promise<void> {
-  await expect(page.getByText(SAMPLE_UNIVERSE_NAME).first()).toBeVisible();
 }
 
 /** Runs `handleServerAction` for every Server Action call the page makes; everything else goes through. */

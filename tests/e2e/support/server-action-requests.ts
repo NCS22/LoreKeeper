@@ -11,3 +11,13 @@ export function isServerActionRequest(request: Request): boolean {
 export function isServerActionRequestWithText(request: Request, text: string): boolean {
   return isServerActionRequest(request) && (request.postData() ?? "").includes(text);
 }
+
+/**
+ * The headers of a forged Server Action call made without a browser page. A call carries the
+ * `next-action` header; its value is the identifier of an action (here one that does not exist, since
+ * the guard answers before any action is looked up).
+ */
+export const FORGED_OPERATION_CALL_HEADERS = {
+  "next-action": "0123456789abcdef",
+  "content-type": "text/plain;charset=UTF-8",
+};

@@ -8,7 +8,9 @@ import {
 import { isServerActionRequest, isServerActionRequestWithText } from "./support/server-action-requests";
 import { seedAccountInDatabase } from "./support/seed-account-in-database";
 import { buildUniqueAccount, E2E_ACCOUNT_DISPLAY_NAME, E2E_ACCOUNT_PASSWORD } from "./support/unique-account";
+import { UNREACHABLE_DATA_SERVER_ADDRESS } from "./support/test-servers";
 import { waitForFormHydration } from "./support/wait-for-form-hydration";
+import { expectWorkspaceIsShown } from "./support/workspace-content";
 
 // Sign-up page and form, driven as a person would (FR-1, FR-3 to FR-5, FR-8 to FR-14, FR-19, FR-22,
 // FR-30, NFR-1, NFR-2, NFR-5). Every test uses its own unique email, so tests never collide.
@@ -16,8 +18,6 @@ import { waitForFormHydration } from "./support/wait-for-form-hydration";
 // Sign-up and sign-in run a deliberately slow password hash, and tests run in parallel.
 const expect = baseExpect.configure({ timeout: 15_000 });
 
-const UNREACHABLE_DATA_SERVER_ADDRESS = "http://localhost:3101";
-const SAMPLE_UNIVERSE_NAME = "The Ember Concordat";
 const messages = en.accountForms;
 const SIGN_UP_PAGE_ADDRESS_PATTERN = /\/sign-up(\?.*)?$/;
 const MAXIMUM_DISPLAY_NAME_LENGTH = 120;
@@ -102,10 +102,6 @@ async function signInThroughTheSignInPage(page: Page, email: string, password: s
   await page.getByLabel(messages.signIn.emailLabel, { exact: true }).fill(email);
   await page.getByLabel(messages.signIn.passwordLabel, { exact: true }).fill(password);
   await page.getByRole("button", { name: messages.signIn.submit, exact: true }).click();
-}
-
-async function expectWorkspaceIsShown(page: Page): Promise<void> {
-  await expect(page.getByText(SAMPLE_UNIVERSE_NAME).first()).toBeVisible();
 }
 
 /** The message must be inside the block that the field points to with `aria-describedby` (NFR-2). */

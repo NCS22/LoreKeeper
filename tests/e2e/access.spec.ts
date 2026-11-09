@@ -1,11 +1,14 @@
-import { expect as baseExpect, test, type APIResponse, type Page } from "@playwright/test";
+import { expect as baseExpect, test, type APIResponse } from "@playwright/test";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { en } from "../../src/messages/en";
 import { findSessionCookieValue } from "./support/account-form-support";
+import { FORGED_OPERATION_CALL_HEADERS } from "./support/server-action-requests";
 import { seedAccountInDatabase } from "./support/seed-account-in-database";
-import type { E2eAccount } from "./support/unique-account";
+import { submitSignInForm } from "./support/sign-in-through-the-form";
+import { HEALTHY_SERVER_ADDRESS } from "./support/test-servers";
 import { waitForFormHydration } from "./support/wait-for-form-hydration";
+import { expectWorkspaceIsShown, SAMPLE_UNIVERSE_NAME, WORKSPACE_ONLY_TEXTS } from "./support/workspace-content";
 
 // Access to pages (FR-13, FR-15, FR-18 to FR-22, FR-29, FR-34, NFR-4): what a signed-out client gets
 // from every kind of request, what a signed-in person gets from the sign pages, the three public
@@ -14,24 +17,6 @@ import { waitForFormHydration } from "./support/wait-for-form-hydration";
 // Sign-in runs a deliberately slow password hash, and tests run in parallel.
 const expect = baseExpect.configure({ timeout: 15_000 });
 
-const HEALTHY_SERVER_ADDRESS = "http://localhost:3100";
-const SAMPLE_UNIVERSE_NAME = "The Ember Concordat";
-// Text that only a signed-in person sees in the workspace root: the sample universes and the labels
-// of the top bar, the side panels and the center (NFR-4). None of it may reach a signed-out client.
-const WORKSPACE_ONLY_TEXTS = [
-  SAMPLE_UNIVERSE_NAME,
-  "Tidewrack",
-  en.workspace.mainLabel,
-  en.workspace.sidebarLabel,
-  en.workspace.inspectorLabel,
-  en.sidebar.treeLabel,
-  en.sidebar.newUniverse,
-  en.center.graphView,
-  en.center.newElement,
-  en.menus.label,
-];
-// A call to a Server Action carries this header; its value is the identifier of an action.
-const OPERATION_CALL_HEADERS = { "next-action": "0123456789abcdef", "content-type": "text/plain;charset=UTF-8" };
 const SIGN_IN_MESSAGES = en.accountForms.signIn;
 
 type RequestedMethod = "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "PATCH";
@@ -42,18 +27,6 @@ function expectNoWorkspaceText(response: APIResponse, body: string): void {
     expect(body, `body contains "${workspaceText}"`).not.toContain(workspaceText);
     expect(headersText, `headers contain "${workspaceText}"`).not.toContain(workspaceText);
   }
-}
-
-async function signInThroughTheForm(page: Page, account: E2eAccount, signInAddress = "/sign-in"): Promise<void> {
-  await page.goto(signInAddress);
-  await waitForFormHydration(page);
-  await page.getByLabel(SIGN_IN_MESSAGES.emailLabel).fill(account.email);
-  await page.getByLabel(SIGN_IN_MESSAGES.passwordLabel).fill(account.password);
-  await page.getByRole("button", { name: SIGN_IN_MESSAGES.submit, exact: true }).click();
-}
-
-async function expectWorkspaceIsShown(page: Page): Promise<void> {
-  await expect(page.getByText(SAMPLE_UNIVERSE_NAME).first()).toBeVisible();
 }
 
 test.describe("a signed-out client asking for a page", () => {
@@ -125,7 +98,7 @@ test.describe("a signed-out client making an operation call to a workspace addre
       }) => {
         const response = await request.fetch(address, {
           method,
-          headers: OPERATION_CALL_HEADERS,
+          headers: FORGED_OPERATION_CALL_HEADERS,
           data: "[]",
           maxRedirects: 0,
         });
@@ -155,7 +128,7 @@ test.describe("a signed-out client making an operation call to a workspace addre
         pageRequest.headers()["next-action"] !== undefined &&
         (pageRequest.postData() ?? "").includes(account.email),
     );
-    await signInThroughTheForm(page, account);
+    await submitSignInForm(page, account);
     const signInCall = await signInCallPromise;
     await expectWorkspaceIsShown(page);
 
@@ -271,7 +244,7 @@ test.describe("the return destination in the browser (FR-13, FR-19, FR-20)", () 
     test(`ignores ${ignoredDestination.name} and uses the workspace root`, async ({ page }) => {
       const account = await seedAccountInDatabase();
 
-      await signInThroughTheForm(page, account, `/sign-in?returnTo=${ignoredDestination.returnTo}`);
+      await submitSignInForm(page, account, `/sign-in?returnTo=${ignoredDestination.returnTo}`);
 
       await expectWorkspaceIsShown(page);
       expect(page.url()).toBe(`${HEALTHY_SERVER_ADDRESS}/`);
@@ -284,7 +257,7 @@ test.describe("a signed-in person", () => {
     page,
   }) => {
     const account = await seedAccountInDatabase();
-    await signInThroughTheForm(page, account);
+    await submitSignInForm(page, account);
     await expectWorkspaceIsShown(page);
     expect(await findSessionCookieValue(page)).toBeDefined();
 
@@ -320,7 +293,7 @@ test.describe("a signed-in person", () => {
     page,
   }) => {
     const account = await seedAccountInDatabase();
-    await signInThroughTheForm(page, account);
+    await submitSignInForm(page, account);
     await expectWorkspaceIsShown(page);
     expect(await findSessionCookieValue(page)).toBeDefined();
 
@@ -356,7 +329,7 @@ test.describe("the headers the browser receives", () => {
     page,
   }) => {
     const account = await seedAccountInDatabase();
-    await signInThroughTheForm(page, account);
+    await submitSignInForm(page, account);
     await expectWorkspaceIsShown(page);
 
     const response = await page.goto("/");
@@ -368,7 +341,7 @@ test.describe("the headers the browser receives", () => {
 
   test("an address that does not exist carries the browser protections when signed in (FR-34)", async ({ page }) => {
     const account = await seedAccountInDatabase();
-    await signInThroughTheForm(page, account);
+    await submitSignInForm(page, account);
     await expectWorkspaceIsShown(page);
 
     const response = await page.goto("/nope");

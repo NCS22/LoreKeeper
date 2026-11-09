@@ -19,3 +19,16 @@ export function buildUniqueAccount(): E2eAccount {
     displayName: E2E_ACCOUNT_DISPLAY_NAME,
   };
 }
+
+/** A display name of exactly 120 characters, the longest the account rules accept. */
+export const LONGEST_DISPLAY_NAME = "n".repeat(120);
+
+/**
+ * A unique, valid email of exactly 254 characters, the longest the account rules accept, with no
+ * space or hyphen where a line could be broken (64 + 1 + 189 = 254; labels of at most 63 characters).
+ */
+export function buildLongestEmail(): string {
+  const uniqueLocalPart = `e2e${randomUUID().replaceAll("-", "")}`.padEnd(64, "x");
+  const domain = `${"a".repeat(63)}.${"b".repeat(63)}.${"c".repeat(57)}.com`;
+  return `${uniqueLocalPart}@${domain}`;
+}

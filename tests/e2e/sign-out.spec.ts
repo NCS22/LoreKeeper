@@ -5,9 +5,14 @@ import { SESSION_CHECK_FAILED_ACTION_REFUSAL } from "../../src/shared/presentati
 import { createGate, findSessionCookieValue, interceptServerActionsOfPage } from "./support/account-form-support";
 import { isServerActionRequest } from "./support/server-action-requests";
 import { seedAccountInDatabase } from "./support/seed-account-in-database";
+import { signInThroughTheForm as signInThroughTheFormAndWaitForTheRoot } from "./support/sign-in-through-the-form";
 import { deleteSessionRowsInDatabase, expireSessionRowsInDatabase } from "./support/session-rows-in-database";
-import { buildUniqueAccount, type E2eAccount } from "./support/unique-account";
+import { buildLongestEmail, buildUniqueAccount, LONGEST_DISPLAY_NAME, type E2eAccount } from "./support/unique-account";
+import { HEALTHY_SERVER_ADDRESS, WORKSPACE_ROOT_ACTION_PATTERN } from "./support/test-servers";
+import { findMenuMessage, findMenuPanel, findMenuTrigger, findSignOutButton, openUserMenu } from "./support/user-menu-locators";
+import { waitForElementHydration } from "./support/wait-for-element-hydration";
 import { waitForFormHydration } from "./support/wait-for-form-hydration";
+import { expectWorkspaceIsShown, SAMPLE_UNIVERSE_NAME } from "./support/workspace-content";
 
 // The user menu, sign-out, the back action and the clean start of the workspace (FR-25 to FR-32,
 // NFR-1, NFR-2, NFR-5). Accounts are created directly in the test database; every test has its own.
@@ -15,40 +20,13 @@ import { waitForFormHydration } from "./support/wait-for-form-hydration";
 // Sign-in runs a deliberately slow password hash, and tests run in parallel.
 const expect = baseExpect.configure({ timeout: 15_000 });
 
-const HEALTHY_SERVER_ADDRESS = "http://localhost:3100";
-const SAMPLE_UNIVERSE_NAME = "The Ember Concordat";
-const WORKSPACE_ROOT_ACTION_PATTERN = /^http:\/\/localhost:3100\/(\?.*)?$/;
 const signInMessages = en.accountForms.signIn;
 const signOutMessages = en.accountForms.signOut;
 
-async function signInThroughTheForm(page: Page, account: E2eAccount, signInAddress = "/sign-in"): Promise<void> {
-  await page.goto(signInAddress);
-  await waitForFormHydration(page);
-  await page.getByLabel(signInMessages.emailLabel).fill(account.email);
-  await page.getByLabel(signInMessages.passwordLabel).fill(account.password);
-  await page.getByRole("button", { name: signInMessages.submit, exact: true }).click();
-  await expect(page).toHaveURL("/");
+/** Signs in through the real form and waits until the workspace is shown. */
+async function signInThroughTheForm(page: Page, account: E2eAccount): Promise<void> {
+  await signInThroughTheFormAndWaitForTheRoot(page, account);
   await expectWorkspaceIsShown(page);
-}
-
-async function expectWorkspaceIsShown(page: Page): Promise<void> {
-  await expect(page.getByText(SAMPLE_UNIVERSE_NAME).first()).toBeVisible();
-}
-
-function findMenuTrigger(page: Page): Locator {
-  return page.getByRole("button", { name: en.userMenu.triggerLabel });
-}
-
-function findMenuPanel(page: Page): Locator {
-  return page.getByRole("dialog", { name: en.userMenu.panelTitle });
-}
-
-function findSignOutButton(page: Page): Locator {
-  return findMenuPanel(page).getByRole("button", { name: signOutMessages.submit, exact: true });
-}
-
-function findMenuMessage(page: Page): Locator {
-  return findMenuPanel(page).getByRole("alert");
 }
 
 /** The general message of the sign-in page's form, where a sign-out must leave no error. */
@@ -56,22 +34,8 @@ function findSignInFormMessage(page: Page): Locator {
   return page.locator("form").getByRole("alert");
 }
 
-/** Waits until React is attached to the element: a click before that does nothing. */
-async function waitForElementHydration(element: Locator): Promise<void> {
-  await expect(element).toBeVisible();
-  await expect
-    .poll(() => element.evaluate((node) => Object.keys(node).some((key) => key.startsWith("__reactProps$"))))
-    .toBe(true);
-}
-
 function waitForMenuTriggerHydration(page: Page): Promise<void> {
   return waitForElementHydration(findMenuTrigger(page));
-}
-
-async function openUserMenu(page: Page): Promise<void> {
-  await waitForMenuTriggerHydration(page);
-  await findMenuTrigger(page).click();
-  await expect(findMenuPanel(page)).toBeVisible();
 }
 
 async function signOutFromTheMenu(page: Page): Promise<void> {
@@ -92,13 +56,6 @@ function readTextContent(element: Locator): Promise<string | null> {
 
 function isSignOutCall(request: Request): boolean {
   return isServerActionRequest(request) && new URL(request.url()).pathname === "/";
-}
-
-function buildLongEmail(): string {
-  // 64 + 1 + 189 = 254 characters, still a valid address (labels of at most 63 characters).
-  const uniqueLocalPart = `e2e${randomUUID().replaceAll("-", "")}`.padEnd(64, "x");
-  const domain = `${"a".repeat(63)}.${"b".repeat(63)}.${"c".repeat(57)}.com`;
-  return `${uniqueLocalPart}@${domain}`;
 }
 
 async function createInMemoryUniverse(page: Page, universeName: string): Promise<void> {
@@ -129,7 +86,7 @@ test.describe("user menu: the name and the email (FR-25, FR-26)", () => {
   const unusualAccounts: ReadonlyArray<{ name: string; build: () => E2eAccount }> = [
     {
       name: "a display name of 120 characters and an email of 254 characters, with nothing to split them on",
-      build: () => ({ ...buildUniqueAccount(), displayName: "n".repeat(120), email: buildLongEmail() }),
+      build: () => ({ ...buildUniqueAccount(), displayName: LONGEST_DISPLAY_NAME, email: buildLongestEmail() }),
     },
     {
       name: "markup in the display name",
@@ -192,8 +149,8 @@ test.describe("user menu: the name and the email (FR-25, FR-26)", () => {
   test("at 320 px the menu keeps working with a 120-character name and a 254-character email and nothing scrolls sideways (FR-25, FR-26, NFR-6)", async ({ page }) => {
     const account = await seedAccountInDatabase({
       ...buildUniqueAccount(),
-      displayName: "n".repeat(120),
-      email: buildLongEmail(),
+      displayName: LONGEST_DISPLAY_NAME,
+      email: buildLongestEmail(),
     });
     await page.setViewportSize({ width: 320, height: 700 });
     await signInThroughTheForm(page, account);

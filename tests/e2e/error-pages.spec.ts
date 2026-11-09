@@ -1,4 +1,4 @@
-import { expect as baseExpect, test, type Locator, type Page, type Route } from "@playwright/test";
+import { expect as baseExpect, test, type Page, type Route } from "@playwright/test";
 import { en } from "../../src/messages/en";
 import {
   SESSION_CHECK_FAILED_ACTION_REFUSAL,
@@ -7,7 +7,11 @@ import {
 import { findSessionCookieValue, interceptServerActionsOfPage } from "./support/account-form-support";
 import { seedAccountInDatabase } from "./support/seed-account-in-database";
 import { signInThroughTheForm } from "./support/sign-in-through-the-form";
+import { FORGED_OPERATION_CALL_HEADERS } from "./support/server-action-requests";
+import { UNREACHABLE_DATA_SERVER_ADDRESS, WORKSPACE_ROOT_ACTION_PATTERN } from "./support/test-servers";
+import { findMenuMessage, findMenuPanel, findMenuTrigger, findSignOutButton, openUserMenu } from "./support/user-menu-locators";
 import { waitForElementHydration } from "./support/wait-for-element-hydration";
+import { expectWorkspaceIsShown, WORKSPACE_ONLY_TEXTS } from "./support/workspace-content";
 
 // The not-found page and the error page (FR-23, FR-24, FR-28, FR-33, NFR-1, NFR-2): a signed-in person
 // asking for an address that does not exist, a signed-out one asking for the same address, and the
@@ -16,50 +20,9 @@ import { waitForElementHydration } from "./support/wait-for-element-hydration";
 // Sign-in runs a deliberately slow password hash, and tests run in parallel.
 const expect = baseExpect.configure({ timeout: 15_000 });
 
-const UNREACHABLE_DATA_SERVER_ADDRESS = "http://localhost:3101";
 const UNKNOWN_ADDRESS = "/no-such-address";
-const SAMPLE_UNIVERSE_NAME = "The Ember Concordat";
-const WORKSPACE_ROOT_ACTION_PATTERN = /^http:\/\/localhost:3100\/(\?.*)?$/;
-const OPERATION_CALL_HEADERS = { "next-action": "0123456789abcdef", "content-type": "text/plain;charset=UTF-8" };
-// Text that only the workspace shows: none of it may appear on the error page or in a refusal.
-const WORKSPACE_ONLY_TEXTS = [
-  SAMPLE_UNIVERSE_NAME,
-  "Tidewrack",
-  en.workspace.mainLabel,
-  en.workspace.sidebarLabel,
-  en.workspace.inspectorLabel,
-  en.sidebar.newUniverse,
-  en.center.graphView,
-  en.menus.label,
-];
 const signInMessages = en.accountForms.signIn;
 const signOutMessages = en.accountForms.signOut;
-
-function findMenuTrigger(page: Page): Locator {
-  return page.getByRole("button", { name: en.userMenu.triggerLabel });
-}
-
-function findMenuPanel(page: Page): Locator {
-  return page.getByRole("dialog", { name: en.userMenu.panelTitle });
-}
-
-function findSignOutButton(page: Page): Locator {
-  return findMenuPanel(page).getByRole("button", { name: signOutMessages.submit, exact: true });
-}
-
-function findMenuMessage(page: Page): Locator {
-  return findMenuPanel(page).getByRole("alert");
-}
-
-async function openUserMenu(page: Page): Promise<void> {
-  await waitForElementHydration(findMenuTrigger(page));
-  await findMenuTrigger(page).click();
-  await expect(findMenuPanel(page)).toBeVisible();
-}
-
-async function expectWorkspaceIsShown(page: Page): Promise<void> {
-  await expect(page.getByText(SAMPLE_UNIVERSE_NAME).first()).toBeVisible();
-}
 
 /** Sends the call to the sign-out operation of the page to the unreachable-data server, with the person's cookie. */
 async function redirectServerActionsToUnreachableDataServer(page: Page): Promise<void> {
@@ -283,7 +246,7 @@ test.describe("sign-out and operation calls when the session cannot be checked (
     const cookieHeader = cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join("; ");
 
     const response = await request.post(`${UNREACHABLE_DATA_SERVER_ADDRESS}/`, {
-      headers: { ...OPERATION_CALL_HEADERS, cookie: cookieHeader },
+      headers: { ...FORGED_OPERATION_CALL_HEADERS, cookie: cookieHeader },
       data: "[]",
       maxRedirects: 0,
     });

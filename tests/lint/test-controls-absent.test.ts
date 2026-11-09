@@ -28,6 +28,8 @@ const END_TO_END_FAILURE_IDENTIFIERS = [
   "redirectServerActionsToUnreachableDataServer",
   "deleteSessionRowsInDatabase",
   "expireSessionRowsInDatabase",
+  "moveSessionRowsBackInTimeInDatabase",
+  "readSessionExpiryDatesInDatabase",
 ];
 
 const SOURCE_FILE_PATTERN = /\.(?:ts|tsx|js|jsx|mjs|cjs)$/;

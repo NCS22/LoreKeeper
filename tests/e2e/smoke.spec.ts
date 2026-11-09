@@ -2,10 +2,10 @@ import { expect, test } from "@playwright/test";
 import { en } from "../../src/messages/en";
 import { verifyPasswordAsTyped } from "../../src/shared/infrastructure/scrypt-password-hasher";
 import { seedAccountInDatabase } from "./support/seed-account-in-database";
+import { HEALTHY_SERVER_ADDRESS, UNREACHABLE_DATA_SERVER_ADDRESS } from "./support/test-servers";
 import { withTestDatabaseClient } from "./support/with-test-database-client";
+import { SAMPLE_UNIVERSE_NAME } from "./support/workspace-content";
 
-const UNREACHABLE_DATA_SERVER_ADDRESS = "http://localhost:3101";
-const SAMPLE_UNIVERSE_NAME = "The Ember Concordat";
 
 test.describe("harness smoke test", () => {
   test("the healthy server sends a signed-out browser asking for the workspace root to the sign-in page", async ({
@@ -14,7 +14,7 @@ test.describe("harness smoke test", () => {
     const response = await page.goto("/");
 
     expect(response?.status()).toBe(200);
-    expect(page.url()).toBe("http://localhost:3100/sign-in?returnTo=%2F");
+    expect(page.url()).toBe(`${HEALTHY_SERVER_ADDRESS}/sign-in?returnTo=%2F`);
     await expect(page.getByRole("heading", { name: en.accountForms.signIn.title })).toBeVisible();
     await expect(page.getByText(SAMPLE_UNIVERSE_NAME)).toHaveCount(0);
   });
