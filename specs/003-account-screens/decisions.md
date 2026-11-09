@@ -350,3 +350,45 @@ Note (not a decision): the writing tool turned the escape sequences for U+2028 a
 - **Decided:** workspace texts are searched with `exact: true` because "Workspace" also matched "Back to the workspace"; the response of the call redirected to 3101 arrives with the 3100 URL, so it is identified by the `next-action` header and the 503 status.
 - **Why:** to make the assertions precise.
 - **Discarded:** not recorded.
+
+## T10 - Session renewal, 320 px matrix and consolidation of the E2E suite (approved by the user at the T10 implementation gate, 2026-11-09)
+
+### D-T10-1. Helpers duplicated across the E2E specs moved to `tests/e2e/support/`
+
+- **Decided:** the helpers that earlier specs duplicated moved to `tests/e2e/support/`: server addresses, `SAMPLE_UNIVERSE_NAME`, `expectWorkspaceIsShown`, `WORKSPACE_ONLY_TEXTS`, the operation-call headers, the user-menu locators, two copies of `signInThroughTheForm`, `buildLongEmail` and `waitForElementHydration`. No behavior changed. `error-pages.spec.ts` now uses the longer `WORKSPACE_ONLY_TEXTS` list from `access.spec.ts`, so it checks more texts. Only tests changed.
+- **Why:** the new specs of T10 needed the same helpers (consolidation task).
+- **Discarded:** not recorded.
+
+### D-T10-2. `submitSignInForm` stays separate from `signInThroughTheForm`
+
+- **Decided:** the first does not wait for the workspace root (used by `access.spec.ts`); the second waits for `/`.
+- **Why:** not recorded.
+- **Discarded:** not recorded.
+
+### D-T10-3. A window of 300 s for the "30 days" browser expirations
+
+- **Decided:** where the browser expiration of the cookie is compared with 30 days, a window of plus or minus 300 s is used between the test clock and the browser clock (same machine).
+- **Why:** the two clocks are read at different moments.
+- **Discarded:** not recorded.
+
+### D-T10-4. `SameSite` is compared case-insensitively
+
+- **Decided:** the session cookie is compared case-insensitively for `SameSite`, as decision D-T6-1 already showed (`SameSite=strict` in the header).
+- **Why:** the library writes `strict` in lower case and the browser reports `Strict`.
+- **Discarded:** not recorded.
+
+### D-T10-5. A test fixes "at most once a day" at header level
+
+- **Decided:** the "two openings on the same day" test fixes the behavior "extended at most once a day" (spec 002 FR-23) at the level of response headers; it passed 8 of 8.
+- **Why:** not recorded.
+- **Discarded:** not recorded.
+
+### D-T10-6. Name of the 320 px spec and limits of the proof
+
+- **Decided:** the spec is `tests/e2e/narrow-width.spec.ts`, as `tasks.md` and the plan say (the brief of the task said `narrow-viewport`). Limits of the proof, stated here:
+  - Neither the browser clock nor the server clock is moved. The proof is the `Set-Cookie` of each response, the stored cookie never going backward, and the server accepting the session after 31 simulated days in the test database (plan D11).
+  - `Secure` is only checked to be absent over http; over HTTPS it stays the manual check 002 FR-29.
+  - `error.tsx` is not tested in a browser; it is covered by `tests/app/error.test.ts` and by `/session-check-failed`, which shares `AccountPageShell`.
+  - The 320 px checks are geometric (`scrollWidth <= clientWidth`, boxes inside 0 to 320), without screenshots.
+- **Why:** the plan and the tasks name the file this way; the limits are what the tools can prove.
+- **Discarded:** the name `narrow-viewport`.
