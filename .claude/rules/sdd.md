@@ -179,7 +179,7 @@ Validation (whole spec) repeats the verification gate and then goes through ever
 
 Closing runs only after validation has no pending problems and the user answered "Close the spec" at the validation gate. One actor per step:
 1. `@planner` sets the spec to `implemented`.
-2. `@implementer` updates "Current status" in `CLAUDE.md`, removes the open decisions the spec resolved from `docs/open-decisions.md` (their text stays in the `plan.md` or `decisions.md`), and marks the phase in `docs/roadmap.md` when its last spec is done.
+2. `@implementer` updates "Current status" in `CLAUDE.md` (it stays a short paragraph: what is real and what is still sample data; the detail goes in `docs/roadmap.md`), removes the open decisions the spec resolved from `docs/open-decisions.md` (their text stays in the `plan.md` or `decisions.md`), and marks the phase in `docs/roadmap.md` when its last spec is done.
 
 The implementer never closes a spec on its own, not even after the last task.
 
