@@ -47,6 +47,20 @@ const END_TO_END_FAILURE_IDENTIFIERS = [
   "replayServerAction",
   "buildCookieHeader",
   "readActionResult",
+  // Spec 004, layout and served-file tests: measuring the page in a browser and reading what the
+  // server hands out over HTTP.
+  "findElementsOutsideTheViewportWidth",
+  "expectNothingOutsideTheViewportWidth",
+  "expectBoxInsideTheViewportWidth",
+  "expectTextIsShownWhole",
+  "measureScrollingAreaAround",
+  "NARROWEST_VIEWPORT",
+  "DESKTOP_VIEWPORT",
+  "tabUntilFocused",
+  "readServedAnswer",
+  "servedAnswerContains",
+  "findStaticFileAddresses",
+  "fetchStaticFilesNamedBy",
 ];
 
 const SOURCE_FILE_PATTERN = /\.(?:ts|tsx|js|jsx|mjs|cjs)$/;
