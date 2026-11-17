@@ -36,30 +36,9 @@ export const en = {
   graph: {
     emptyText:
       "The graph will show the entities of this universe and the relationships between them. There is nothing to draw yet.",
-    legendTitle: "Legend",
-    zoomIn: "Zoom in",
-    zoomOut: "Zoom out",
-    fitToView: "Fit graph to view",
-    canvasLabel: (entityCount: number, relationshipCount: number) =>
-      `Knowledge graph with ${entityCount} entities and ${relationshipCount} relationships. The list view shows the same content as text.`,
   },
   entityList: {
     emptyText: "The list will show the entities of this universe, grouped by type. There are no entities yet.",
-  },
-  entityTypes: {
-    CHARACTER: "Character",
-    LOCATION: "Location",
-    ORGANIZATION: "Organization",
-    FACTION: "Faction",
-    OBJECT: "Object",
-    ABILITY: "Ability",
-    SPECIES: "Species",
-    CONCEPT: "Concept",
-  },
-  statuses: {
-    CONFIRMED: "Confirmed",
-    USER_NOTE: "Note",
-    SPECULATION: "Speculation",
   },
   universeCreation: {
     title: "New universe",
@@ -120,8 +99,6 @@ export const en = {
   inspector: {
     emptyTitle: "Nothing to show yet",
     emptyText: "Knowledge, relationships, events, sources and reading positions arrive in future versions.",
-    noKnowledge: "No knowledge has been added yet.",
-    revealedAt: "Revealed at",
   },
   menus: {
     label: "Application menu",

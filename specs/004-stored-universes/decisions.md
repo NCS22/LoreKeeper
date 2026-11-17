@@ -101,3 +101,10 @@
 - Why: avoids showing a 120-character name twice (toolbar and body) and gives every state its own heading; it also fixes the earlier observations (the `[expanded]` empty group, and the "side panel" wording that was wrong for the 320 px drawer).
 - Discarded: keeping the name in the toolbar `h1` and again in the empty state.
 - Approved by: pending the user.
+
+## D-T7-1. Marker set, structural test shape and files left in place
+
+- What: `tests/support/sample-data-markers.ts` holds ten markers: the plan's one per type (universe identifier and a long description sentence, work title, event identifier, source title, first entity, relationship and reading position identifiers) plus the second universe identifier and the first work identifier. `tests/lint/sample-data-absent.test.ts` scans every file under `src/` (any extension, `generated` excluded) for a `@/mocks` reference, a marker, or a file inside a `mocks/` folder, and checks itself on temporary folders (clean, import, each marker, mocks folder, a plain name such as "The Ember Concordat" is not flagged). `src/components/ui/select.tsx` is not imported by anything since T6 deleted the entity form, but it is a generic shadcn component, not sample data, so it stays.
+- Why: the plan asks for markers and a structural test; two extra identifiers cost nothing and widen coverage; the mocks-folder rule makes a revived `src/mocks` fail even with innocuous content.
+- Discarded: deleting `select.tsx` (not sample data, outside the task); matching only `.ts`/`.tsx` (a marker in CSS or JSON would be served too).
+- Approved by: pending the user.
