@@ -117,3 +117,17 @@
 - Discarded: putting the reads in `seed-universes-in-database.ts` (the name would lie); reading answer bodies in the page (not possible).
 - Approved by: pending the user.
 
+
+## D-T9-1. The request that "stays alive" is held with `page.route`; the sleeping trigger is used once, for 5 real seconds
+
+- What: in `universes-failures.spec.ts` the requests that never end (no answer in 30 s, the 5-minute cap, a second submission after the cap, leaving the form while waiting) are kept waiting by a `page.route` handler that the test later lets through (late answer) or drops (lost connection). The sleeping trigger is used only in "a storage that answers slowly", with a 5-second sleep, while the Playwright clock moves 31 seconds right after the call leaves the page. The plan (section 7) described the cap test with a sleeping trigger.
+- Why: a sleep is bounded (D-T8-1) and the test must make its assertions before it ends, so a sleeping trigger would make the cap test depend on real time; the held route is deterministic and looks identical to the page (a pending request). A trigger also needs a table lock to be installed and removed, which waits for the write in progress, so a long sleep could stall the other tests that run in parallel.
+- Discarded: a sleeping trigger for every "request alive" case (timing-dependent); a longer sleep (the 60-second bound, stalls parallel tests).
+- Approved by: pending the user.
+
+## D-T9-2. In the expired-session tests the live name check finishes before the session is ended
+
+- What: the tests of FR-10 wait for the answer of the name check (sent 250 ms after typing) and only then end the session, so that the creation is what reaches the missing session.
+- Why: by plan (section 4, row "Check name", `AUTHENTICATION_ERROR`) the name check of a signed-out person sends them to sign-in; if the session ended during the 250 ms, the check, not the creation, would leave the page and the typed values would be lost. This is the designed behavior, not a defect; it is noted in the report of T9 as an observation.
+- Discarded: changing the interpreter so that a signed-out name check keeps the form (code outside the task).
+- Approved by: pending the user.
