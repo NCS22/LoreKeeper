@@ -15,6 +15,10 @@ import {
   universeStorageFactories,
 } from "../../../support/universe-repository-factories";
 
+// Real identifiers: PostgreSQL stores the column as a UUID.
+const GENERATED_ID_1 = "00000000-0000-4000-8000-0000000000a1";
+const GENERATED_ID_2 = "00000000-0000-4000-8000-0000000000a2";
+const GENERATED_ID_3 = "00000000-0000-4000-8000-0000000000a3";
 const CREATION_TIME = new Date("2026-03-04T12:30:00.000Z");
 
 async function captureValidationError(creation: Promise<unknown>): Promise<ValidationError> {
@@ -36,7 +40,7 @@ describe.each(universeStorageFactories)("createUniverse: %s", (_name, createStor
     name: "Existing universe",
   });
 
-  async function setUp(generatedIds: readonly string[] = ["generated-1", "generated-2", "generated-3"]) {
+  async function setUp(generatedIds: readonly string[] = [GENERATED_ID_1, GENERATED_ID_2, GENERATED_ID_3]) {
     const { universeRepository } = await createStorage([existingUniverse]);
     let nextIdIndex = 0;
     const dependencies: CreateUniverseDependencies = {
@@ -66,7 +70,7 @@ describe.each(universeStorageFactories)("createUniverse: %s", (_name, createStor
     const universeDto = await createUniverse(dependencies, actor, validCommand);
 
     expect(universeDto).toEqual({
-      id: "generated-1",
+      id: GENERATED_ID_1,
       name: "Middle-earth",
       description: "Notes on the Third Age.",
       mode: "READER",
@@ -91,7 +95,7 @@ describe.each(universeStorageFactories)("createUniverse: %s", (_name, createStor
     const storedUniverses = await universeRepository.findAllOwnedBy(FIRST_OWNER_ID);
     expect(storedUniverses.map((universe) => universe.id)).toEqual([
       "00000000-0000-4000-8000-0000000000e1",
-      "generated-1",
+      GENERATED_ID_1,
     ]);
     expect(storedUniverses.every((universe) => universe.ownerId === FIRST_OWNER_ID)).toBe(true);
   });

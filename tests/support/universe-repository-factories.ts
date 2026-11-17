@@ -1,20 +1,16 @@
 import type { Universe } from "@/modules/universes/domain/universe";
-import type { ActingUser } from "@/shared/domain/acting-user";
 import type {
   UniverseStorage,
   UniverseStorageFactory,
 } from "./contracts/universe-repository-contract";
 import { createFakeRememberedUniverseRepository } from "./fakes/fake-remembered-universe-repository";
 import { createFakeUniverseRepository } from "./fakes/fake-universe-repository";
+import { createPostgresUniverseStorage } from "./database/postgres-universe-storage";
+import { FIRST_OWNER_ID } from "./universe-owners";
 
-export const FIRST_OWNER_ID = "10000000-0000-4000-8000-000000000001";
-export const SECOND_OWNER_ID = "10000000-0000-4000-8000-000000000002";
+export { buildActingUser, FIRST_OWNER_ID, SECOND_OWNER_ID } from "./universe-owners";
 
-export function buildActingUser(userId: string = FIRST_OWNER_ID): ActingUser {
-  return { userId, displayName: "Test person", email: `${userId}@example.com` };
-}
-
-async function createFakeUniverseStorage(
+export async function createFakeUniverseStorage(
   startingUniverses: readonly Universe[] = [],
 ): Promise<UniverseStorage> {
   return {
@@ -26,6 +22,7 @@ async function createFakeUniverseStorage(
 /** The interchangeable storages every use case scenario runs against (NFR-1). */
 export const universeStorageFactories: ReadonlyArray<readonly [string, UniverseStorageFactory]> = [
   ["fake storage", createFakeUniverseStorage],
+  ["PostgreSQL storage", createPostgresUniverseStorage],
 ];
 
 export function buildUniverse(overrides: Partial<Universe> = {}): Universe {

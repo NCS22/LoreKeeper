@@ -8,6 +8,8 @@ import { configDefaults, defineConfig } from "vitest/config";
 const DATABASE_BACKED_TEST_FILES = [
   "tests/shared/infrastructure/**/*.test.ts",
   "tests/modules/*/infrastructure/**/*.test.ts",
+  // The use case scenarios of the universes also run against PostgreSQL (spec 004, NFR-1).
+  "tests/modules/universes/application/**/*.test.ts",
   "tests/app/**/*.test.ts",
 ];
 

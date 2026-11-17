@@ -13,17 +13,20 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// Display name, trimmed.
-  name          String
+  name               String
   /// Comparable email: trimmed and lower-case. The migration adds a CHECK constraint that enforces it.
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
-  sessions      Session[]
-  accounts      Account[]
+  email              String              @unique
+  emailVerified      Boolean             @default(false)
+  image              String?
+  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime            @default(now()) @updatedAt @db.Timestamptz(3)
+  sessions           Session[]
+  accounts           Account[]
+  universes          Universe[]
+  /// The universe this account selected last: one row at most.
+  rememberedUniverse RememberedUniverse?
 }
 
 model Session {
@@ -69,4 +72,39 @@ model Verification {
   updatedAt  DateTime @default(now()) @updatedAt @db.Timestamptz(3)
 
   @@index([identifier])
+}
+
+enum UniverseMode {
+  READER
+  AUTHOR
+}
+
+/// Content of an account (specs/004-stored-universes/plan.md, section 2). `deletedAt` is filtered by every
+/// repository query and is written by the trash of spec 005. The migration adds CHECK constraints on the
+/// length of `name` and `description` in code points.
+model Universe {
+  id           String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId      String               @db.Uuid
+  name         String
+  description  String?
+  mode         UniverseMode         @default(READER)
+  createdAt    DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime             @default(now()) @updatedAt @db.Timestamptz(3)
+  deletedAt    DateTime?            @db.Timestamptz(3)
+  owner        User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  rememberedBy RememberedUniverse[]
+
+  /// Target of the composite foreign key of `RememberedUniverse`.
+  @@unique([id, ownerId])
+  @@index([ownerId, createdAt, id])
+}
+
+/// User state, not content: no `deletedAt`. The composite foreign key makes the database refuse a
+/// universe that belongs to another account.
+model RememberedUniverse {
+  userId     String   @id @db.Uuid
+  universeId String   @db.Uuid
+  updatedAt  DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  universe   Universe @relation(fields: [universeId, userId], references: [id, ownerId], onDelete: Cascade)
 }

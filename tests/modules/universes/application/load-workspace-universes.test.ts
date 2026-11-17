@@ -4,6 +4,7 @@ import { toUniverseDto } from "@/modules/universes/application/universe-dto";
 import {
   buildActingUser,
   buildUniverse,
+  createFakeUniverseStorage,
   FIRST_OWNER_ID,
   SECOND_OWNER_ID,
   universeStorageFactories,
@@ -60,18 +61,6 @@ describe.each(universeStorageFactories)("loadWorkspaceUniverses: %s", (_name, cr
     expect(initialUniverseId).toBe(newestUniverse.id);
   });
 
-  it("falls back to the oldest universe, without an error, when the remembered one is not an own universe", async () => {
-    const storage = await createStorage([oldestUniverse, universeOfOtherActor]);
-    await storage.rememberedUniverseRepository.saveRememberedUniverse(
-      FIRST_OWNER_ID,
-      "00000000-0000-4000-8000-0000000000ff",
-    );
-
-    const { initialUniverseId } = await loadWorkspaceUniverses(storage, actor);
-
-    expect(initialUniverseId).toBe(oldestUniverse.id);
-  });
-
   it("never lists the universes of another account", async () => {
     const storage = await createStorage([oldestUniverse, universeOfOtherActor]);
 
@@ -101,5 +90,33 @@ describe.each(universeStorageFactories)("loadWorkspaceUniverses: %s", (_name, cr
     expect((await loadWorkspaceUniverses(storage, otherActor)).initialUniverseId).toBe(
       universeOfOtherActor.id,
     );
+  });
+});
+
+// Only the fake can hold a remembered universe that is not an own one: PostgreSQL refuses to store
+// it (composite foreign key, tested in prisma-remembered-universe-repository.test.ts), and a
+// remembered universe that was deleted reads as none there.
+describe("loadWorkspaceUniverses: a remembered universe that is not an own one", () => {
+  const actor = buildActingUser(FIRST_OWNER_ID);
+  const oldestUniverse = buildUniverse({
+    id: "00000000-0000-4000-8000-000000000001",
+    name: "Oldest universe",
+  });
+  const otherAccountUniverse = buildUniverse({
+    id: "00000000-0000-4000-8000-000000000003",
+    ownerId: SECOND_OWNER_ID,
+    name: "Of the other",
+  });
+
+  it("falls back to the oldest universe, without an error, when the remembered one is not an own universe", async () => {
+    const storage = await createFakeUniverseStorage([oldestUniverse, otherAccountUniverse]);
+    await storage.rememberedUniverseRepository.saveRememberedUniverse(
+      FIRST_OWNER_ID,
+      "00000000-0000-4000-8000-0000000000ff",
+    );
+
+    const { initialUniverseId } = await loadWorkspaceUniverses(storage, actor);
+
+    expect(initialUniverseId).toBe(oldestUniverse.id);
   });
 });

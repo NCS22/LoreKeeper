@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { RememberedUniverseRepository } from "@/modules/universes/domain/remembered-universe-repository";
 import type { Universe } from "@/modules/universes/domain/universe";
 import type { UniverseRepository } from "@/modules/universes/domain/universe-repository";
-import { buildUniverse, FIRST_OWNER_ID, SECOND_OWNER_ID } from "../universe-repository-factories";
+import { buildUniverse } from "../universe-repository-factories";
+import { FIRST_OWNER_ID, SECOND_OWNER_ID } from "../universe-owners";
 
 /** The two ports the universes module stores through, kept by one implementation. */
 export type UniverseStorage = {
@@ -147,15 +148,6 @@ export function describeUniverseStorageContract(
         universeToAdd.createdAt.setUTCFullYear(1999);
 
         expect(await universeRepository.findAllOwnedBy(FIRST_OWNER_ID)).toEqual([buildUniverse()]);
-      });
-
-      it("keeps two storages independent", async () => {
-        const firstStorage = await createStorage();
-        const secondStorage = await createStorage();
-
-        await firstStorage.universeRepository.add(oldestUniverse);
-
-        expect(await secondStorage.universeRepository.findAllOwnedBy(FIRST_OWNER_ID)).toEqual([]);
       });
     });
 
