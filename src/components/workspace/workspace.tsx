@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { en } from "@/messages/en";
 import { PreferencesSync } from "@/components/accessibility/preferences-sync";
-import { InspectorContent } from "@/components/inspector/inspector-content";
+import { InspectorEmptyState } from "@/components/inspector/inspector-empty-state";
 import { InspectorPanel } from "@/components/inspector/inspector-panel";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { Topbar } from "@/components/topbar/topbar";
@@ -46,7 +46,7 @@ async function WorkspaceWithUniverses() {
           >
             {en.workspace.skipToContent}
           </a>
-          <WorkspaceLayout topbar={<Topbar />} sidebar={<Sidebar />} inspector={<InspectorPanel><InspectorContent /></InspectorPanel>}>
+          <WorkspaceLayout topbar={<Topbar />} sidebar={<Sidebar />} inspector={<InspectorPanel><InspectorEmptyState /></InspectorPanel>}>
             <CentralArea />
           </WorkspaceLayout>
         </UniversesProvider>

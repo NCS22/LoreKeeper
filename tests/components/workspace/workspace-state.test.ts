@@ -4,83 +4,30 @@ import { reduceWorkspaceState, type WorkspaceState } from "@/components/workspac
 function buildWorkspaceState(overrides: Partial<WorkspaceState> = {}): WorkspaceState {
   return {
     selectedUniverseId: "universe-a",
-    selectedWorkId: "work-a1",
-    selectedEntityId: "entity-a1",
-    highlightedEntityId: "entity-a1",
-    expandedUniverseIds: ["universe-a"],
     view: "graph",
-    isCreatingEntity: false,
     isCreatingUniverse: false,
     ...overrides,
   };
 }
 
-describe("reduceWorkspaceState: universe creation", () => {
-  it("starting the creation opens the form", () => {
-    const nextState = reduceWorkspaceState(buildWorkspaceState(), { type: "universeCreationStarted" });
-
-    expect(nextState.isCreatingUniverse).toBe(true);
+describe("reduceWorkspaceState: the shape of the state", () => {
+  it("holds only the selected universe, the view and whether the creation form is open", () => {
+    expect(Object.keys(buildWorkspaceState()).sort()).toEqual(["isCreatingUniverse", "selectedUniverseId", "view"]);
   });
+});
 
-  it("starting the creation also closes entity creation", () => {
-    const stateCreatingEntity = buildWorkspaceState({ isCreatingEntity: true });
-
-    const nextState = reduceWorkspaceState(stateCreatingEntity, { type: "universeCreationStarted" });
-
-    expect(nextState.isCreatingUniverse).toBe(true);
-    expect(nextState.isCreatingEntity).toBe(false);
-  });
-
-  it("starting the creation keeps the current selection", () => {
-    const initialState = buildWorkspaceState();
-
-    const nextState = reduceWorkspaceState(initialState, { type: "universeCreationStarted" });
-
-    expect(nextState.selectedUniverseId).toBe(initialState.selectedUniverseId);
-    expect(nextState.selectedWorkId).toBe(initialState.selectedWorkId);
-    expect(nextState.selectedEntityId).toBe(initialState.selectedEntityId);
-  });
-
-  it("cancelling closes the form and leaves the whole selection unchanged", () => {
-    const stateCreatingUniverse = buildWorkspaceState({ isCreatingUniverse: true });
-
-    const nextState = reduceWorkspaceState(stateCreatingUniverse, { type: "universeCreationCancelled" });
-
-    expect(nextState).toEqual({ ...stateCreatingUniverse, isCreatingUniverse: false });
-    expect(nextState.selectedUniverseId).toBe("universe-a");
-  });
-
-  it("a created universe is selected, with work and entity selection cleared and the form closed", () => {
-    const stateCreatingUniverse = buildWorkspaceState({ isCreatingUniverse: true });
-
-    const nextState = reduceWorkspaceState(stateCreatingUniverse, {
-      type: "universeCreated",
-      universeId: "universe-new",
+describe("reduceWorkspaceState: selecting", () => {
+  it("selecting a universe selects it and keeps the view", () => {
+    const nextState = reduceWorkspaceState(buildWorkspaceState({ view: "list" }), {
+      type: "universeSelected",
+      universeId: "universe-b",
     });
 
-    expect(nextState.selectedUniverseId).toBe("universe-new");
-    expect(nextState.selectedWorkId).toBeNull();
-    expect(nextState.selectedEntityId).toBeNull();
-    expect(nextState.highlightedEntityId).toBeNull();
-    expect(nextState.isCreatingUniverse).toBe(false);
+    expect(nextState).toEqual({ selectedUniverseId: "universe-b", view: "list", isCreatingUniverse: false });
   });
 
-  it("a created universe does not change the other universes' sidebar expansion or the view", () => {
-    const stateCreatingUniverse = buildWorkspaceState({ isCreatingUniverse: true, view: "list" });
-
-    const nextState = reduceWorkspaceState(stateCreatingUniverse, {
-      type: "universeCreated",
-      universeId: "universe-new",
-    });
-
-    expect(nextState.expandedUniverseIds).toEqual(["universe-a"]);
-    expect(nextState.view).toBe("list");
-  });
-
-  it("selecting another universe while the form is open closes it", () => {
-    const stateCreatingUniverse = buildWorkspaceState({ isCreatingUniverse: true });
-
-    const nextState = reduceWorkspaceState(stateCreatingUniverse, {
+  it("selecting a universe while the form is open closes it", () => {
+    const nextState = reduceWorkspaceState(buildWorkspaceState({ isCreatingUniverse: true }), {
       type: "universeSelected",
       universeId: "universe-b",
     });
@@ -89,30 +36,54 @@ describe("reduceWorkspaceState: universe creation", () => {
     expect(nextState.selectedUniverseId).toBe("universe-b");
   });
 
-  it("selecting a work while the form is open closes it", () => {
-    const stateCreatingUniverse = buildWorkspaceState({ isCreatingUniverse: true });
-
-    const nextState = reduceWorkspaceState(stateCreatingUniverse, {
-      type: "workSelected",
-      universeId: "universe-b",
-      workId: "work-b1",
+  it("selecting a universe when none was selected selects it", () => {
+    const nextState = reduceWorkspaceState(buildWorkspaceState({ selectedUniverseId: null }), {
+      type: "universeSelected",
+      universeId: "universe-a",
     });
 
-    expect(nextState.isCreatingUniverse).toBe(false);
-    expect(nextState.selectedWorkId).toBe("work-b1");
+    expect(nextState.selectedUniverseId).toBe("universe-a");
+  });
+
+  it("changing the view changes only the view", () => {
+    const initialState = buildWorkspaceState({ isCreatingUniverse: true });
+
+    const nextState = reduceWorkspaceState(initialState, { type: "viewChanged", view: "list" });
+
+    expect(nextState).toEqual({ ...initialState, view: "list" });
   });
 });
 
-describe("reduceWorkspaceState: no universe selected", () => {
-  it("a created universe is selected when none was, and the form closes", () => {
-    const stateWithoutUniverse = buildWorkspaceState({
-      selectedUniverseId: null,
-      selectedWorkId: null,
-      selectedEntityId: null,
-      highlightedEntityId: null,
-      expandedUniverseIds: [],
-      isCreatingUniverse: true,
+describe("reduceWorkspaceState: the creation form", () => {
+  it("starting the creation opens the form and keeps the selection", () => {
+    const initialState = buildWorkspaceState();
+
+    const nextState = reduceWorkspaceState(initialState, { type: "universeCreationStarted" });
+
+    expect(nextState).toEqual({ ...initialState, isCreatingUniverse: true });
+  });
+
+  it("cancelling closes the form and leaves everything else unchanged", () => {
+    const stateCreatingUniverse = buildWorkspaceState({ isCreatingUniverse: true });
+
+    const nextState = reduceWorkspaceState(stateCreatingUniverse, { type: "universeCreationCancelled" });
+
+    expect(nextState).toEqual({ ...stateCreatingUniverse, isCreatingUniverse: false });
+  });
+
+  it("a created universe is selected and the form closes, keeping the view", () => {
+    const stateCreatingUniverse = buildWorkspaceState({ isCreatingUniverse: true, view: "list" });
+
+    const nextState = reduceWorkspaceState(stateCreatingUniverse, {
+      type: "universeCreated",
+      universeId: "universe-new",
     });
+
+    expect(nextState).toEqual({ selectedUniverseId: "universe-new", view: "list", isCreatingUniverse: false });
+  });
+
+  it("with no universe selected, a created universe is selected and the form closes", () => {
+    const stateWithoutUniverse = buildWorkspaceState({ selectedUniverseId: null, isCreatingUniverse: true });
 
     const nextState = reduceWorkspaceState(stateWithoutUniverse, {
       type: "universeCreated",
@@ -123,47 +94,14 @@ describe("reduceWorkspaceState: no universe selected", () => {
     expect(nextState.isCreatingUniverse).toBe(false);
   });
 
-  it("starting and cancelling the creation leaves the selection empty", () => {
-    const stateWithoutUniverse = buildWorkspaceState({ selectedUniverseId: null, selectedWorkId: null });
+  it("with no universe selected, starting and cancelling the creation leaves the selection empty", () => {
+    const stateWithoutUniverse = buildWorkspaceState({ selectedUniverseId: null });
 
     const startedState = reduceWorkspaceState(stateWithoutUniverse, { type: "universeCreationStarted" });
     const cancelledState = reduceWorkspaceState(startedState, { type: "universeCreationCancelled" });
 
     expect(startedState.isCreatingUniverse).toBe(true);
     expect(startedState.selectedUniverseId).toBeNull();
-    expect(cancelledState.selectedUniverseId).toBeNull();
-  });
-
-  it("selecting a universe when none was selected selects it and clears the entity", () => {
-    const stateWithoutUniverse = buildWorkspaceState({ selectedUniverseId: null, selectedWorkId: null });
-
-    const nextState = reduceWorkspaceState(stateWithoutUniverse, { type: "universeSelected", universeId: "universe-a" });
-
-    expect(nextState.selectedUniverseId).toBe("universe-a");
-    expect(nextState.selectedEntityId).toBeNull();
-  });
-});
-
-describe("reduceWorkspaceState: existing entity creation behavior", () => {
-  it("starting and cancelling entity creation only toggles its flag", () => {
-    const initialState = buildWorkspaceState();
-
-    const startedState = reduceWorkspaceState(initialState, { type: "creationStarted" });
-    const cancelledState = reduceWorkspaceState(startedState, { type: "creationCancelled" });
-
-    expect(startedState).toEqual({ ...initialState, isCreatingEntity: true });
-    expect(cancelledState).toEqual(initialState);
-  });
-
-  it("selecting a universe closes entity creation and clears the entity of another universe", () => {
-    const stateCreatingEntity = buildWorkspaceState({ isCreatingEntity: true });
-
-    const nextState = reduceWorkspaceState(stateCreatingEntity, {
-      type: "universeSelected",
-      universeId: "universe-b",
-    });
-
-    expect(nextState.isCreatingEntity).toBe(false);
-    expect(nextState.selectedEntityId).toBeNull();
+    expect(cancelledState).toEqual(stateWithoutUniverse);
   });
 });

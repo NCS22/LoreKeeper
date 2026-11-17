@@ -1,23 +1,18 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { PanelLeftClose, Plus } from "lucide-react";
 import { en } from "@/messages/en";
 import { Button } from "@/components/ui/button";
 import { SidebarRail } from "@/components/sidebar/sidebar-rail";
 import { SidebarTree } from "@/components/sidebar/sidebar-tree";
+import { WorksEmptyState } from "@/components/sidebar/works-empty-state";
 import { useWorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { useWorkspaceState } from "@/components/workspace/workspace-state";
 
 export function Sidebar() {
   const { showsSidebarRail, toggleSidebar, closeSidebarAfterNavigation } = useWorkspaceLayout();
   const { state, dispatch } = useWorkspaceState();
-  const expandedUniverseIds = useMemo(() => new Set(state.expandedUniverseIds), [state.expandedUniverseIds]);
-
-  const setUniverseExpanded = useCallback(
-    (universeId: string, isExpanded: boolean) => dispatch({ type: "universeExpansionSet", universeId, isExpanded }),
-    [dispatch],
-  );
 
   // Below the md breakpoint the sidebar is a drawer that covers the form, so it closes once the creation starts.
   const startUniverseCreation = useCallback(() => {
@@ -41,7 +36,8 @@ export function Sidebar() {
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <SidebarTree expandedUniverseIds={expandedUniverseIds} setUniverseExpanded={setUniverseExpanded} />
+        <SidebarTree />
+        {state.selectedUniverseId === null ? null : <WorksEmptyState />}
       </div>
     </div>
   );

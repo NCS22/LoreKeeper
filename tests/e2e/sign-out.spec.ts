@@ -65,7 +65,7 @@ async function createStoredUniverse(page: Page, universeName: string): Promise<v
   await newUniverseButton.click();
   await page.getByRole("textbox", { name: en.universeCreation.nameLabel, exact: true }).fill(universeName);
   await page.getByRole("button", { name: en.universeCreation.create, exact: true }).click();
-  await expect(page.getByText(en.universeEmptyState.noContentYet)).toBeVisible();
+  await expect(page.getByText(en.universeEmptyState.emptyText)).toBeVisible();
 }
 
 test.describe("user menu: the name and the email (FR-25, FR-26)", () => {
@@ -449,7 +449,7 @@ test.describe("sign-out: clean start of the workspace (FR-31, FR-32)", () => {
 
     // The universe is stored, so it is back and selected; nothing typed in the earlier page is.
     await expect(page.getByText(universeName).first()).toBeVisible();
-    await expect(page.getByText(en.universeEmptyState.noContentYet)).toBeVisible();
+    await expect(page.getByText(en.universeEmptyState.emptyText)).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: en.universeCreation.title })).toHaveCount(0);
     await expect(page.getByText(halfTypedName)).toHaveCount(0);
   });

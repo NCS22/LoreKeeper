@@ -86,3 +86,18 @@
 
 - What: the notice texts of T4 are kept as the final ones (they already say what happened, that the entries are kept and what to do). The form also clears its field messages when a submission starts, so a later failure without field issues does not show an old field message, and a message that was already shown when the form opens does not take focus from the name field.
 - Approved by: pending the user.
+
+## D-T6-1. Five sample-only components that read the removed state are deleted in T6, not T7
+
+- What: `entity-creation-form.tsx`, `entity-list-view.tsx`, `graph-view.tsx`, `entity-sheet.tsx` and `inspector-content.tsx` are deleted now. The first four read `selectedEntityId`, `highlightedEntityId` or `selectedWorkId`, or dispatched `entitySelected`, which T6 removes from the workspace state; they cannot compile without them, and none is rendered any more. `inspector-content.tsx` (sample entity or empty state) is replaced by rendering `InspectorEmptyState` directly in `workspace.tsx`. The rest of the sample-only files (`src/mocks/**`, `graph-canvas.tsx`, `graph-legend.tsx`, `graph-theme.ts`, entity badges, glyphs, icons and type configuration, `status-badge.tsx`, `knowledge-ribbon.tsx`, `work-medium-config.ts`) stay for T7. They had no tests.
+- Message groups with no reader left are deleted (`creation`, `entityTypePlural`, `media`, `center.newElement`, `center.noUniverseSelected`, `graph.loading`, `graph.switchToList`, the entity-sheet keys of `inspector`, `sidebar.railWorks`); the groups still read by the files that T7 deletes (`entityTypes`, `statuses`, `graph` canvas keys, `inspector.noKnowledge` and `revealedAt`) stay.
+- Why: the task removes those state fields and the entity form; the only alternative that keeps the files compiling is keeping the fields.
+- Discarded: keeping the removed fields until T7 (contradicts the task and leaves dead state); editing the sample components to drop their state use (wasted work on files T7 deletes).
+- Approved by: pending the user.
+
+## D-T6-2. Layout of the central area and the heading
+
+- What: the universe name is the single `h1` of the workspace and lives in `UniverseEmptyState`, not in the toolbar (which holds only the Graph and List switcher). Under it come the mode with its explanation, the description (plain text, `whitespace-pre-line`) and the honest text, then a bordered text box for the active view (`GraphEmptyState` or `EntityListEmptyState`). The area scrolls vertically; names are wrapped, never cut. With no universe selected there is no toolbar: the `h1` is "You have no universes yet" with the single button. When the form is cancelled, the focus goes back to the universe heading, or to the "Create your first universe" button. The sidebar tree has no expansion (no `aria-expanded`, no chevron, no empty group) and the works area ("No works yet") appears under it only while a universe is selected; its keyboard logic is in the pure `universe-tree-navigation.ts`.
+- Why: avoids showing a 120-character name twice (toolbar and body) and gives every state its own heading; it also fixes the earlier observations (the `[expanded]` empty group, and the "side panel" wording that was wrong for the 320 px drawer).
+- Discarded: keeping the name in the toolbar `h1` and again in the empty state.
+- Approved by: pending the user.

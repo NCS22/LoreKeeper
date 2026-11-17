@@ -1,17 +1,12 @@
 import { en } from "@/messages/en";
-import { EntityTypeGlyph } from "@/components/entities/entity-type-glyph";
-import { ENTITY_TYPE_ORDER } from "@/components/entities/entity-type-config";
 
+// The details panel while there is nothing to detail: knowledge, relationships, events, sources and
+// reading positions arrive in future versions (FR-15). Text only.
 export function InspectorEmptyState() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
-      <div aria-hidden className="grid grid-cols-4 gap-x-4 gap-y-3 opacity-60">
-        {ENTITY_TYPE_ORDER.map((type) => (
-          <EntityTypeGlyph key={type} type={type} />
-        ))}
-      </div>
-      <h3 className="font-serif text-xl">{en.inspector.emptyTitle}</h3>
-      <p className="text-ink-muted max-w-64">{en.inspector.emptyText}</p>
+    <div className="flex h-full flex-col gap-2 overflow-y-auto p-4">
+      <h3 className="font-serif text-lg">{en.inspector.emptyTitle}</h3>
+      <p className="text-ink-muted text-sm">{en.inspector.emptyText}</p>
     </div>
   );
 }

@@ -15,7 +15,6 @@ export const WORKSPACE_ONLY_TEXTS = [
   en.sidebar.treeLabel,
   en.sidebar.newUniverse,
   en.center.graphView,
-  en.center.newElement,
   en.menus.label,
 ];
 
