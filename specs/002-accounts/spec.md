@@ -2,6 +2,11 @@
 
 Status: implemented
 
+> **Superseded in part by spec 004 (stored universes), 2026-11-17.** The requirement text below is kept as it was approved and implemented; this spec stays `implemented`. This is the only text that no longer holds:
+> - The sentence of the Context that says this feature does not link universes to users: "universes keep running on sample data and in-memory creation exactly as today, and belong to nobody (that is the stored-universes spec)". Since spec 004 universes are stored, belong to the account that created them (taken from the acting-user check, never from client data) and are seen by that account alone; the sample universes and the in-memory creation no longer exist.
+> - By extension, the statements that the workspace "stays open to anyone" and that "nothing calls the new operations yet" were already replaced by spec 003; universe operations now call the acting-user check on every request (004 FR-31 to FR-35).
+> No requirement of this spec (FR or NFR) changed.
+
 ## Context and goal
 
 LoreKeeper is meant to hold a person's private knowledge bases. Today the application has no notion of who is using it and nothing is stored. Every later feature (universes that belong to someone, their content, reading progress) needs the application to know who is acting on every request.

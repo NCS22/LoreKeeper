@@ -146,3 +146,20 @@
 - Why: the content forced 300 px inside a drawer of about 281.6 px at 320 px, so the "Close details panel" button was half cut and the empty text reached 323 px (FR-15, NFR-6). It closes the defect left open in D-T10-1.
 - Discarded: narrowing or widening the drawer itself (`SheetContent` is shared with the universes drawer and would change another screen); lowering `--inspector-min-width` (it is the minimum of the resizable desktop column, which must not change).
 - Approved by: the user (fix now, 2026-11-17).
+
+## D-CLOSE-1. Decisions accepted by the user at closing, and the known points left open (2026-11-17)
+
+- What: at the closing of the spec (answer "Close the spec" to the validation gate, 2026-11-17) the user accepted every decision above that said "Approved by: pending the user": D-T2-1 to D-T2-5, D-T3-1, D-T3-2, D-T3T4-2, D-T3T4-3, D-T5-1 to D-T5-3, D-T6-1, D-T6-2, D-T7-1, D-T8-1, D-T9-1, D-T9-2 and D-T10-1. D-T3T4-1 and D-T10-2 were already approved by the user. The entries above are kept as they were written; this entry only records the acceptance.
+- Known points left open, found in validation and not fixed in this spec. None breaks a requirement of the spec as accepted; each one is listed so it can be picked up later (with `/sdd-change` where it says so):
+  - The live name check with an expired session: the check (250 ms after typing) leaves for sign-in and the typed values are lost without the FR-10 message (see D-T9-2). If the user wants the values and the message kept in that case, it needs `/sdd-change`.
+  - The details panel at the 768 px edge after a live resize (the point where the drawer becomes the resizable column, see D-T10-2): not covered by a test and not verified.
+  - `src/components/ui/select.tsx` is not imported by anything since T6 (D-T7-1); it stays as a generic shadcn component.
+  - Hacker L-1: invisible characters in names (as reported by the hacker; see its report).
+  - Hacker L-2: the ordering of the remembered universe when several requests to remember arrive close together (as reported by the hacker; see its report).
+  - Hacker L-3: no server-side rate limit and no name length cap on the live name check (as reported by the hacker).
+  - Hacker L-4: log flooding (as reported by the hacker; see its report).
+  - Hacker I-4: still to verify that the Prisma error logs never contain universe names or descriptions.
+  - Reviewer: the 30 s limit plus the probe delay (as reported by the reviewer), and there is no automated test that "Open timeline" is disabled.
+- Why: so the acceptance and the open points are in the spec's own record, and the next spec (005) or a change can start from them.
+- Discarded: fixing them inside this spec (the user chose to close it; none is a failed requirement).
+- Approved by: the user, at closing (2026-11-17).

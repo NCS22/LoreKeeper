@@ -1,6 +1,6 @@
 # Spec 004 — Stored universes
 
-Status: approved
+Status: implemented
 
 ## Context and goal
 

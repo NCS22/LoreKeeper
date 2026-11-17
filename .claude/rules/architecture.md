@@ -29,15 +29,15 @@ Direction: `presentation → application → domain ← infrastructure`.
 ```
 src/
 ├── app/                              # Next.js routes (presentation)
-│   └── <route>/
-│       ├── page.tsx
-│       ├── actions.ts                # Server Actions used by this route
-│       └── _components/              # Components used only by this route
+│   ├── <route>/
+│   │   ├── page.tsx
+│   │   ├── actions.ts                # Server Actions used by this route
+│   │   └── _components/              # Components used only by this route
+│   └── universes/                    # No page: the Server Actions of the universes (create, check a name, remember a universe) and their Zod input schemas, used by the workspace at `/`
 ├── components/
 │   ├── ui/                           # shadcn/ui
 │   └── <feature>/                    # Components shared across routes
 ├── messages/                         # Typed UI dictionary (en.ts), no i18n library
-├── mocks/                            # Temporary sample DTOs and data for the UI; removed as real modules arrive
 ├── styles/                           # tokens.css: the only file that defines colors, radii, motion and type scale
 ├── modules/<module>/
 │   ├── domain/

@@ -3,7 +3,7 @@
 LoreKeeper is a knowledge management platform for fictional universes. It helps avid readers of dense works build their own interconnected knowledge bases to remember what they read without spoilers, and helps authors keep track of details of their own works written long ago.
 This file guides Claude and any AI agent working in this repository.
 
-**Current status:** Phase 0 - design, with the first Phase 1 specs implemented (detail per spec in `docs/roadmap.md` and `specs/NNN-feature/`). Real: accounts (spec 002, PostgreSQL, Prisma 7, Better Auth) and the account screens with the page-access guard (spec 003, Playwright E2E with `pnpm test:e2e`). Still sample data in `src/mocks/` or in memory: universes (spec 001 creates them UI-only, lost on reload, tied to nobody until specs 004 and 005), entities, graph, timeline and reading position. The only thing stored in the browser is the accessibility preferences (`localStorage`). Nothing marked as pending may be implemented: sample-data screens are allowed because they implement no behavior.
+**Current status:** Phase 0 - design, with the first Phase 1 specs implemented (detail per spec in `docs/roadmap.md` and `specs/NNN-feature/`). Real: accounts (spec 002, PostgreSQL, Prisma 7, Better Auth) and the account screens with the page-access guard (spec 003, Playwright E2E with `pnpm test:e2e`). Also real since spec 004 (2026-11-17): universes saved in PostgreSQL with an owner, creation through Server Actions with Zod, and the last-used universe remembered per account. The sample data and `src/mocks/` are gone; the sections that showed sample content show honest empty states. Not built yet: works, entities, graph, timeline and reading position (Phase 2 onwards), and the universe lifecycle (edit, trash, restore, purge: spec 005). The only thing stored in the browser is the accessibility preferences (`localStorage`; moving them to the account is OD-23). Nothing marked as pending may be implemented.
 
 **Where things live:** feature requirements in `specs/NNN-feature/spec.md`; phases and the project out-of-scope list in `docs/roadmap.md`; everything not decided yet in `docs/open-decisions.md`. There is no `docs/spec.md`.
 
@@ -27,7 +27,7 @@ This file guides Claude and any AI agent working in this repository.
 
 - Pending (see `docs/open-decisions.md`): deployment target (Phase 5), AI provider details and pgvector (Phase 6), file uploads.
 - Versions: `pnpm-lock.yaml` fixes what is installed; `package.json` pins `next` and `react` exactly and uses caret ranges for the rest. Upgrading a dependency needs approval.
-- UI shell dependencies, approved on 2026-11-06 because they came with the migrated interface and are in use: `cytoscape` and `d3-force` (graph canvas and its force layout), `react-resizable-panels` (resizable workspace panels), `tw-animate-css` (animations in `globals.css`), `@tailwindcss/turbopack` (Tailwind loader in `next.config.ts`). The `playwright` library is also used for the browser checks agents run in disposable scripts.
+- UI shell dependencies, approved on 2026-11-06 because they came with the migrated interface: `cytoscape` and `d3-force` (graph canvas and its force layout; installed but unused since spec 004 removed the sample graph, until Phase 3), `react-resizable-panels` (resizable workspace panels), `tw-animate-css` (animations in `globals.css`), `@tailwindcss/turbopack` (Tailwind loader in `next.config.ts`). The `playwright` library is also used for the browser checks agents run in disposable scripts.
 - Installed by spec 002 (approved 2026-11-06): `zod` (input shape at Server Actions and Route Handlers only; today used only at the Server Action boundary), `better-auth`, `@prisma/client`, `@prisma/adapter-pg`, `pg`, `prisma` and `@types/pg`. The install-script allow-list `onlyBuiltDependencies` in `package.json` is limited to `prisma` and `@prisma/engines`.
 - Agent tooling (approved 2026-11-08, not a project dependency): the Playwright MCP server (`@playwright/mcp`, pinned in `.mcp.json`, run with `npx` in an isolated profile) lets agents drive the app in a browser during development. Its output folder `.playwright-mcp/` is git-ignored and is emptied when a spec is closed.
 - Installed by spec 003 (approved 2026-11-06): `@playwright/test` (E2E, local runs, with Chromium), used only for the account flows. `jsdom` and testing-library are not approved.
@@ -40,7 +40,6 @@ src/
 ├── app/                      # Next.js routes, layouts, Route Handlers, Server Actions (presentation)
 ├── components/               # Shared UI components by feature (shadcn/ui lives in components/ui)
 ├── messages/                 # Typed UI dictionary (en.ts), no i18n library
-├── mocks/                    # Temporary sample DTOs and data for the UI; removed as real modules arrive
 ├── styles/                   # tokens.css: the only file that defines colors, radii, motion and type scale
 ├── modules/<module>/
 │   ├── domain/               # Entities, value objects, rules, repository interfaces, errors
