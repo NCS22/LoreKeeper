@@ -126,6 +126,7 @@ export const en = {
       confirmedAfterDelay: "The universe was created after all and is now selected.",
       signInAgain: "Your session has ended, so nothing was created. Your entries are kept: sign in again to continue.",
       signInLink: "Sign in",
+      dismiss: "Dismiss",
     },
     // Validation messages, keyed by the stable issue code. The limits come from the issue details.
     issues: {

@@ -8,6 +8,7 @@ import { EntityListView } from "@/components/entities/entity-list-view";
 import { GraphView } from "@/components/graph/graph-view";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { LateCreationConfirmation } from "@/components/universes/late-creation-confirmation";
 import { UniverseCreationForm } from "@/components/universes/universe-creation-form";
 import { UniverseEmptyState } from "@/components/universes/universe-empty-state";
 import { useUniverses } from "@/components/universes/universes-provider";
@@ -111,6 +112,8 @@ export function CentralArea() {
           <span className="sr-only sm:not-sr-only">{en.center.newElement}</span>
         </Button>
       </div>
+
+      <LateCreationConfirmation />
 
       <div className="min-h-0 flex-1">
         {state.isCreatingUniverse ? (

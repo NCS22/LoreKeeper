@@ -67,3 +67,22 @@
 - What: (1) `WorkspaceStateProvider` is now the outer provider and `UniversesProvider` sits inside it, so a created universe (also one whose answer is late) is selected from the provider with `universeCreated`; the sidebar tree and rail select through `selectUniverse` of the provider, which also remembers it. (2) `EntityListView`, `GraphView` and `EntityCreationForm` receive `universeId` as a prop from the central area, because the selected universe is nullable now (they are deleted in T7). (3) The form shows a minimal message paragraph (`role="alert"`, `role="status"` for the late confirmation, `data-message-code`) and a sign-in link, because without it a failed creation would be silent; the full form rewrite stays in T5. A fourth code, `CREATION_SIGN_IN_AGAIN`, is used for the sign-in message. (4) A failure answer that arrives after the 5-minute cap is ignored by the reducer (the unknown-result message stays); only a success is applied late. (5) With no universe selected the central area shows the form when it is open and otherwise a plain sentence; the final empty states are T6. (6) `universe-issue-messages.ts` already takes the vocabulary and has the two new `INVALID_CHARACTERS` messages (T5 lists them; they were needed to remove the index import). (7) The name check is still called on every change of the name, as before; the 250 ms wait and the stale-answer rule are T5.
 - Why: smallest code that leaves the application working and the build green.
 - Approved by: pending the user.
+
+## D-T5-1. The confirmation of a late success lives in the workspace, not in the form
+
+- What: the form shows only the failure messages (`CREATION_FAILED`, `CREATION_RESULT_UNKNOWN`, `CREATION_SIGN_IN_AGAIN`, all `role="alert"`, `tabIndex={-1}`, focused when they appear). `CREATION_CONFIRMED_AFTER_DELAY` (`role="status"`) is rendered by the new `late-creation-confirmation.tsx` in `central-area.tsx`, above the content, with a "Dismiss" button (new text `notices.dismiss`).
+- Why: every success selects the new universe and closes the form (`universeCreated`), so a confirmation placed inside the form would never be seen (FR-8: "replace the unknown-result message with a confirmation").
+- Discarded: keeping the form open after a late success (contradicts FR-24, the universe is selected); leaving the confirmation inside the form, where it is invisible.
+- Approved by: pending the user.
+
+## D-T5-2. Duplicate-name warning: answer tied to the checked name; no request for an empty name
+
+- What: `check-name-after-pause.ts` holds `scheduleNameCheck` (250 ms pause, returns a cancel function used by the effect cleanup) and `isDuplicateNameWarningShown`. The answer carries the name it was about and the warning shows only when it equals the name in the field now, so a stale answer can never show or hide it. No request is sent for an empty name (the field is empty when the form opens). The previous behavior (one call per change, including on mount) is gone.
+- Why: D10 (250 ms, stale answers ignored, failure shows nothing); tying the answer to its name also avoids a warning for a name the person already changed during the 250 ms.
+- Discarded: keeping the last answer visible until the next one arrives (a misleading warning while typing).
+- Approved by: pending the user.
+
+## D-T5-3. Final messages kept; small form changes
+
+- What: the notice texts of T4 are kept as the final ones (they already say what happened, that the entries are kept and what to do). The form also clears its field messages when a submission starts, so a later failure without field issues does not show an old field message, and a message that was already shown when the form opens does not take focus from the name field.
+- Approved by: pending the user.

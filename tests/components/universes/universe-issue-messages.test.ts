@@ -32,6 +32,15 @@ describe("getUniverseIssueMessage", () => {
     expect(messageForLargeLimit).not.toContain("7");
   });
 
+  it("has its own message for every issue code the vocabulary exports", () => {
+    const limitedCodes: readonly string[] = [codes.nameTooLong, codes.descriptionTooLong];
+
+    for (const code of Object.values(codes)) {
+      const issue = limitedCodes.includes(code) ? { code, maximumLength: 5 } : { code };
+      expect(getUniverseIssueMessage(issue, vocabulary), code).not.toBe(en.universeCreation.issues.UNKNOWN);
+    }
+  });
+
   it("gives name and description different messages for the same kind of failure", () => {
     const nameMessage = getUniverseIssueMessage({ code: codes.nameTooLong, maximumLength: 10 }, vocabulary);
     const descriptionMessage = getUniverseIssueMessage(
