@@ -33,3 +33,17 @@
 - What: `tests/support/universe-owners.ts` (owner constants and `buildActingUser`, re-exported by `universe-repository-factories.ts`, to avoid an import cycle), `tests/support/database/postgres-universe-storage.ts` (empties the tables, creates the two accounts, inserts the universes), and `tests/modules/universes/infrastructure/universe-persistence.test.ts` (FR-6 test in its own file because it terminates every connection of the test database).
 - Why: the database requires the owner to exist; terminating connections must not break the client other files share.
 - Approved by: pending the user.
+
+## D-T3-1. The bridge moves to its own file; the composition is only the real one
+
+- What: `createUniversesInMemory` and its type (renamed `PrototypeUniversesModule`) moved from `composition.ts` to `prototype-composition.ts`, with their tests in `tests/modules/universes/prototype-composition.test.ts` (the old cases, unchanged). `composition.ts` holds only `createUniversesModule()`, whose four functions take the acting user first (`createUniverse(actor, command)`, `loadWorkspaceUniverses(actor)`, `isUniverseNameInUse(actor, name)`, `rememberUniverse(actor, command)`). Both files are deleted or reduced with the bridge in T4.
+- Why: the plan says `composition.test.ts` is rewritten for the real composition, and the bridge still needs its own tests until T4.
+- Discarded: keeping both compositions in one file (the real-composition test would also import the in-memory code).
+- Approved by: pending the user.
+
+## D-T3-2. Shape of the form vocabulary
+
+- What: `UniverseFormVocabulary` has `fieldNames` (`name`, `description`, `mode`), `issueCodes` (`nameRequired`, `nameTooLong`, `nameInvalidCharacters`, `descriptionTooLong`, `descriptionInvalidCharacters`, `modeInvalid`), `modes` and `defaultMode`, like the accounts vocabulary. It has no `universeId` entry: the interpreter of T4 does not need to tell it from the form fields.
+- Why: smallest shape that covers FR-4, FR-5 and the mode choice; T4 and T5 can add an entry if a screen needs it.
+- Discarded: adding every code the module exports (YAGNI).
+- Approved by: pending the user.
