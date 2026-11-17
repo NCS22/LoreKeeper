@@ -4,6 +4,7 @@ import type { Universe } from "@/modules/universes/domain/universe";
 
 const universe: Universe = {
   id: "universe-1",
+  ownerId: "owner-1",
   name: "Cosmere",
   description: "A shared universe",
   mode: "AUTHOR",
@@ -19,7 +20,7 @@ describe("toUniverseDto", () => {
     expect(universeDto.updatedAt).toBe("2026-03-05T05:06:07.089Z");
   });
 
-  it("carries exactly the universe fields and no cover image", () => {
+  it("carries exactly the universe fields, with no owner and no cover image", () => {
     expect(toUniverseDto(universe)).toEqual({
       id: "universe-1",
       name: "Cosmere",
@@ -29,6 +30,7 @@ describe("toUniverseDto", () => {
       updatedAt: "2026-03-05T05:06:07.089Z",
     });
     expect(Object.keys(toUniverseDto(universe))).not.toContain("coverImageUrl");
+    expect(Object.keys(toUniverseDto(universe))).not.toContain("ownerId");
   });
 
   it("keeps a missing description as null", () => {

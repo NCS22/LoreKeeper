@@ -1,23 +1,37 @@
 import type { Universe } from "@/modules/universes/domain/universe";
-import type { UniverseRepository } from "@/modules/universes/domain/universe-repository";
-import { createInMemoryUniverseRepository } from "@/modules/universes/infrastructure/in-memory-universe-repository";
+import type { ActingUser } from "@/shared/domain/acting-user";
+import type {
+  UniverseStorage,
+  UniverseStorageFactory,
+} from "./contracts/universe-repository-contract";
+import { createFakeRememberedUniverseRepository } from "./fakes/fake-remembered-universe-repository";
 import { createFakeUniverseRepository } from "./fakes/fake-universe-repository";
 
-export type UniverseRepositoryFactory = (
-  startingUniverses?: readonly Universe[],
-) => UniverseRepository;
+export const FIRST_OWNER_ID = "10000000-0000-4000-8000-000000000001";
+export const SECOND_OWNER_ID = "10000000-0000-4000-8000-000000000002";
 
-/** The two interchangeable repositories every use case scenario runs against (NFR-1). */
-export const universeRepositoryFactories: ReadonlyArray<
-  readonly [string, UniverseRepositoryFactory]
-> = [
-  ["in-memory repository", createInMemoryUniverseRepository],
-  ["fake repository", createFakeUniverseRepository],
+export function buildActingUser(userId: string = FIRST_OWNER_ID): ActingUser {
+  return { userId, displayName: "Test person", email: `${userId}@example.com` };
+}
+
+async function createFakeUniverseStorage(
+  startingUniverses: readonly Universe[] = [],
+): Promise<UniverseStorage> {
+  return {
+    universeRepository: createFakeUniverseRepository(startingUniverses),
+    rememberedUniverseRepository: createFakeRememberedUniverseRepository(),
+  };
+}
+
+/** The interchangeable storages every use case scenario runs against (NFR-1). */
+export const universeStorageFactories: ReadonlyArray<readonly [string, UniverseStorageFactory]> = [
+  ["fake storage", createFakeUniverseStorage],
 ];
 
 export function buildUniverse(overrides: Partial<Universe> = {}): Universe {
   return {
-    id: "universe-1",
+    id: "00000000-0000-4000-8000-000000000010",
+    ownerId: FIRST_OWNER_ID,
     name: "First universe",
     description: null,
     mode: "READER",

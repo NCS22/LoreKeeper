@@ -20,6 +20,8 @@ const secondStartingUniverse: UniverseDto = {
   updatedAt: "2026-02-01T10:00:00.000Z",
 };
 
+// TEMPORARY bridge: these tests are rewritten with the real composition and the bridge is
+// deleted with the client data layer.
 describe("createUniversesInMemory", () => {
   it("lists nothing when there are no starting universes", async () => {
     const universesModule = createUniversesInMemory();
@@ -27,8 +29,8 @@ describe("createUniversesInMemory", () => {
     expect(await universesModule.listUniverses()).toEqual([]);
   });
 
-  it("lists the starting universes unchanged and in order", async () => {
-    const universesModule = createUniversesInMemory([firstStartingUniverse, secondStartingUniverse]);
+  it("lists the starting universes unchanged, without an owner, and in order", async () => {
+    const universesModule = createUniversesInMemory([secondStartingUniverse, firstStartingUniverse]);
 
     expect(await universesModule.listUniverses()).toEqual([
       firstStartingUniverse,

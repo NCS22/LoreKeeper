@@ -10,15 +10,35 @@ function copyUniverse(universe: Universe): Universe {
   };
 }
 
-/** Universes kept in memory, in creation order. Everything is lost when the page reloads. */
+function compareByCreationThenId(firstUniverse: Universe, secondUniverse: Universe): number {
+  const creationDifference = firstUniverse.createdAt.getTime() - secondUniverse.createdAt.getTime();
+  if (creationDifference !== 0) {
+    return creationDifference;
+  }
+  return firstUniverse.id < secondUniverse.id ? -1 : firstUniverse.id > secondUniverse.id ? 1 : 0;
+}
+
+/**
+ * TEMPORARY (bridge, removed with the client data layer): universes kept in memory, scoped
+ * by owner. Everything is lost when the page reloads.
+ */
 export function createInMemoryUniverseRepository(
   startingUniverses: readonly Universe[] = [],
 ): UniverseRepository {
   const storedUniverses: Universe[] = startingUniverses.map(copyUniverse);
 
   return {
-    async findAll() {
-      return storedUniverses.map(copyUniverse);
+    async findAllOwnedBy(ownerId) {
+      return storedUniverses
+        .filter((universe) => universe.ownerId === ownerId)
+        .sort(compareByCreationThenId)
+        .map(copyUniverse);
+    },
+    async findOwnedById(ownerId, universeId) {
+      const foundUniverse = storedUniverses.find(
+        (universe) => universe.ownerId === ownerId && universe.id === universeId,
+      );
+      return foundUniverse === undefined ? null : copyUniverse(foundUniverse);
     },
     async add(universe) {
       storedUniverses.push(copyUniverse(universe));
