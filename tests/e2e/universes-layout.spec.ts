@@ -173,6 +173,48 @@ for (const { label, viewport } of VIEWPORTS) {
     });
   });
 
+  test.describe(`the details panel at ${label} (FR-15, NFR-6)`, () => {
+    test.use({ viewport });
+
+    test("shows its honest empty state with its close button and nothing sticking out", async ({ page }) => {
+      const account = await seedAccountInDatabase();
+      await signInThroughTheForm(page, account);
+
+      // On a narrow screen the panel is a drawer opened from the top bar; on desktop it is a column.
+      let detailsPanel = page.getByRole("complementary", { name: en.workspace.inspectorLabel });
+      if (isNarrow) {
+        const openButton = page.getByRole("button", { name: en.workspace.detailsPanel });
+        await waitForElementHydration(openButton);
+        await openButton.click();
+        detailsPanel = page.getByRole("dialog", { name: en.workspace.inspectorLabel });
+      }
+      await expect(detailsPanel).toBeVisible();
+
+      const closeButton = detailsPanel.getByRole("button", { name: en.workspace.collapseInspector });
+      const emptyTitle = detailsPanel.getByText(en.inspector.emptyTitle);
+      const emptyText = detailsPanel.getByText(en.inspector.emptyText);
+      await expect(closeButton).toBeVisible();
+      await expect(emptyTitle).toBeVisible();
+      await expect(emptyText).toBeVisible();
+      for (const shownPart of [closeButton, emptyTitle, emptyText]) {
+        await expectBoxInsideTheViewportWidth(shownPart, viewport.width);
+      }
+      await expectNothingOutsideTheViewportWidth(page);
+
+      // The drawer's content fits its container; the desktop column keeps its minimum width.
+      const panelWidths = await detailsPanel.evaluate((panelElement) => {
+        const panelBox = panelElement.getBoundingClientRect();
+        const contentBox = (panelElement.querySelector("h2") as HTMLElement).closest("div.flex-col")!.getBoundingClientRect();
+        return { panelWidth: panelBox.width, contentWidth: contentBox.width, contentRight: contentBox.right, panelRight: panelBox.right };
+      });
+      if (isNarrow) {
+        expect(panelWidths.contentRight).toBeLessThanOrEqual(panelWidths.panelRight + 1);
+      } else {
+        expect(panelWidths.contentWidth).toBeGreaterThanOrEqual(300 - 1);
+      }
+    });
+  });
+
   test.describe(`a very long list at ${label} (FR-20)`, () => {
     test.use({ viewport });
 

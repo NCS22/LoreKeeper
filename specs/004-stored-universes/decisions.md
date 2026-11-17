@@ -139,3 +139,10 @@
 - Observation, not a defect of an FR: in the creation form the arrow keys move the focus between the Reader and Author modes but do not choose the mode; Space chooses it. The keyboard test uses ArrowDown and then Space. It belongs to the manual keyboard check of NFR-4.
 - Why: the plan names the two specs but not the shared measuring and reading code; leaving the details panel out is the rule of the task (a defect in `src/` is reported, never hidden or fixed by the test task).
 - Approved by: pending the user.
+
+## D-T10-2. The details panel fits its drawer at 320 px
+
+- What: in `src/components/inspector/inspector-panel.tsx` the minimum width of the panel content (`--inspector-min-width`, 18.75rem) now applies only from the `md` breakpoint (`min-w-0 ... md:min-w-[var(--inspector-min-width)]`), the same breakpoint (48rem) where `useIsDesktop` switches from drawers to the resizable columns. Below it the content is as wide as its drawer (`min(22rem, 88vw)`); on desktop nothing changes. A scenario of `tests/e2e/universes-layout.spec.ts` ("the details panel at desktop / 320 px", FR-15, NFR-6) opens the drawer at 320 px and asserts that the close button, the empty title and the empty text are inside the viewport width and nothing sticks out, and at desktop that the panel still renders with at least its minimum width. It fails without the change (the close button ended at 335.4 px) and passes with it.
+- Why: the content forced 300 px inside a drawer of about 281.6 px at 320 px, so the "Close details panel" button was half cut and the empty text reached 323 px (FR-15, NFR-6). It closes the defect left open in D-T10-1.
+- Discarded: narrowing or widening the drawer itself (`SheetContent` is shared with the universes drawer and would change another screen); lowering `--inspector-min-width` (it is the minimum of the resizable desktop column, which must not change).
+- Approved by: the user (fix now, 2026-11-17).
