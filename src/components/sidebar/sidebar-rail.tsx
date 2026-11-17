@@ -15,8 +15,9 @@ import { getWorksOfUniverse } from "@/mocks/data/queries";
 export function SidebarRail() {
   const { toggleSidebar } = useWorkspaceLayout();
   const { state, dispatch } = useWorkspaceState();
-  const { universes } = useUniverses();
-  const worksOfSelectedUniverse = getWorksOfUniverse(state.selectedUniverseId);
+  const { universes, selectUniverse } = useUniverses();
+  const worksOfSelectedUniverse =
+    state.selectedUniverseId === null ? [] : getWorksOfUniverse(state.selectedUniverseId);
 
   return (
     <div className="flex h-full flex-col items-center gap-1 py-2">
@@ -31,7 +32,7 @@ export function SidebarRail() {
             label={universe.name}
             Icon={Orbit}
             isSelected={state.selectedUniverseId === universe.id && state.selectedWorkId === null}
-            onSelect={() => dispatch({ type: "universeSelected", universeId: universe.id })}
+            onSelect={() => selectUniverse(universe.id)}
           />
         ))}
       </div>

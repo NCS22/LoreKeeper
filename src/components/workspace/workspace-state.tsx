@@ -1,12 +1,12 @@
 "use client";
 
 import { createContext, useContext, useMemo, useReducer, type Dispatch, type ReactNode } from "react";
-import { getUniverses } from "@/mocks/data/queries";
 
 export type CentralView = "graph" | "list";
 
 export type WorkspaceState = {
-  selectedUniverseId: string;
+  // Null while the account has no universe, or none was selected yet.
+  selectedUniverseId: string | null;
   // Null means the whole universe, with the content of all its works.
   selectedWorkId: string | null;
   // The entity whose details are shown in the inspector.
@@ -98,13 +98,19 @@ type WorkspaceStateContextValue = {
 
 const WorkspaceStateContext = createContext<WorkspaceStateContextValue | null>(null);
 
-export function WorkspaceStateProvider({ children }: { children: ReactNode }) {
+type WorkspaceStateProviderProps = {
+  children: ReactNode;
+  // Chosen on the server: the remembered universe, else the oldest, else none (FR-26, FR-27).
+  initialSelectedUniverseId: string | null;
+};
+
+export function WorkspaceStateProvider({ children, initialSelectedUniverseId }: WorkspaceStateProviderProps) {
   const [state, dispatch] = useReducer(reduceWorkspaceState, {
-    selectedUniverseId: getUniverses()[0].id,
+    selectedUniverseId: initialSelectedUniverseId,
     selectedWorkId: null,
     selectedEntityId: null,
     highlightedEntityId: null,
-    expandedUniverseIds: [getUniverses()[0].id],
+    expandedUniverseIds: initialSelectedUniverseId === null ? [] : [initialSelectedUniverseId],
     view: "graph",
     isCreatingEntity: false,
     isCreatingUniverse: false,

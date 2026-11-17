@@ -37,10 +37,14 @@ export function SidebarTree({ expandedUniverseIds, setUniverseExpanded }: Sideba
   const { closeSidebarAfterNavigation } = useWorkspaceLayout();
   const groupIdPrefix = useId();
   const treeItemElements = useRef(new Map<string, HTMLElement>());
-  const { universes } = useUniverses();
+  const { universes, selectUniverse } = useUniverses();
 
   const selectedKey =
-    state.selectedWorkId !== null ? workKey(state.selectedWorkId) : universeKey(state.selectedUniverseId);
+    state.selectedWorkId !== null
+      ? workKey(state.selectedWorkId)
+      : state.selectedUniverseId === null
+        ? null
+        : universeKey(state.selectedUniverseId);
   const [lastFocusedKey, setLastFocusedKey] = useState(selectedKey);
 
   const visibleNodes = useMemo<TreeNode[]>(
@@ -61,14 +65,14 @@ export function SidebarTree({ expandedUniverseIds, setUniverseExpanded }: Sideba
   // Exactly one item is tabbable; fall back to the first when the last focused one was collapsed away.
   const tabbableKey = visibleNodes.some((node) => node.key === lastFocusedKey)
     ? lastFocusedKey
-    : visibleNodes[0].key;
+    : visibleNodes[0]?.key;
 
   function focusNode(node: TreeNode | undefined) {
     if (node !== undefined) treeItemElements.current.get(node.key)?.focus();
   }
 
   function selectNode(node: TreeNode) {
-    if (node.workId === null) dispatch({ type: "universeSelected", universeId: node.universeId });
+    if (node.workId === null) selectUniverse(node.universeId);
     else dispatch({ type: "workSelected", universeId: node.universeId, workId: node.workId });
     closeSidebarAfterNavigation();
   }

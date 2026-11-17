@@ -15,17 +15,17 @@ const GraphCanvas = dynamic(() => import("@/components/graph/graph-canvas").then
   loading: () => <p className="text-ink-muted p-4">{en.graph.loading}</p>,
 });
 
-export function GraphView() {
+export function GraphView({ universeId }: { universeId: string }) {
   const { state, dispatch } = useWorkspaceState();
   const { openInspector } = useWorkspaceLayout();
 
   const entities = useMemo(
-    () => getEntitiesOfUniverse(state.selectedUniverseId, state.selectedWorkId),
-    [state.selectedUniverseId, state.selectedWorkId],
+    () => getEntitiesOfUniverse(universeId, state.selectedWorkId),
+    [universeId, state.selectedWorkId],
   );
   const relationships = useMemo(
-    () => getRelationshipsBetween(state.selectedUniverseId, new Set(entities.map((entity) => entity.id))),
-    [state.selectedUniverseId, entities],
+    () => getRelationshipsBetween(universeId, new Set(entities.map((entity) => entity.id))),
+    [universeId, entities],
   );
 
   function selectEntity(entityId: string) {

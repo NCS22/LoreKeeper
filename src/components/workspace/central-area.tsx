@@ -34,7 +34,6 @@ export function CentralArea() {
   }
   const universe = universes.find((candidate) => candidate.id === state.selectedUniverseId);
   const work = state.selectedWorkId === null ? undefined : findWork(state.selectedWorkId);
-  if (universe === undefined) return null;
 
   function changeView(value: string) {
     // The group reports an empty value when the pressed segment is pressed again; ignore it.
@@ -53,9 +52,22 @@ export function CentralArea() {
     headingRef.current?.focus();
   }
 
+  // The provider has already added, selected and remembered the universe: here only its focus and announcement.
   function finishUniverseCreation(createdUniverse: UniverseDto) {
     setJustCreatedUniverseId(createdUniverse.id);
-    dispatch({ type: "universeCreated", universeId: createdUniverse.id });
+  }
+
+  // No universe is selected (the account has none yet). The final empty states arrive with the workspace views.
+  if (universe === undefined) {
+    return (
+      <div className="h-full">
+        {state.isCreatingUniverse ? (
+          <UniverseCreationForm onCreated={finishUniverseCreation} onCancel={cancelUniverseCreation} />
+        ) : (
+          <p className="text-ink-muted p-6 text-sm">{en.center.noUniverseSelected}</p>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -104,7 +116,7 @@ export function CentralArea() {
         {state.isCreatingUniverse ? (
           <UniverseCreationForm onCreated={finishUniverseCreation} onCancel={cancelUniverseCreation} />
         ) : state.isCreatingEntity ? (
-          <EntityCreationForm onCancel={cancelCreation} />
+          <EntityCreationForm universeId={universe.id} onCancel={cancelCreation} />
         ) : isUniverseEmpty(universe.id) ? (
           <UniverseEmptyState
             key={universe.id}
@@ -112,9 +124,9 @@ export function CentralArea() {
             wasJustCreated={universe.id === justCreatedUniverseId}
           />
         ) : state.view === "list" ? (
-          <EntityListView />
+          <EntityListView universeId={universe.id} />
         ) : (
-          <GraphView />
+          <GraphView universeId={universe.id} />
         )}
       </div>
     </div>

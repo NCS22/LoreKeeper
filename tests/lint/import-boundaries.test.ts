@@ -33,7 +33,7 @@ describe("import boundaries", () => {
       "next/navigation",
       "@prisma/client",
       "better-auth",
-      "../infrastructure/in-memory-universe-repository",
+      "../infrastructure/prisma-universe-repository",
       "@/shared/infrastructure/prisma-client",
       "../application/create-universe",
     ])(
@@ -65,7 +65,7 @@ describe("import boundaries", () => {
     it.each([
       "react",
       "@prisma/client",
-      "../infrastructure/in-memory-universe-repository",
+      "../infrastructure/prisma-universe-repository",
     ])(
       "report an import of %s",
       async (importedPath) => {

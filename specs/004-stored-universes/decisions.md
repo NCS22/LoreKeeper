@@ -47,3 +47,23 @@
 - Why: smallest shape that covers FR-4, FR-5 and the mode choice; T4 and T5 can add an entry if a screen needs it.
 - Discarded: adding every code the module exports (YAGNI).
 - Approved by: pending the user.
+
+## D-T3T4-1. T3 and T4 are one step; the bridge is deleted now
+
+- What: the T3 gap (the module index exports the Prisma server composition, and client components import that index, so `pnpm build` failed) is closed by merging T3 and T4 into one step. The client provider no longer imports the module index at runtime and no longer builds an in-memory module; it reads the list and the remembered universe from the server and calls the actions. The form and the issue-messages file receive the vocabulary (`UniverseFormVocabulary`, D-T3-2) by props instead of importing constants from the index (003 D13). The bridge (`prototype-composition.ts`, `createUniversesInMemory`), `in-memory-universe-repository.ts` with its test, `prototype-composition.test.ts` and the provider's import of the sample universes are deleted. Client files keep only type-only imports of the index (`UniverseDto`, `CreateUniverseCommand`), which are erased at build time.
+- Why: it is the only way to leave the build green without a lint exception, a relaxed rule or a second public entry point for the module.
+- Discarded: the other ways of keeping the bridge reachable from the client until T4 (options a and b put to the user): a lint exception or deep import so the client keeps the in-memory module, or a second entry point of the module for the client (a new public surface the architecture does not describe). Both would have left the bridge alive for one more task.
+- Approved by: the user.
+
+## D-T3T4-2. Page loader test in the database project; extra pure helper and test files
+
+- What: `vitest.config.mts` adds `tests/components/workspace/load-workspace-universes-for-page.test.ts` to `DATABASE_BACKED_TEST_FILES` (same reason as D-T2-1: it needs the session and the test database). Two small files not named in the plan: `insert-universe-in-creation-order.ts` (a universe whose answer arrives late is inserted in the order the server lists them, instead of appended; tested in `insert-universe-in-creation-order.test.ts`) and `account-guard-decision.ts` (the pure decision, as the plan asks) next to `use-account-guard.ts`. `workspace-loading.tsx` holds the loading fallback.
+- Why: FR-8 (a late answer is applied) and FR-11 (the list keeps the creation order) both need the insertion to be ordered; the rest is what the plan section 5 lists.
+- Discarded: appending (the list would differ from the order after a reload); a new test project for one file.
+- Approved by: pending the user.
+
+## D-T3T4-3. Wiring choices of the client data layer
+
+- What: (1) `WorkspaceStateProvider` is now the outer provider and `UniversesProvider` sits inside it, so a created universe (also one whose answer is late) is selected from the provider with `universeCreated`; the sidebar tree and rail select through `selectUniverse` of the provider, which also remembers it. (2) `EntityListView`, `GraphView` and `EntityCreationForm` receive `universeId` as a prop from the central area, because the selected universe is nullable now (they are deleted in T7). (3) The form shows a minimal message paragraph (`role="alert"`, `role="status"` for the late confirmation, `data-message-code`) and a sign-in link, because without it a failed creation would be silent; the full form rewrite stays in T5. A fourth code, `CREATION_SIGN_IN_AGAIN`, is used for the sign-in message. (4) A failure answer that arrives after the 5-minute cap is ignored by the reducer (the unknown-result message stays); only a success is applied late. (5) With no universe selected the central area shows the form when it is open and otherwise a plain sentence; the final empty states are T6. (6) `universe-issue-messages.ts` already takes the vocabulary and has the two new `INVALID_CHARACTERS` messages (T5 lists them; they were needed to remove the index import). (7) The name check is still called on every change of the name, as before; the 250 ms wait and the stale-answer rule are T5.
+- Why: smallest code that leaves the application working and the build green.
+- Approved by: pending the user.

@@ -19,6 +19,7 @@ export const en = {
     collapseInspector: "Close details panel",
     resizeSidebar: "Resize sidebar",
     resizeInspector: "Resize details panel",
+    loadingUniverses: "Loading your universes",
   },
   sidebar: {
     treeLabel: "Universes and works",
@@ -31,6 +32,7 @@ export const en = {
     graphView: "Graph",
     listView: "List",
     newElement: "New element",
+    noUniverseSelected: "No universe is selected. Use New universe in the side panel to create one.",
   },
   graph: {
     loading: "Loading graph...",
@@ -116,12 +118,23 @@ export const en = {
     duplicateNameWarning: "A universe with this name already exists. You can still create this one.",
     cancel: "Cancel",
     create: "Create universe",
+    // Messages of the creation request itself, shown in the form (never an error detail).
+    notices: {
+      failed: "The universe could not be created. Your entries are kept; you can try again.",
+      resultUnknown:
+        "We could not confirm whether the universe was created. It may exist already: check the list of universes before trying again.",
+      confirmedAfterDelay: "The universe was created after all and is now selected.",
+      signInAgain: "Your session has ended, so nothing was created. Your entries are kept: sign in again to continue.",
+      signInLink: "Sign in",
+    },
     // Validation messages, keyed by the stable issue code. The limits come from the issue details.
     issues: {
       NAME_REQUIRED: "Enter a name for the universe.",
       NAME_TOO_LONG: (maximumLength: number) => `The name can have at most ${maximumLength} characters.`,
+      NAME_INVALID_CHARACTERS: "The name contains characters that cannot be stored.",
       DESCRIPTION_TOO_LONG: (maximumLength: number) =>
         `The description can have at most ${maximumLength} characters.`,
+      DESCRIPTION_INVALID_CHARACTERS: "The description contains characters that cannot be stored.",
       MODE_INVALID: "Choose Reader or Author mode.",
       UNKNOWN: "This value is not valid.",
     },

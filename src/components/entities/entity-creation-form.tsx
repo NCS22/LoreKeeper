@@ -36,9 +36,9 @@ function groupUnits(units: readonly NarrativeUnitDto[]) {
 }
 
 // A design-only form: nothing is stored and Save only explains that.
-export function EntityCreationForm({ onCancel }: { onCancel: () => void }) {
+export function EntityCreationForm({ universeId, onCancel }: { universeId: string; onCancel: () => void }) {
   const { state } = useWorkspaceState();
-  const works = getWorksOfUniverse(state.selectedUniverseId);
+  const works = getWorksOfUniverse(universeId);
   const [workId, setWorkId] = useState(state.selectedWorkId ?? works[0]?.id ?? "");
   const [hasTriedToSave, setHasTriedToSave] = useState(false);
   const typeTriggerRef = useRef<HTMLButtonElement>(null);

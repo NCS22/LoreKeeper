@@ -6,36 +6,22 @@ import { en } from "@/messages/en";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { getUniverseIssueMessage } from "@/components/universes/universe-issue-messages";
 import { useUniverses } from "@/components/universes/universes-provider";
-import {
-  DEFAULT_UNIVERSE_MODE,
-  UNIVERSE_DESCRIPTION_FIELD,
-  UNIVERSE_MODE_FIELD,
-  UNIVERSE_MODES,
-  UNIVERSE_NAME_FIELD,
-  type UniverseDto,
-} from "@/modules/universes";
-import { ValidationError, type ValidationIssue } from "@/shared/domain/validation-error";
+import type { UniverseFieldMessages } from "@/components/universes/interpret-universe-action-result";
+import { CREATION_NOTICE_CODES, type CreationNoticeCode } from "@/components/universes/universe-creation-state";
+import type { UniverseDto } from "@/modules/universes";
 
-type FieldErrors = {
-  name?: string;
-  description?: string;
-  mode?: string;
+type FieldErrors = UniverseFieldMessages;
+
+// The texts of each mode, looked up by the mode names the page hands down in the vocabulary.
+const MODE_TEXTS: Readonly<Record<string, { label: string; explanation: string }>> = en.universeCreation.modes;
+
+const NOTICE_TEXT_BY_CODE: Readonly<Record<CreationNoticeCode, string>> = {
+  [CREATION_NOTICE_CODES.failed]: en.universeCreation.notices.failed,
+  [CREATION_NOTICE_CODES.resultUnknown]: en.universeCreation.notices.resultUnknown,
+  [CREATION_NOTICE_CODES.confirmedAfterDelay]: en.universeCreation.notices.confirmedAfterDelay,
+  [CREATION_NOTICE_CODES.signInAgain]: en.universeCreation.notices.signInAgain,
 };
-
-function findFieldErrorMessage(issues: readonly ValidationIssue[], field: string): string | undefined {
-  const issueOfField = issues.find((issue) => issue.field === field);
-  return issueOfField === undefined ? undefined : getUniverseIssueMessage(issueOfField);
-}
-
-function buildFieldErrors(issues: readonly ValidationIssue[]): FieldErrors {
-  return {
-    name: findFieldErrorMessage(issues, UNIVERSE_NAME_FIELD),
-    description: findFieldErrorMessage(issues, UNIVERSE_DESCRIPTION_FIELD),
-    mode: findFieldErrorMessage(issues, UNIVERSE_MODE_FIELD),
-  };
-}
 
 type UniverseCreationFormProps = {
   onCreated: (createdUniverse: UniverseDto) => void;
@@ -44,15 +30,20 @@ type UniverseCreationFormProps = {
 
 // Mounted fresh every time it opens, so the fields start empty and READER is selected (FR-2).
 export function UniverseCreationForm({ onCreated, onCancel }: UniverseCreationFormProps) {
-  const { createUniverse, isUniverseNameInUse } = useUniverses();
+  const {
+    createUniverse,
+    isUniverseNameInUse,
+    vocabulary,
+    isCreationBlocked,
+    creationNoticeCode,
+    signInAddress,
+    dismissCreationNotice,
+  } = useUniverses();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [mode, setMode] = useState<string>(DEFAULT_UNIVERSE_MODE);
+  const [mode, setMode] = useState<string>(vocabulary.defaultMode);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isNameInUse, setIsNameInUse] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  // Synchronous guard: state updates are asynchronous, so two quick submits could both pass a state check (FR-19).
-  const isSubmitInFlightRef = useRef(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
   const modeFieldsetRef = useRef<HTMLFieldSetElement>(null);
@@ -67,6 +58,11 @@ export function UniverseCreationForm({ onCreated, onCancel }: UniverseCreationFo
   useEffect(() => {
     nameInputRef.current?.focus();
   }, []);
+
+  // A message left by an earlier form does not belong to this one.
+  useEffect(() => {
+    dismissCreationNotice();
+  }, [dismissCreationNotice]);
 
   // Live duplicate-name warning (FR-11, FR-13). An answer that arrives after the name changed again is ignored.
   useEffect(() => {
@@ -87,21 +83,14 @@ export function UniverseCreationForm({ onCreated, onCancel }: UniverseCreationFo
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isSubmitInFlightRef.current) return;
-    isSubmitInFlightRef.current = true;
-    setIsSubmitting(true);
-    try {
-      // The duplicate warning is never repeated here: a duplicate name does not block creation (FR-12).
-      const createdUniverse = await createUniverse({ name, description, mode });
-      // The form unmounts on success, so the guard stays set until then.
-      onCreated(createdUniverse);
-    } catch (error) {
-      isSubmitInFlightRef.current = false;
-      setIsSubmitting(false);
-      if (!(error instanceof ValidationError)) throw error;
-      const errors = buildFieldErrors(error.issues);
-      setFieldErrors(errors);
-      focusFirstInvalidField(errors);
+    // The duplicate warning is never repeated here: a duplicate name does not block creation (FR-12).
+    // The provider ignores a second submission while one is waiting; the other ends are shown as a notice.
+    const outcome = await createUniverse({ name, description, mode });
+    if (outcome?.status === "created") {
+      onCreated(outcome.universe);
+    } else if (outcome?.status === "field-errors") {
+      setFieldErrors(outcome.messagesByField);
+      focusFirstInvalidField(outcome.messagesByField);
     }
   }
 
@@ -124,6 +113,7 @@ export function UniverseCreationForm({ onCreated, onCancel }: UniverseCreationFo
     <div className="h-full overflow-y-auto">
       <form
         noValidate
+        aria-busy={isCreationBlocked}
         onSubmit={handleSubmit}
         className="animate-in fade-in-0 slide-in-from-bottom-1 mx-auto flex max-w-xl flex-col gap-5 p-6 duration-(--motion-base)"
       >
@@ -186,7 +176,7 @@ export function UniverseCreationForm({ onCreated, onCancel }: UniverseCreationFo
         >
           <legend className="text-sm font-medium">{en.universeCreation.modeLegend}</legend>
           <RadioGroup name="mode" value={mode} onValueChange={changeMode} className="gap-1">
-            {UNIVERSE_MODES.map((universeMode) => (
+            {vocabulary.modes.map((universeMode) => (
               <label
                 key={universeMode}
                 className="group rounded-control hover:bg-hover has-[[data-state=checked]]:bg-selection flex cursor-pointer items-start gap-3 px-2 py-1.5"
@@ -196,10 +186,10 @@ export function UniverseCreationForm({ onCreated, onCancel }: UniverseCreationFo
                   className="border-line-control data-[state=checked]:border-accent data-[state=checked]:bg-accent rounded-pill mt-0.5 size-4 shrink-0 border"
                 />
                 <span className="flex flex-col">
-                  <span className="text-sm font-medium">{en.universeCreation.modes[universeMode].label}</span>
+                  <span className="text-sm font-medium">{MODE_TEXTS[universeMode]?.label ?? universeMode}</span>
                   {/* On the selection background ink-muted falls below 4.5:1 in some presets, so it switches to ink. */}
                   <span className="text-ink-muted group-has-[[data-state=checked]]:text-ink text-sm">
-                    {en.universeCreation.modes[universeMode].explanation}
+                    {MODE_TEXTS[universeMode]?.explanation}
                   </span>
                 </span>
               </label>
@@ -209,8 +199,26 @@ export function UniverseCreationForm({ onCreated, onCancel }: UniverseCreationFo
           <p className="text-ink-muted text-xs">{en.universeCreation.modeImmutableNote}</p>
         </fieldset>
 
+        {creationNoticeCode === null ? null : (
+          <p
+            role={creationNoticeCode === CREATION_NOTICE_CODES.confirmedAfterDelay ? "status" : "alert"}
+            data-message-code={creationNoticeCode}
+            className="text-ink text-sm"
+          >
+            {NOTICE_TEXT_BY_CODE[creationNoticeCode]}
+            {creationNoticeCode === CREATION_NOTICE_CODES.signInAgain ? (
+              <>
+                {" "}
+                <a href={signInAddress} className="underline">
+                  {en.universeCreation.notices.signInLink}
+                </a>
+              </>
+            ) : null}
+          </p>
+        )}
+
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isCreationBlocked}>
             {en.universeCreation.create}
           </Button>
           <Button type="button" variant="secondary" onClick={onCancel}>

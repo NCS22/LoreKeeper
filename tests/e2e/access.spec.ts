@@ -8,7 +8,7 @@ import { seedAccountInDatabase } from "./support/seed-account-in-database";
 import { submitSignInForm } from "./support/sign-in-through-the-form";
 import { HEALTHY_SERVER_ADDRESS } from "./support/test-servers";
 import { waitForFormHydration } from "./support/wait-for-form-hydration";
-import { expectWorkspaceIsShown, SAMPLE_UNIVERSE_NAME, WORKSPACE_ONLY_TEXTS } from "./support/workspace-content";
+import { expectWorkspaceIsNotShown, expectWorkspaceIsShown, WORKSPACE_ONLY_TEXTS } from "./support/workspace-content";
 
 // Access to pages (FR-13, FR-15, FR-18 to FR-22, FR-29, FR-34, NFR-4): what a signed-out client gets
 // from every kind of request, what a signed-in person gets from the sign pages, the three public
@@ -220,7 +220,7 @@ test.describe("the return destination in the browser (FR-13, FR-19, FR-20)", () 
     expect(page.url()).toBe(`${HEALTHY_SERVER_ADDRESS}/sign-in?returnTo=%2F%3Fx%3D1`);
     expect(page.url()).not.toContain("_rsc");
     await expect(page.getByRole("heading", { name: SIGN_IN_MESSAGES.title })).toBeVisible();
-    await expect(page.getByText(SAMPLE_UNIVERSE_NAME)).toHaveCount(0);
+    await expectWorkspaceIsNotShown(page);
 
     await page.getByLabel(SIGN_IN_MESSAGES.emailLabel).fill(account.email);
     await page.getByLabel(SIGN_IN_MESSAGES.passwordLabel).fill(account.password);

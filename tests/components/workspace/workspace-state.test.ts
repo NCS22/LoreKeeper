@@ -103,6 +103,47 @@ describe("reduceWorkspaceState: universe creation", () => {
   });
 });
 
+describe("reduceWorkspaceState: no universe selected", () => {
+  it("a created universe is selected when none was, and the form closes", () => {
+    const stateWithoutUniverse = buildWorkspaceState({
+      selectedUniverseId: null,
+      selectedWorkId: null,
+      selectedEntityId: null,
+      highlightedEntityId: null,
+      expandedUniverseIds: [],
+      isCreatingUniverse: true,
+    });
+
+    const nextState = reduceWorkspaceState(stateWithoutUniverse, {
+      type: "universeCreated",
+      universeId: "universe-new",
+    });
+
+    expect(nextState.selectedUniverseId).toBe("universe-new");
+    expect(nextState.isCreatingUniverse).toBe(false);
+  });
+
+  it("starting and cancelling the creation leaves the selection empty", () => {
+    const stateWithoutUniverse = buildWorkspaceState({ selectedUniverseId: null, selectedWorkId: null });
+
+    const startedState = reduceWorkspaceState(stateWithoutUniverse, { type: "universeCreationStarted" });
+    const cancelledState = reduceWorkspaceState(startedState, { type: "universeCreationCancelled" });
+
+    expect(startedState.isCreatingUniverse).toBe(true);
+    expect(startedState.selectedUniverseId).toBeNull();
+    expect(cancelledState.selectedUniverseId).toBeNull();
+  });
+
+  it("selecting a universe when none was selected selects it and clears the entity", () => {
+    const stateWithoutUniverse = buildWorkspaceState({ selectedUniverseId: null, selectedWorkId: null });
+
+    const nextState = reduceWorkspaceState(stateWithoutUniverse, { type: "universeSelected", universeId: "universe-a" });
+
+    expect(nextState.selectedUniverseId).toBe("universe-a");
+    expect(nextState.selectedEntityId).toBeNull();
+  });
+});
+
 describe("reduceWorkspaceState: existing entity creation behavior", () => {
   it("starting and cancelling entity creation only toggles its flag", () => {
     const initialState = buildWorkspaceState();

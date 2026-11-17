@@ -10,13 +10,13 @@ import { useWorkspaceState } from "@/components/workspace/workspace-state";
 import { getEntitiesOfUniverse } from "@/mocks/data/queries";
 
 // The accessible alternative to the graph: every entity is a link, grouped by type, in reading order.
-export function EntityListView() {
+export function EntityListView({ universeId }: { universeId: string }) {
   const { state, dispatch } = useWorkspaceState();
   const { openInspector } = useWorkspaceLayout();
 
   const entities = useMemo(
-    () => getEntitiesOfUniverse(state.selectedUniverseId, state.selectedWorkId),
-    [state.selectedUniverseId, state.selectedWorkId],
+    () => getEntitiesOfUniverse(universeId, state.selectedWorkId),
+    [universeId, state.selectedWorkId],
   );
   const groups = ENTITY_TYPE_ORDER.map((type) => ({
     type,
