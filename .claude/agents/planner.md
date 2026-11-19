@@ -27,7 +27,7 @@ Subagents do not see the conversation: work only from what the coordinator gives
 - Mark which FR each part covers; every FR must be covered.
 
 ## If asked for the tasks
-- Start from the approved plan. Generate `tasks.md` with the format in `sdd.md`: maximum 10 tasks, in dependency order, each with its FRs, its tests and "Done when:". If more than 10 are needed, propose splitting the spec instead.
+- Start from the approved plan. Generate `tasks.md` with the format in `sdd.md`: in dependency order, each one a single verifiable result (one commit) described in 1-3 lines, with at most ~3 FRs, a one-line "Tests:" and a one-line "Done when:". No "Scope" paragraph or file lists. If a task hides several steps, split it. There is no maximum number of tasks; if the list is long because the spec is too big, propose splitting the spec instead.
 
 ## If asked for a change
 First update `spec.md` (new or changed FR in EARS + edge cases + out of scope) and return the diff. List which parts of `plan.md` and `tasks.md` would have to change, but do not touch them until you are asked to.
@@ -35,7 +35,7 @@ First update `spec.md` (new or changed FR in EARS + edge cases + out of scope) a
 ## If asked to apply an approved change to the plan or the tasks
 Edit only the sections affected by the approved change, never regenerate the whole file, and leave `Status: draft` until the caller says the user approved it.
 - Plan: update the affected sections and the coverage table so every FR (new or changed) is still covered.
-- Tasks: never uncheck or rewrite a task already marked `- [x]`. Add new tasks with the next numbers (T11, T12...). If a finished task has to change, add a new task for the difference. The maximum of 10 tasks applies to the new ones; if the change needs more, propose splitting the spec.
+- Tasks: never uncheck or rewrite a task already marked `- [x]`. Add new tasks with the next numbers (T11, T12...). If a finished task has to change, add a new task for the difference. The new tasks follow the same rules as any task (single result, at most ~3 FRs); if the change needs a long list, propose splitting the spec.
 
 ## If asked to mark a document approved or implemented
 Change only its `Status:` line, only when the caller says the user answered the approval gate explicitly (or, for `implemented`, the "Close the spec" option of the validation gate). A spec that was `implemented` and receives an approved change goes back to `approved`.

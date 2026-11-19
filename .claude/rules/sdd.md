@@ -102,6 +102,13 @@ Checked against the out-of-scope list in docs/roadmap.md, the open decisions in 
 - [NEEDS CLARIFICATION] <question>
 ```
 
+### Spec budget and hardening
+
+- One user-visible capability per spec, at most ~12 FR. The cap only counts if the tasks stay small (see "Tasks"): never reach it by writing huge tasks.
+- Always in the spec, no negotiation: owner isolation, Zod at the boundary, spoiler filtering, typed errors.
+- Protections that already exist as shared code (single submission, unanswered or late answers, text rules, clearing state on account change, error mapping) are reused. The spec says "uses the pattern of spec NNN" and tests only what differs; it does not restate them.
+- Costly and rare hardening (several tabs at once, network cuts with a simulated clock, layout stress at 320 px with hundreds of items) goes to `docs/hardening.md` with its reason, to be decided in one block before Phase 5, not spec by spec. Open that file when a phase starts.
+
 ### Requirements in EARS
 
 - FR-x: WHEN <event>, THE SYSTEM SHALL <response>.
@@ -135,9 +142,10 @@ Status: draft | approved
   - Done when: <verifiable check>
 ```
 
-- Maximum 20-30 minutes per task, in dependency order. Every task includes its own tests (CLAUDE.md: tests with every change).
+- One task = one verifiable result = one commit, in dependency order. Description of 1-3 lines; no "Scope" paragraph listing files (the plan and the implementer decide the files). `Tests:` and `Done when:` are one line each. Every task includes its own tests (CLAUDE.md: tests with every change).
+- At most ~3 FR per task. A task that needs more, or that hides several steps ("and", "also", a list of files), is split into several tasks. A group of simple mechanical tasks of the same kind (for example moving messages to `en.ts`) may be one task.
 - Add `- Spoiler suite: required` when the task touches queries, visibility or reading progress.
-- Maximum 10 tasks. If more are needed, stop and propose splitting the spec.
+- There is no maximum number of tasks; what matters is that each one is small. If the task list is long because the spec is too big (see "Spec budget"), propose splitting the spec instead.
 
 ## Decisions (`specs/NNN-feature/decisions.md`, optional)
 
@@ -147,7 +155,7 @@ Design decisions with their discarded alternative live in section 8 of the `plan
 
 One task at a time: the minimum code that fulfills the task, with its tests. Then run the verification gate below, mark the task `- [x]` and stop; the command that called the implementer checks the report, commits the task (see "Git" below) and asks the approval gate. The implementer never runs git commands that write.
 
-When the task changes UI, `@frontend-tester` checks it in a real browser (Playwright MCP) after the verification gate is green; the implementer does not open a browser. Failures of high severity go back to the implementer as a findings list.
+`@frontend-tester` does not run per task: it runs once, in the validation, for specs with UI FRs (the implementer does not open a browser either). Exception: a task whose only risk is visual may ask for it explicitly in its `Done when:`.
 
 "The rest without stopping" is an option of the implementation gate. The command then calls `@implementer` for each remaining task in order, with no gate between them, and stops at once, telling the user why, when:
 - a task's report does not show `pnpm typecheck`, `pnpm lint` and `pnpm test` green with no new warnings (and the spoiler suite or `pnpm test:e2e` when the task requires them);
@@ -169,10 +177,10 @@ When the tasks end, or it stops, the user gets the report of every task done and
 
 Validation (whole spec) repeats the verification gate and then goes through every FR and the completion criteria. It starts only when every task is `- [x]`.
 
-- `@reviewer` (FR by FR), `@hacker` (security and robustness, spoiler leaks, ownership and validation first) and, if the spec has UI FRs, `@frontend-tester` (real browser: desktop, 320 px, dark theme, console, keyboard) run in parallel.
-- All reports always go through `@explainer` before they are shown, keeping their order and severity. The original reports are kept for the technical team.
+- `@reviewer` (FR by FR) always runs. `@hacker` (security and robustness, spoiler leaks, ownership and validation first) runs only if the spec touches authentication, ownership, spoilers or exposure of data. `@frontend-tester` (real browser: desktop, 320 px, dark theme, console, keyboard) runs once, only if the spec has UI FRs. They run in parallel.
+- Reports go through `@explainer` only when the user asks for it; otherwise they are shown in Spanish, short, keeping their order and severity. The original reports are kept for the technical team.
 - If all are clean (`VERDICT: APPROVED`, `SAFE` and `UI VERDICT: PASSES`), the gate offers to close the spec. A `UI VERDICT: INCOMPLETE (DATABASE NEEDED)` counts as clean only after the user chose "Seguir sin ella" (the FRs on its list stay "not verified in browser"). Otherwise it offers to fix the problems.
-- Fix loop, at most 2 rounds: one `@implementer` pass for each report that asked for changes (its findings list is the task; nothing else is added, and the verification gate must pass), then only the checks that had findings run again, and the gate is asked again. If problems remain after the second round, stop and explain to the user what keeps failing; the options are then `/sdd-change` (the spec is wrong or incomplete) or stopping.
+- Fix loop, at most 1 round: one `@implementer` pass for each report that asked for changes (its findings list is the task; nothing else is added, and the verification gate must pass), then only the checks that had findings run again, and the gate is asked again. If problems remain after that round, stop and explain to the user what keeps failing; the options are then `/sdd-change` (the spec is wrong or incomplete) or stopping.
 - A finding that means the requirement itself is wrong is not fixed in code: it goes through `/sdd-change`.
 - There is no validation report file, and a spec must not refer to one. What cannot be checked by a test or by the reviewer (for example a screen-reader or keyboard check) is a manual check done by the user, who tells the agent about any problem found; the spec's completion criteria say "manual check by the user".
 
