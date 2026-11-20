@@ -9,7 +9,7 @@
     "lint": "eslint --max-warnings 0",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "test:coverage": "vitest run --project unit --coverage --coverage.reportsDirectory=coverage/unit && vitest run --project database --coverage --coverage.reportsDirectory=coverage/database",
+    "test:coverage": "vitest run --project unit --coverage --coverage.reportsDirectory=coverage/unit && vitest run --project database --coverage --coverage.reportsDirectory=coverage/database && vitest run --project component --passWithNoTests --coverage --coverage.reportsDirectory=coverage/component",
     "test:e2e": "next build && playwright test"
   },
   "dependencies": {
@@ -34,6 +34,8 @@
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/d3-force": "^3.0.10",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",
@@ -42,6 +44,7 @@
     "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.4.5",
+    "jsdom": "^31.0.1",
     "playwright": "^1.64.1",
     "prisma": "^7",
     "tailwindcss": "^4",

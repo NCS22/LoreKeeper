@@ -70,6 +70,18 @@ export default defineConfig({
           provide: { testDatabaseUrl: readTestDatabaseUrl() },
         },
       },
+      // Component tests render React in a simulated browser document. The `.test.tsx` extension
+      // selects them, so the other projects keep the Node environment (spec 005a, D9). While the
+      // project has no files, only its step in `test:coverage` passes `--passWithNoTests` (the
+      // option is root-only in Vitest), so an empty `unit` or `database` run still fails.
+      {
+        extends: true,
+        test: {
+          name: "component",
+          include: ["tests/**/*.test.tsx"],
+          environment: "jsdom",
+        },
+      },
     ],
   },
 });
