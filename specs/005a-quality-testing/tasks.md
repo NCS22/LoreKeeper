@@ -13,7 +13,7 @@ Reading notes for the whole list:
 
 ## Measuring tools (NFR-1 first)
 
-- [ ] **T1. Capture the same-result baseline.** Before any change, with the local database up, run `vitest run --reporter=json` and the Playwright JSON reporter and save the (file, full test name, status) lists in the system temporary folder, outside the repository. NFR-1
+- [x] **T1. Capture the same-result baseline.** Before any change, with the local database up, run `vitest run --reporter=json` and the Playwright JSON reporter and save the (file, full test name, status) lists in the system temporary folder, outside the repository. NFR-1
   - Tests: none (no code); baseline of the existing suite.
   - Done when: both lists exist outside the repository, every listed test passes, and `git status` shows no change besides this checkbox.
 
