@@ -1,78 +1,85 @@
-import { describe, expect, it } from "vitest";
-import { createUniversesInMemory } from "@/modules/universes/composition";
-import type { UniverseDto } from "@/modules/universes/application/universe-dto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ActingUser } from "@/shared/domain/acting-user";
+import { InfrastructureError } from "@/shared/domain/error-kinds";
 
-const firstStartingUniverse: UniverseDto = {
-  id: "universe-1",
-  name: "First universe",
-  description: null,
-  mode: "AUTHOR",
-  createdAt: "2026-01-01T10:00:00.000Z",
-  updatedAt: "2026-01-02T10:00:00.000Z",
+const PRISMA_CLIENT_GLOBAL_KEY = Symbol.for("lorekeeper.prismaClient");
+
+const actingUser: ActingUser = {
+  userId: "7b1f6f1e-0f44-4d6f-9d47-0c8a3d2f2a11",
+  displayName: "Ana Torres",
+  email: "ana@example.com",
 };
 
-const secondStartingUniverse: UniverseDto = {
-  id: "universe-2",
-  name: "Second universe",
-  description: "Line one\nLine two",
-  mode: "READER",
-  createdAt: "2026-02-01T10:00:00.000Z",
-  updatedAt: "2026-02-01T10:00:00.000Z",
-};
+// Imported inside each test, after the environment is emptied, so the import itself runs without environment.
+function importComposition() {
+  return import("@/modules/universes/composition");
+}
 
-describe("createUniversesInMemory", () => {
-  it("lists nothing when there are no starting universes", async () => {
-    const universesModule = createUniversesInMemory();
+function readFailure(work: Promise<unknown>): Promise<unknown> {
+  return work.then(
+    () => {
+      throw new Error("Expected the operation to fail, but it succeeded.");
+    },
+    (reason: unknown) => reason,
+  );
+}
 
-    expect(await universesModule.listUniverses()).toEqual([]);
+describe("the composition of the universes module without environment", () => {
+  beforeEach(() => {
+    vi.stubEnv("DATABASE_URL", "");
   });
 
-  it("lists the starting universes unchanged and in order", async () => {
-    const universesModule = createUniversesInMemory([firstStartingUniverse, secondStartingUniverse]);
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
 
-    expect(await universesModule.listUniverses()).toEqual([
-      firstStartingUniverse,
-      secondStartingUniverse,
+  it("can be imported and composed without throwing and without building a Prisma client", async () => {
+    const { createUniversesModule } = await importComposition();
+
+    expect(() => createUniversesModule()).not.toThrow();
+
+    const globalScope = globalThis as Record<symbol, unknown>;
+    expect(globalScope[PRISMA_CLIENT_GLOBAL_KEY]).toBeUndefined();
+  });
+
+  it("offers the four use cases", async () => {
+    const { createUniversesModule } = await importComposition();
+    const universesModule = createUniversesModule();
+
+    expect(Object.keys(universesModule).sort()).toEqual([
+      "createUniverse",
+      "isUniverseNameInUse",
+      "loadWorkspaceUniverses",
+      "rememberUniverse",
     ]);
   });
 
-  it("lists a created universe last and keeps the starting ones", async () => {
-    const universesModule = createUniversesInMemory([firstStartingUniverse, secondStartingUniverse]);
+  it("fails every use case that needs the database with the InfrastructureError", async () => {
+    const { createUniversesModule } = await importComposition();
+    const universesModule = createUniversesModule();
 
-    const createdUniverse = await universesModule.createUniverse({
-      name: "Third universe",
-      description: null,
-      mode: "READER",
-    });
-
-    expect(createdUniverse.id).not.toBe(firstStartingUniverse.id);
-    expect(createdUniverse.id).not.toBe(secondStartingUniverse.id);
-    expect(await universesModule.listUniverses()).toEqual([
-      firstStartingUniverse,
-      secondStartingUniverse,
-      createdUniverse,
+    const failures = await Promise.all([
+      readFailure(
+        universesModule.createUniverse(actingUser, { name: "Valid", description: null, mode: "READER" }),
+      ),
+      readFailure(universesModule.loadWorkspaceUniverses(actingUser)),
+      readFailure(universesModule.isUniverseNameInUse(actingUser, "Valid")),
+      readFailure(
+        universesModule.rememberUniverse(actingUser, {
+          universeId: "2f6c1c0e-5f0a-4c3e-8d1b-9a7e6b5c4d3a",
+        }),
+      ),
     ]);
+
+    for (const failure of failures) {
+      expect(failure).toBeInstanceOf(InfrastructureError);
+    }
   });
 
-  it("does not share data between two compositions", async () => {
-    const firstModule = createUniversesInMemory([firstStartingUniverse]);
-    const secondModule = createUniversesInMemory([firstStartingUniverse]);
+  it("is exposed through the public interface of the module", async () => {
+    const publicInterface = await import("@/modules/universes");
 
-    await firstModule.createUniverse({ name: "Only in the first", description: null, mode: "READER" });
-
-    expect(await firstModule.listUniverses()).toHaveLength(2);
-    expect(await secondModule.listUniverses()).toEqual([firstStartingUniverse]);
-    expect(await secondModule.isUniverseNameInUse("Only in the first")).toBe(false);
-  });
-
-  it("detects a name already used by a starting or a created universe", async () => {
-    const universesModule = createUniversesInMemory([firstStartingUniverse]);
-
-    expect(await universesModule.isUniverseNameInUse("  FIRST   universe ")).toBe(true);
-    expect(await universesModule.isUniverseNameInUse("Brand new")).toBe(false);
-
-    await universesModule.createUniverse({ name: "Brand new", description: null, mode: "AUTHOR" });
-
-    expect(await universesModule.isUniverseNameInUse("brand NEW")).toBe(true);
+    expect(typeof publicInterface.createUniversesModule).toBe("function");
+    expect(publicInterface.DEFAULT_UNIVERSE_MODE).toBe("READER");
   });
 });

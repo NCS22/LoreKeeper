@@ -1,3 +1,4 @@
+import type { ActingUser } from "@/shared/domain/acting-user";
 import { ValidationError, type ValidationIssue } from "@/shared/domain/validation-error";
 import type { Universe } from "../domain/universe";
 import { validateUniverseDescription } from "../domain/universe-description";
@@ -23,12 +24,14 @@ export type CreateUniverseCommand = {
 };
 
 /**
- * Creates an empty universe. Name, description and mode are checked together and every
- * failing field is reported in one `ValidationError`; nothing is stored in that case.
- * A name already used by another universe does not block creation (FR-12).
+ * Creates an empty universe owned by the acting user, whatever the command says. Name,
+ * description and mode are checked together and every failing field is reported in one
+ * `ValidationError`; nothing is stored in that case. A name already used by another
+ * universe does not block creation.
  */
 export async function createUniverse(
   dependencies: CreateUniverseDependencies,
+  actor: ActingUser,
   command: CreateUniverseCommand,
 ): Promise<UniverseDto> {
   const nameValidation = validateUniverseName(command.name);
@@ -53,6 +56,7 @@ export async function createUniverse(
   const creationTime = dependencies.getCurrentTime();
   const universe: Universe = {
     id: dependencies.generateUniverseId(),
+    ownerId: actor.userId,
     name: nameValidation.name,
     description: descriptionValidation.description,
     mode,

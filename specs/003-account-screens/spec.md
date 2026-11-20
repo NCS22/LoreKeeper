@@ -2,6 +2,14 @@
 
 Status: implemented
 
+> **Superseded in part by spec 004 (stored universes), 2026-11-17.** The requirement text below is kept as it was approved and implemented; this spec stays `implemented`. These items no longer hold as written:
+> - FR-31 (the workspace shows the same sample universes and the same in-memory creation, tied to no account): the sample universes are gone; each account sees only its own stored universes, and an account with none sees the empty state that invites it to create the first one.
+> - FR-32 and the definition of "clean start" (the workspace shows only its sample data and drops what was created in memory): widened by 004 FR-18. On sign-up, sign-in and sign-out all the account-scoped state of the screen (selected universe, list, half-typed form, notices) is cleared, also in other open tabs, and the workspace shows the new account's stored universes.
+> - NFR-4, the marker "the names of the sample universes": no longer valid, because those names no longer exist. The labels of the top bar and the side panels still are.
+> - The accepted risk about public static files that contain the sample data: closed. The sample data was removed and the files served without a session contain no stored data (004 FR-36, FR-37).
+> - The sentences about sample data, in-memory creation, universes "tied to nobody" and "the workspace shows sample data only" in the Context and goal, the Definitions (public resources), the Spoiler impact, the Edge cases, the accepted risks and the Completion criteria.
+> The other requirements of this spec, including the page access guard, are unchanged.
+
 ## Context and goal
 
 Spec 002 (accounts) gives the application an engine for accounts: rules, stored accounts and sessions, authentication, the rules of how long a session lasts, the single acting-user check, the shared error kinds and the three account actions (sign up, sign in, sign out) with their results. It changes nothing visible. This feature is the visible side: the screens and the rules of access that let a person use that engine, the point where a session that is being used is renewed in the browser, and the browser tests that prove the account flows work as a person would live them.

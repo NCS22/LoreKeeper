@@ -12,7 +12,7 @@ import { HEALTHY_SERVER_ADDRESS, WORKSPACE_ROOT_ACTION_PATTERN } from "./support
 import { findMenuMessage, findMenuPanel, findMenuTrigger, findSignOutButton, openUserMenu } from "./support/user-menu-locators";
 import { waitForElementHydration } from "./support/wait-for-element-hydration";
 import { waitForFormHydration } from "./support/wait-for-form-hydration";
-import { expectWorkspaceIsShown, SAMPLE_UNIVERSE_NAME } from "./support/workspace-content";
+import { expectWorkspaceIsNotShown, expectWorkspaceIsShown } from "./support/workspace-content";
 
 // The user menu, sign-out, the back action and the clean start of the workspace (FR-25 to FR-32,
 // NFR-1, NFR-2, NFR-5). Accounts are created directly in the test database; every test has its own.
@@ -58,13 +58,14 @@ function isSignOutCall(request: Request): boolean {
   return isServerActionRequest(request) && new URL(request.url()).pathname === "/";
 }
 
-async function createInMemoryUniverse(page: Page, universeName: string): Promise<void> {
+/** Creates a universe through the form and waits until it is stored, listed and selected. */
+async function createStoredUniverse(page: Page, universeName: string): Promise<void> {
   const newUniverseButton = page.getByRole("button", { name: en.sidebar.newUniverse });
   await waitForElementHydration(newUniverseButton);
   await newUniverseButton.click();
   await page.getByRole("textbox", { name: en.universeCreation.nameLabel, exact: true }).fill(universeName);
   await page.getByRole("button", { name: en.universeCreation.create, exact: true }).click();
-  await expect(page.getByText(en.universeEmptyState.noContentYet)).toBeVisible();
+  await expect(page.getByText(en.universeEmptyState.emptyText)).toBeVisible();
 }
 
 test.describe("user menu: the name and the email (FR-25, FR-26)", () => {
@@ -206,7 +207,7 @@ test.describe("sign-out: the way out (FR-27)", () => {
       const replayPage = await replayContext.newPage();
       await replayPage.goto("/");
       await expect(replayPage).toHaveURL("/sign-in?returnTo=%2F");
-      await expect(replayPage.getByText(SAMPLE_UNIVERSE_NAME)).toHaveCount(0);
+      await expectWorkspaceIsNotShown(replayPage);
 
       // The other device's session was not touched.
       await otherDevicePage.reload();
@@ -404,7 +405,7 @@ test.describe("sign-out: the browser back action (FR-29, FR-30)", () => {
     // The earlier workspace entry is requested again, and without a session it is a redirect.
     await expect(page).toHaveURL("/sign-in?returnTo=%2F");
     await expect(page.getByRole("heading", { level: 1, name: signInMessages.title })).toBeVisible();
-    await expect(page.getByText(SAMPLE_UNIVERSE_NAME)).toHaveCount(0);
+    await expectWorkspaceIsNotShown(page);
   });
 
   test("after signing in, going back does not return to the sign-in page (FR-30)", async ({ page }) => {
@@ -431,38 +432,40 @@ test.describe("sign-out: the browser back action (FR-29, FR-30)", () => {
 });
 
 test.describe("sign-out: clean start of the workspace (FR-31, FR-32)", () => {
-  test("a universe created in memory is gone after signing out and signing in; only the sample data shows", async ({ page }) => {
+  test("a stored universe is listed again after signing out and signing in, while a half-typed form is gone (FR-18, FR-31, FR-32)", async ({ page }) => {
     const account = await seedAccountInDatabase();
-    const universeName = `Kept only in memory ${randomUUID()}`;
+    const universeName = `Stored universe ${randomUUID()}`;
+    const halfTypedName = `Half typed ${randomUUID()}`;
     await signInThroughTheForm(page, account);
-    // The in-memory creation works as before (FR-31).
-    await createInMemoryUniverse(page, universeName);
+    await createStoredUniverse(page, universeName);
     await expect(page.getByText(universeName).first()).toBeVisible();
     await page.getByRole("button", { name: en.sidebar.newUniverse }).click();
     await expect(page.getByRole("heading", { level: 2, name: en.universeCreation.title })).toBeVisible();
+    await page.getByRole("textbox", { name: en.universeCreation.nameLabel, exact: true }).fill(halfTypedName);
 
     await signOutFromTheMenu(page);
     await expectSignedOutOnTheSignInPage(page);
     await signInThroughTheForm(page, account);
 
-    await expectWorkspaceIsShown(page);
-    await expect(page.getByText(universeName)).toHaveCount(0);
-    await expect(page.getByText(en.universeEmptyState.noContentYet)).toHaveCount(0);
+    // The universe is stored, so it is back and selected; nothing typed in the earlier page is.
+    await expect(page.getByText(universeName).first()).toBeVisible();
+    await expect(page.getByText(en.universeEmptyState.emptyText)).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: en.universeCreation.title })).toHaveCount(0);
+    await expect(page.getByText(halfTypedName)).toHaveCount(0);
   });
 
-  test("an \"already signed in\" answer in another tab leaves this tab's workspace, and its in-memory universe, as it is (FR-22, FR-32)", async ({ page }) => {
+  test("an \"already signed in\" answer in another tab leaves this tab's workspace, and its stored universe, as it is (FR-22, FR-32)", async ({ page }) => {
     // A failed sign-in cannot happen in a tab of the same browser once a session exists (the action
     // answers "already signed in" first), and a failed submission never leaves the form page; the
     // sign-in spec covers that the form stays as it is after a failure.
     const account = await seedAccountInDatabase();
-    const universeName = `Kept only in memory ${randomUUID()}`;
+    const universeName = `Stored universe ${randomUUID()}`;
     const otherTab = await page.context().newPage();
     await otherTab.goto("/sign-in");
     await waitForFormHydration(otherTab);
 
     await signInThroughTheForm(page, account);
-    await createInMemoryUniverse(page, universeName);
+    await createStoredUniverse(page, universeName);
     await page.evaluate(() => {
       document.documentElement.dataset.untouched = "yes";
     });

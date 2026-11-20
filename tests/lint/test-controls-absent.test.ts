@@ -30,6 +30,37 @@ const END_TO_END_FAILURE_IDENTIFIERS = [
   "expireSessionRowsInDatabase",
   "moveSessionRowsBackInTimeInDatabase",
   "readSessionExpiryDatesInDatabase",
+  // Spec 004 (stored universes): seeding, reading and editing universes in the test database, the
+  // triggers that provoke a failure of the stored data, and the replay of Server Action calls.
+  "seedUniversesInDatabase",
+  "readAccountIdInDatabase",
+  "readUniversesOfAccountInDatabase",
+  "countUniversesWithNameInDatabase",
+  "readRememberedUniverseIdInDatabase",
+  "writeRememberedUniverseInDatabase",
+  "markUniverseAsDeletedInDatabase",
+  "provokeStorageFailure",
+  "dropLeftoverStorageFailuresInDatabase",
+  "STORAGE_FAILURE_OBJECT_PREFIX",
+  "e2e_storage_failure_",
+  "captureServerActionId",
+  "replayServerAction",
+  "buildCookieHeader",
+  "readActionResult",
+  // Spec 004, layout and served-file tests: measuring the page in a browser and reading what the
+  // server hands out over HTTP.
+  "findElementsOutsideTheViewportWidth",
+  "expectNothingOutsideTheViewportWidth",
+  "expectBoxInsideTheViewportWidth",
+  "expectTextIsShownWhole",
+  "measureScrollingAreaAround",
+  "NARROWEST_VIEWPORT",
+  "DESKTOP_VIEWPORT",
+  "tabUntilFocused",
+  "readServedAnswer",
+  "servedAnswerContains",
+  "findStaticFileAddresses",
+  "fetchStaticFilesNamedBy",
 ];
 
 const SOURCE_FILE_PATTERN = /\.(?:ts|tsx|js|jsx|mjs|cjs)$/;

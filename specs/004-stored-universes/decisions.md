@@ -1,0 +1,165 @@
+# Decisions taken after the plan was approved (spec 004)
+
+## D-T2-1. Application tests of the universes run in the database project
+
+- What: `vitest.config.mts` adds `tests/modules/universes/application/**/*.test.ts` to `DATABASE_BACKED_TEST_FILES`, so the use case scenarios can run `describe.each` over the fake and PostgreSQL (NFR-1) in the one-file-at-a-time database project.
+- Why: the plan requires both storages in the application tests, and only that project provides the test database.
+- Discarded: a second copy of every application test under `infrastructure/`, which would duplicate the scenarios.
+- Approved by: pending the user.
+
+## D-T2-2. Two scenarios are fake-only, and the contract no longer holds one of them
+
+- What: "keeps two storages independent" left the shared contract and lives in `fake-universe-storage.test.ts`; "falls back to the oldest universe when the remembered one is not an own universe" (`load-workspace-universes.test.ts`) runs on the fake only.
+- Why: PostgreSQL is one shared database, so two storages over it are never independent; and the composite foreign key makes it impossible to store a remembered universe that is not an own one (that refusal, and a deleted remembered universe reading as none, are tested in `prisma-remembered-universe-repository.test.ts`). The use case fallback on "no remembered universe" still runs on both storages.
+- Discarded: skipping them for PostgreSQL (no skipped tests are allowed) or weakening the foreign key.
+- Approved by: pending the user.
+
+## D-T2-3. Remembered universe: a deleted universe reads as none, saving is a plain upsert
+
+- What: `findRememberedUniverseId` returns `null` when the universe is deleted (`deletedAt` set); `saveRememberedUniverse` is an upsert that the composite foreign key protects against other owners. It does not itself refuse a deleted universe; the use case already checks the universe with `findOwnedById`, which never returns deleted rows.
+- Why: smallest code that keeps FR-11/FR-12; a conditional write would need raw SQL for a case no code path produces before spec 005.
+- Discarded: a raw `INSERT ... SELECT ... WHERE deletedAt IS NULL`.
+- Approved by: pending the user.
+
+## D-T2-4. Repositories receive a client getter; one extra infrastructure file
+
+- What: `createPrismaUniverseRepository(getPrismaClient)` and `createPrismaRememberedUniverseRepository(getPrismaClient)` take a function, as the accounts authenticator does, so building them touches no database (T3 composition). `run-universe-storage-operation.ts` holds the one place that turns a failure into an `InfrastructureError` with its cause.
+- Why: "touches nothing at creation" (T3) and the persistence test needs to swap the client; avoids repeating the try/catch in five methods.
+- Discarded: passing a client instance; a try/catch in every method.
+- Approved by: pending the user.
+
+## D-T2-5. Test support files added
+
+- What: `tests/support/universe-owners.ts` (owner constants and `buildActingUser`, re-exported by `universe-repository-factories.ts`, to avoid an import cycle), `tests/support/database/postgres-universe-storage.ts` (empties the tables, creates the two accounts, inserts the universes), and `tests/modules/universes/infrastructure/universe-persistence.test.ts` (FR-6 test in its own file because it terminates every connection of the test database).
+- Why: the database requires the owner to exist; terminating connections must not break the client other files share.
+- Approved by: pending the user.
+
+## D-T3-1. The bridge moves to its own file; the composition is only the real one
+
+- What: `createUniversesInMemory` and its type (renamed `PrototypeUniversesModule`) moved from `composition.ts` to `prototype-composition.ts`, with their tests in `tests/modules/universes/prototype-composition.test.ts` (the old cases, unchanged). `composition.ts` holds only `createUniversesModule()`, whose four functions take the acting user first (`createUniverse(actor, command)`, `loadWorkspaceUniverses(actor)`, `isUniverseNameInUse(actor, name)`, `rememberUniverse(actor, command)`). Both files are deleted or reduced with the bridge in T4.
+- Why: the plan says `composition.test.ts` is rewritten for the real composition, and the bridge still needs its own tests until T4.
+- Discarded: keeping both compositions in one file (the real-composition test would also import the in-memory code).
+- Approved by: pending the user.
+
+## D-T3-2. Shape of the form vocabulary
+
+- What: `UniverseFormVocabulary` has `fieldNames` (`name`, `description`, `mode`), `issueCodes` (`nameRequired`, `nameTooLong`, `nameInvalidCharacters`, `descriptionTooLong`, `descriptionInvalidCharacters`, `modeInvalid`), `modes` and `defaultMode`, like the accounts vocabulary. It has no `universeId` entry: the interpreter of T4 does not need to tell it from the form fields.
+- Why: smallest shape that covers FR-4, FR-5 and the mode choice; T4 and T5 can add an entry if a screen needs it.
+- Discarded: adding every code the module exports (YAGNI).
+- Approved by: pending the user.
+
+## D-T3T4-1. T3 and T4 are one step; the bridge is deleted now
+
+- What: the T3 gap (the module index exports the Prisma server composition, and client components import that index, so `pnpm build` failed) is closed by merging T3 and T4 into one step. The client provider no longer imports the module index at runtime and no longer builds an in-memory module; it reads the list and the remembered universe from the server and calls the actions. The form and the issue-messages file receive the vocabulary (`UniverseFormVocabulary`, D-T3-2) by props instead of importing constants from the index (003 D13). The bridge (`prototype-composition.ts`, `createUniversesInMemory`), `in-memory-universe-repository.ts` with its test, `prototype-composition.test.ts` and the provider's import of the sample universes are deleted. Client files keep only type-only imports of the index (`UniverseDto`, `CreateUniverseCommand`), which are erased at build time.
+- Why: it is the only way to leave the build green without a lint exception, a relaxed rule or a second public entry point for the module.
+- Discarded: the other ways of keeping the bridge reachable from the client until T4 (options a and b put to the user): a lint exception or deep import so the client keeps the in-memory module, or a second entry point of the module for the client (a new public surface the architecture does not describe). Both would have left the bridge alive for one more task.
+- Approved by: the user.
+
+## D-T3T4-2. Page loader test in the database project; extra pure helper and test files
+
+- What: `vitest.config.mts` adds `tests/components/workspace/load-workspace-universes-for-page.test.ts` to `DATABASE_BACKED_TEST_FILES` (same reason as D-T2-1: it needs the session and the test database). Two small files not named in the plan: `insert-universe-in-creation-order.ts` (a universe whose answer arrives late is inserted in the order the server lists them, instead of appended; tested in `insert-universe-in-creation-order.test.ts`) and `account-guard-decision.ts` (the pure decision, as the plan asks) next to `use-account-guard.ts`. `workspace-loading.tsx` holds the loading fallback.
+- Why: FR-8 (a late answer is applied) and FR-11 (the list keeps the creation order) both need the insertion to be ordered; the rest is what the plan section 5 lists.
+- Discarded: appending (the list would differ from the order after a reload); a new test project for one file.
+- Approved by: pending the user.
+
+## D-T3T4-3. Wiring choices of the client data layer
+
+- What: (1) `WorkspaceStateProvider` is now the outer provider and `UniversesProvider` sits inside it, so a created universe (also one whose answer is late) is selected from the provider with `universeCreated`; the sidebar tree and rail select through `selectUniverse` of the provider, which also remembers it. (2) `EntityListView`, `GraphView` and `EntityCreationForm` receive `universeId` as a prop from the central area, because the selected universe is nullable now (they are deleted in T7). (3) The form shows a minimal message paragraph (`role="alert"`, `role="status"` for the late confirmation, `data-message-code`) and a sign-in link, because without it a failed creation would be silent; the full form rewrite stays in T5. A fourth code, `CREATION_SIGN_IN_AGAIN`, is used for the sign-in message. (4) A failure answer that arrives after the 5-minute cap is ignored by the reducer (the unknown-result message stays); only a success is applied late. (5) With no universe selected the central area shows the form when it is open and otherwise a plain sentence; the final empty states are T6. (6) `universe-issue-messages.ts` already takes the vocabulary and has the two new `INVALID_CHARACTERS` messages (T5 lists them; they were needed to remove the index import). (7) The name check is still called on every change of the name, as before; the 250 ms wait and the stale-answer rule are T5.
+- Why: smallest code that leaves the application working and the build green.
+- Approved by: pending the user.
+
+## D-T5-1. The confirmation of a late success lives in the workspace, not in the form
+
+- What: the form shows only the failure messages (`CREATION_FAILED`, `CREATION_RESULT_UNKNOWN`, `CREATION_SIGN_IN_AGAIN`, all `role="alert"`, `tabIndex={-1}`, focused when they appear). `CREATION_CONFIRMED_AFTER_DELAY` (`role="status"`) is rendered by the new `late-creation-confirmation.tsx` in `central-area.tsx`, above the content, with a "Dismiss" button (new text `notices.dismiss`).
+- Why: every success selects the new universe and closes the form (`universeCreated`), so a confirmation placed inside the form would never be seen (FR-8: "replace the unknown-result message with a confirmation").
+- Discarded: keeping the form open after a late success (contradicts FR-24, the universe is selected); leaving the confirmation inside the form, where it is invisible.
+- Approved by: pending the user.
+
+## D-T5-2. Duplicate-name warning: answer tied to the checked name; no request for an empty name
+
+- What: `check-name-after-pause.ts` holds `scheduleNameCheck` (250 ms pause, returns a cancel function used by the effect cleanup) and `isDuplicateNameWarningShown`. The answer carries the name it was about and the warning shows only when it equals the name in the field now, so a stale answer can never show or hide it. No request is sent for an empty name (the field is empty when the form opens). The previous behavior (one call per change, including on mount) is gone.
+- Why: D10 (250 ms, stale answers ignored, failure shows nothing); tying the answer to its name also avoids a warning for a name the person already changed during the 250 ms.
+- Discarded: keeping the last answer visible until the next one arrives (a misleading warning while typing).
+- Approved by: pending the user.
+
+## D-T5-3. Final messages kept; small form changes
+
+- What: the notice texts of T4 are kept as the final ones (they already say what happened, that the entries are kept and what to do). The form also clears its field messages when a submission starts, so a later failure without field issues does not show an old field message, and a message that was already shown when the form opens does not take focus from the name field.
+- Approved by: pending the user.
+
+## D-T6-1. Five sample-only components that read the removed state are deleted in T6, not T7
+
+- What: `entity-creation-form.tsx`, `entity-list-view.tsx`, `graph-view.tsx`, `entity-sheet.tsx` and `inspector-content.tsx` are deleted now. The first four read `selectedEntityId`, `highlightedEntityId` or `selectedWorkId`, or dispatched `entitySelected`, which T6 removes from the workspace state; they cannot compile without them, and none is rendered any more. `inspector-content.tsx` (sample entity or empty state) is replaced by rendering `InspectorEmptyState` directly in `workspace.tsx`. The rest of the sample-only files (`src/mocks/**`, `graph-canvas.tsx`, `graph-legend.tsx`, `graph-theme.ts`, entity badges, glyphs, icons and type configuration, `status-badge.tsx`, `knowledge-ribbon.tsx`, `work-medium-config.ts`) stay for T7. They had no tests.
+- Message groups with no reader left are deleted (`creation`, `entityTypePlural`, `media`, `center.newElement`, `center.noUniverseSelected`, `graph.loading`, `graph.switchToList`, the entity-sheet keys of `inspector`, `sidebar.railWorks`); the groups still read by the files that T7 deletes (`entityTypes`, `statuses`, `graph` canvas keys, `inspector.noKnowledge` and `revealedAt`) stay.
+- Why: the task removes those state fields and the entity form; the only alternative that keeps the files compiling is keeping the fields.
+- Discarded: keeping the removed fields until T7 (contradicts the task and leaves dead state); editing the sample components to drop their state use (wasted work on files T7 deletes).
+- Approved by: pending the user.
+
+## D-T6-2. Layout of the central area and the heading
+
+- What: the universe name is the single `h1` of the workspace and lives in `UniverseEmptyState`, not in the toolbar (which holds only the Graph and List switcher). Under it come the mode with its explanation, the description (plain text, `whitespace-pre-line`) and the honest text, then a bordered text box for the active view (`GraphEmptyState` or `EntityListEmptyState`). The area scrolls vertically; names are wrapped, never cut. With no universe selected there is no toolbar: the `h1` is "You have no universes yet" with the single button. When the form is cancelled, the focus goes back to the universe heading, or to the "Create your first universe" button. The sidebar tree has no expansion (no `aria-expanded`, no chevron, no empty group) and the works area ("No works yet") appears under it only while a universe is selected; its keyboard logic is in the pure `universe-tree-navigation.ts`.
+- Why: avoids showing a 120-character name twice (toolbar and body) and gives every state its own heading; it also fixes the earlier observations (the `[expanded]` empty group, and the "side panel" wording that was wrong for the 320 px drawer).
+- Discarded: keeping the name in the toolbar `h1` and again in the empty state.
+- Approved by: pending the user.
+
+## D-T7-1. Marker set, structural test shape and files left in place
+
+- What: `tests/support/sample-data-markers.ts` holds ten markers: the plan's one per type (universe identifier and a long description sentence, work title, event identifier, source title, first entity, relationship and reading position identifiers) plus the second universe identifier and the first work identifier. `tests/lint/sample-data-absent.test.ts` scans every file under `src/` (any extension, `generated` excluded) for a `@/mocks` reference, a marker, or a file inside a `mocks/` folder, and checks itself on temporary folders (clean, import, each marker, mocks folder, a plain name such as "The Ember Concordat" is not flagged). `src/components/ui/select.tsx` is not imported by anything since T6 deleted the entity form, but it is a generic shadcn component, not sample data, so it stays.
+- Why: the plan asks for markers and a structural test; two extra identifiers cost nothing and widen coverage; the mocks-folder rule makes a revived `src/mocks` fail even with innocuous content.
+- Discarded: deleting `select.tsx` (not sample data, outside the task); matching only `.ts`/`.tsx` (a marker in CSS or JSON would be served too).
+- Approved by: pending the user.
+
+## D-T8-1. Extra E2E support files, and what the browser tests do not read
+
+- What: besides the three support files of the plan (`seed-universes-in-database.ts`, `provoke-storage-failure.ts`, `capture-server-action-id.ts`), T8 adds `read-universes-in-database.ts` (reads and small edits of the universe tables in the test database: rows of an account, count by name, the remembered universe, soft delete), `replay-server-action.ts` (a call to a Server Action without a page: identifier, cookie header, body; and the reader of the result object) and `universe-workspace-support.ts` (locators and steps of the workspace and the creation form, shared by the three specs and by T9 and T10). All their exported names are in the list of `tests/lint/test-controls-absent.test.ts`. The global setup calls `dropLeftoverStorageFailuresInDatabase` before emptying the tables.
+- What else: (1) the Playwright response of a Server Action that the page has already consumed cannot be read (`response.text()` fails), so the failure of "remember" is proved by what is stored (nothing) and by the server log, not by the answer body; the answers read in the tests come from `replayServerAction`. (2) A sleeping trigger has a bounded sleep (at most 60 real seconds), because removing a trigger needs a lock that waits for the writes still running; T9 moves the browser clock for the 30 s and 5 min limits and lets the real sleep be a few seconds. (3) "Stale remembered value" is a soft-deleted universe that is remembered (the composite foreign key makes a remembered universe of another account impossible to store, so the "forged" case is the forged remember call, which is refused and changes nothing). (4) A forged call to a public page (`/sign-in`, `/sign-up`) with a real action identifier is not run by the framework there (it answers `200 application/json {}`), so those pages are checked for "no success, nothing read, nothing changed", while the workspace addresses give the 401 refusal of 003; the action's own refusal without a session is covered by `tests/app/universes/actions.test.ts`.
+- Why: the plan names the three files but not the shared steps that three specs (and T9 and T10) need; keeping them in one place avoids copies.
+- Discarded: putting the reads in `seed-universes-in-database.ts` (the name would lie); reading answer bodies in the page (not possible).
+- Approved by: pending the user.
+
+
+## D-T9-1. The request that "stays alive" is held with `page.route`; the sleeping trigger is used once, for 5 real seconds
+
+- What: in `universes-failures.spec.ts` the requests that never end (no answer in 30 s, the 5-minute cap, a second submission after the cap, leaving the form while waiting) are kept waiting by a `page.route` handler that the test later lets through (late answer) or drops (lost connection). The sleeping trigger is used only in "a storage that answers slowly", with a 5-second sleep, while the Playwright clock moves 31 seconds right after the call leaves the page. The plan (section 7) described the cap test with a sleeping trigger.
+- Why: a sleep is bounded (D-T8-1) and the test must make its assertions before it ends, so a sleeping trigger would make the cap test depend on real time; the held route is deterministic and looks identical to the page (a pending request). A trigger also needs a table lock to be installed and removed, which waits for the write in progress, so a long sleep could stall the other tests that run in parallel.
+- Discarded: a sleeping trigger for every "request alive" case (timing-dependent); a longer sleep (the 60-second bound, stalls parallel tests).
+- Approved by: pending the user.
+
+## D-T9-2. In the expired-session tests the live name check finishes before the session is ended
+
+- What: the tests of FR-10 wait for the answer of the name check (sent 250 ms after typing) and only then end the session, so that the creation is what reaches the missing session.
+- Why: by plan (section 4, row "Check name", `AUTHENTICATION_ERROR`) the name check of a signed-out person sends them to sign-in; if the session ended during the 250 ms, the check, not the creation, would leave the page and the typed values would be lost. This is the designed behavior, not a defect; it is noted in the report of T9 as an observation.
+- Discarded: changing the interpreter so that a signed-out name check keeps the form (code outside the task).
+- Approved by: pending the user.
+
+## D-T10-1. Layout and served-file tests: support files, what is measured, and one scenario left out
+
+- What: T10 adds `tests/e2e/support/layout-measurements.ts` (elements outside the viewport width, a text shown whole with no ellipsis, the closest area that scrolls, Tab until a control is focused) and `tests/e2e/support/served-files.ts` (reads the pages, their streamed RSC form, the icon, the image endpoint and every static file the pages name, and the files those name, over HTTP without following redirects; `Buffer` search so binary files are covered). Their exported names are in `tests/lint/test-controls-absent.test.ts`. Universes with hostile text are seeded in the database (the 120/2000 limits and the controls through the form are already in T8); the keyboard flow of 320 px creates its universe through the form. In the signed-in served-file test the data of the stored universe is checked only in answers that are not HTML pages (a signed-in person's own not-found page legitimately shows their menu and email); sample markers are checked everywhere.
+- Left out, a defect in `src/` (not fixed, reported): the details panel at 320 px. Its content has `min-width: var(--inspector-min-width)` (18.75rem, 300 px) inside a drawer that is `min(22rem, 88vw)` wide (281.6 px at 320 px), so the "Close details panel" button ends at 335 px (the viewport is 320) and the text of its empty state at 323 px. No test asserts the details panel at 320 px, because it would fail; it must be fixed in `src/components/inspector/inspector-panel.tsx` (or the drawer width) and a scenario added then.
+- Observation, not a defect of an FR: in the creation form the arrow keys move the focus between the Reader and Author modes but do not choose the mode; Space chooses it. The keyboard test uses ArrowDown and then Space. It belongs to the manual keyboard check of NFR-4.
+- Why: the plan names the two specs but not the shared measuring and reading code; leaving the details panel out is the rule of the task (a defect in `src/` is reported, never hidden or fixed by the test task).
+- Approved by: pending the user.
+
+## D-T10-2. The details panel fits its drawer at 320 px
+
+- What: in `src/components/inspector/inspector-panel.tsx` the minimum width of the panel content (`--inspector-min-width`, 18.75rem) now applies only from the `md` breakpoint (`min-w-0 ... md:min-w-[var(--inspector-min-width)]`), the same breakpoint (48rem) where `useIsDesktop` switches from drawers to the resizable columns. Below it the content is as wide as its drawer (`min(22rem, 88vw)`); on desktop nothing changes. A scenario of `tests/e2e/universes-layout.spec.ts` ("the details panel at desktop / 320 px", FR-15, NFR-6) opens the drawer at 320 px and asserts that the close button, the empty title and the empty text are inside the viewport width and nothing sticks out, and at desktop that the panel still renders with at least its minimum width. It fails without the change (the close button ended at 335.4 px) and passes with it.
+- Why: the content forced 300 px inside a drawer of about 281.6 px at 320 px, so the "Close details panel" button was half cut and the empty text reached 323 px (FR-15, NFR-6). It closes the defect left open in D-T10-1.
+- Discarded: narrowing or widening the drawer itself (`SheetContent` is shared with the universes drawer and would change another screen); lowering `--inspector-min-width` (it is the minimum of the resizable desktop column, which must not change).
+- Approved by: the user (fix now, 2026-11-17).
+
+## D-CLOSE-1. Decisions accepted by the user at closing, and the known points left open (2026-11-17)
+
+- What: at the closing of the spec (answer "Close the spec" to the validation gate, 2026-11-17) the user accepted every decision above that said "Approved by: pending the user": D-T2-1 to D-T2-5, D-T3-1, D-T3-2, D-T3T4-2, D-T3T4-3, D-T5-1 to D-T5-3, D-T6-1, D-T6-2, D-T7-1, D-T8-1, D-T9-1, D-T9-2 and D-T10-1. D-T3T4-1 and D-T10-2 were already approved by the user. The entries above are kept as they were written; this entry only records the acceptance.
+- Known points left open, found in validation and not fixed in this spec. None breaks a requirement of the spec as accepted; each one is listed so it can be picked up later (with `/sdd-change` where it says so):
+  - The live name check with an expired session: the check (250 ms after typing) leaves for sign-in and the typed values are lost without the FR-10 message (see D-T9-2). If the user wants the values and the message kept in that case, it needs `/sdd-change`.
+  - The details panel at the 768 px edge after a live resize (the point where the drawer becomes the resizable column, see D-T10-2): not covered by a test and not verified.
+  - `src/components/ui/select.tsx` is not imported by anything since T6 (D-T7-1); it stays as a generic shadcn component.
+  - Hacker L-1: invisible characters in names (as reported by the hacker; see its report).
+  - Hacker L-2: the ordering of the remembered universe when several requests to remember arrive close together (as reported by the hacker; see its report).
+  - Hacker L-3: no server-side rate limit and no name length cap on the live name check (as reported by the hacker).
+  - Hacker L-4: log flooding (as reported by the hacker; see its report).
+  - Hacker I-4: still to verify that the Prisma error logs never contain universe names or descriptions.
+  - Reviewer: the 30 s limit plus the probe delay (as reported by the reviewer), and there is no automated test that "Open timeline" is disabled.
+- Why: so the acceptance and the open points are in the spec's own record, and the next spec (005) or a change can start from them.
+- Discarded: fixing them inside this spec (the user chose to close it; none is a failed requirement).
+- Approved by: the user, at closing (2026-11-17).

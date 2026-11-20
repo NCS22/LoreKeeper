@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MAXIMUM_UNIVERSE_NAME_LENGTH,
+  UNIVERSE_NAME_INVALID_CHARACTERS_CODE,
   toComparableUniverseName,
   validateUniverseName,
 } from "@/modules/universes/domain/universe-name";
@@ -67,6 +68,32 @@ describe("validateUniverseName", () => {
     });
   });
 
+  it("counts a letter followed by a combining accent as two characters", () => {
+    const decomposedLetter = "é";
+    const name = decomposedLetter.repeat(MAXIMUM_UNIVERSE_NAME_LENGTH / 2);
+
+    expect(validateUniverseName(name)).toEqual({ isValid: true, name });
+    expect(validateUniverseName(`${name}a`)).toMatchObject({
+      isValid: false,
+      issue: { code: "NAME_TOO_LONG" },
+    });
+  });
+
+  it.each([
+    ["the null character", "Ember\u0000 Concordat"],
+    ["a lone high surrogate", "Ember \uD800 Concordat"],
+    ["a lone low surrogate", "Ember \uDC00 Concordat"],
+  ])("rejects a name with %s on the name field", (_description, rawName) => {
+    expect(validateUniverseName(rawName)).toEqual({
+      isValid: false,
+      issue: { field: "name", code: UNIVERSE_NAME_INVALID_CHARACTERS_CODE },
+    });
+  });
+
+  it("accepts a valid surrogate pair", () => {
+    expect(validateUniverseName("Ember 😀")).toEqual({ isValid: true, name: "Ember 😀" });
+  });
+
   it("accepts non-Latin characters and punctuation", () => {
     expect(validateUniverseName("星の物語: Vol. 1!")).toEqual({
       isValid: true,
@@ -87,6 +114,11 @@ describe("toComparableUniverseName", () => {
   });
 
   it("is the same for composed and decomposed accents", () => {
+    const composedName = "café";
+    const decomposedName = "café";
+
+    expect(composedName).not.toBe(decomposedName);
+    expect(toComparableUniverseName(composedName)).toBe(toComparableUniverseName(decomposedName));
     expect(toComparableUniverseName("café")).toBe(toComparableUniverseName("café"));
   });
 

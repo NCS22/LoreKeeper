@@ -3,12 +3,12 @@ import { parseUniverseMode } from "@/modules/universes/domain/universe-mode";
 import type { UniverseRepository } from "@/modules/universes/domain/universe-repository";
 
 type StoredUniverseRow = {
-  readonly sequenceNumber: number;
   readonly serializedUniverse: string;
 };
 
 type SerializedUniverse = {
   readonly id: string;
+  readonly ownerId: string;
   readonly name: string;
   readonly description: string | null;
   readonly mode: string;
@@ -33,6 +33,7 @@ function deserializeUniverse(serializedUniverse: string): Universe {
   }
   return {
     id: row.id,
+    ownerId: row.ownerId,
     name: row.name,
     description: row.description,
     mode,
@@ -41,32 +42,46 @@ function deserializeUniverse(serializedUniverse: string): Universe {
   };
 }
 
+function compareByCreationThenId(firstUniverse: Universe, secondUniverse: Universe): number {
+  const creationDifference = firstUniverse.createdAt.getTime() - secondUniverse.createdAt.getTime();
+  if (creationDifference !== 0) {
+    return creationDifference;
+  }
+  return firstUniverse.id.localeCompare(secondUniverse.id, "en");
+}
+
 /**
- * A second repository built differently from the production in-memory one: rows live in
- * a map keyed by identifier, hold serialized text instead of objects and are ordered by
- * a sequence number. Both must satisfy the same contract (NFR-1).
+ * The test repository: rows live in a map keyed by identifier and hold serialized text, so
+ * nothing the caller holds can alter what is stored. It orders and scopes by owner as the
+ * contract demands, and must give the same results as the PostgreSQL repository (NFR-1).
  */
 export function createFakeUniverseRepository(
   startingUniverses: readonly Universe[] = [],
 ): UniverseRepository {
   const rowsByUniverseId = new Map<string, StoredUniverseRow>();
-  let nextSequenceNumber = 0;
 
   function storeRow(universe: Universe): void {
-    rowsByUniverseId.set(universe.id, {
-      sequenceNumber: nextSequenceNumber,
-      serializedUniverse: serializeUniverse(universe),
-    });
-    nextSequenceNumber += 1;
+    rowsByUniverseId.set(universe.id, { serializedUniverse: serializeUniverse(universe) });
+  }
+
+  function readAllUniverses(): Universe[] {
+    return [...rowsByUniverseId.values()].map((row) => deserializeUniverse(row.serializedUniverse));
   }
 
   startingUniverses.forEach(storeRow);
 
   return {
-    async findAll() {
-      return [...rowsByUniverseId.values()]
-        .sort((firstRow, secondRow) => firstRow.sequenceNumber - secondRow.sequenceNumber)
-        .map((row) => deserializeUniverse(row.serializedUniverse));
+    async findAllOwnedBy(ownerId) {
+      return readAllUniverses()
+        .filter((universe) => universe.ownerId === ownerId)
+        .sort(compareByCreationThenId);
+    },
+    async findOwnedById(ownerId, universeId) {
+      return (
+        readAllUniverses().find(
+          (universe) => universe.ownerId === ownerId && universe.id === universeId,
+        ) ?? null
+      );
     },
     async add(universe) {
       storeRow(universe);

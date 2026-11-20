@@ -1,31 +1,24 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronRight, List, Network, Plus } from "lucide-react";
+import { List, Network } from "lucide-react";
 import { en } from "@/messages/en";
-import { EntityCreationForm } from "@/components/entities/entity-creation-form";
-import { EntityListView } from "@/components/entities/entity-list-view";
-import { GraphView } from "@/components/graph/graph-view";
-import { Button } from "@/components/ui/button";
+import { EntityListEmptyState } from "@/components/entities/entity-list-empty-state";
+import { GraphEmptyState } from "@/components/graph/graph-empty-state";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { LateCreationConfirmation } from "@/components/universes/late-creation-confirmation";
+import { NoUniversesEmptyState } from "@/components/universes/no-universes-empty-state";
 import { UniverseCreationForm } from "@/components/universes/universe-creation-form";
 import { UniverseEmptyState } from "@/components/universes/universe-empty-state";
 import { useUniverses } from "@/components/universes/universes-provider";
 import type { UniverseDto } from "@/modules/universes";
 import { useWorkspaceState, type CentralView } from "@/components/workspace/workspace-state";
-import { findWork, getEntitiesOfUniverse, getWorksOfUniverse } from "@/mocks/data/queries";
-
-// "Is empty" uses the same sample-data queries as the views; it is replaced by the real read
-// when the works and entities modules exist.
-function isUniverseEmpty(universeId: string): boolean {
-  return getWorksOfUniverse(universeId).length === 0 && getEntitiesOfUniverse(universeId, null).length === 0;
-}
 
 export function CentralArea() {
   const { state, dispatch } = useWorkspaceState();
   const { universes } = useUniverses();
-  const newElementButtonRef = useRef<HTMLButtonElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const createFirstUniverseButtonRef = useRef<HTMLButtonElement>(null);
   // The universe created a moment ago; only its empty state takes focus and announces itself.
   const [justCreatedUniverseId, setJustCreatedUniverseId] = useState<string | null>(null);
   if (justCreatedUniverseId !== null && justCreatedUniverseId !== state.selectedUniverseId) {
@@ -33,29 +26,40 @@ export function CentralArea() {
     setJustCreatedUniverseId(null);
   }
   const universe = universes.find((candidate) => candidate.id === state.selectedUniverseId);
-  const work = state.selectedWorkId === null ? undefined : findWork(state.selectedWorkId);
-  if (universe === undefined) return null;
 
   function changeView(value: string) {
     // The group reports an empty value when the pressed segment is pressed again; ignore it.
     if (value === "graph" || value === "list") dispatch({ type: "viewChanged", view: value satisfies CentralView });
   }
 
-  function cancelCreation() {
-    dispatch({ type: "creationCancelled" });
-    // Back to where the user was: the button is enabled again once the view has re-rendered.
-    requestAnimationFrame(() => newElementButtonRef.current?.focus());
-  }
-
   function cancelUniverseCreation() {
     dispatch({ type: "universeCreationCancelled" });
-    // The selection is unchanged, so focus goes to the heading of the universe the user was in.
-    headingRef.current?.focus();
+    // The form is gone once the view has re-rendered: focus goes back to where the person was, the
+    // heading of the selected universe or the button that invited to create the first one.
+    requestAnimationFrame(() => (universe === undefined ? createFirstUniverseButtonRef : headingRef).current?.focus());
   }
 
+  // The provider has already added, selected and remembered the universe: here only its focus and announcement.
   function finishUniverseCreation(createdUniverse: UniverseDto) {
     setJustCreatedUniverseId(createdUniverse.id);
-    dispatch({ type: "universeCreated", universeId: createdUniverse.id });
+  }
+
+  // No universe is selected (the account has none yet): no views to switch, only the way to create one.
+  if (universe === undefined) {
+    return (
+      <div className="h-full overflow-y-auto">
+        {state.isCreatingUniverse ? (
+          <UniverseCreationForm onCreated={finishUniverseCreation} onCancel={cancelUniverseCreation} />
+        ) : (
+          <div className="p-6">
+            <NoUniversesEmptyState
+              createButtonRef={createFirstUniverseButtonRef}
+              onCreateFirstUniverse={() => dispatch({ type: "universeCreationStarted" })}
+            />
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -71,50 +75,23 @@ export function CentralArea() {
             {en.center.listView}
           </ToggleGroupItem>
         </ToggleGroup>
-
-        <h1
-          ref={headingRef}
-          tabIndex={-1}
-          className="order-last flex w-full min-w-0 items-center gap-1.5 font-serif text-lg sm:order-none sm:w-auto sm:flex-1"
-        >
-          {work === undefined ? (
-            <span className="truncate">{universe.name}</span>
-          ) : (
-            <>
-              <span className="text-ink-muted truncate">{universe.name}</span>
-              <ChevronRight aria-hidden className="text-ink-muted size-4 shrink-0" />
-              <span className="sr-only">, </span>
-              <span className="truncate">{work.title}</span>
-            </>
-          )}
-        </h1>
-
-        <Button
-          ref={newElementButtonRef}
-          className="ml-auto sm:ml-0"
-          disabled={state.isCreatingEntity || state.isCreatingUniverse}
-          onClick={() => dispatch({ type: "creationStarted" })}
-        >
-          <Plus aria-hidden />
-          <span className="sr-only sm:not-sr-only">{en.center.newElement}</span>
-        </Button>
       </div>
 
-      <div className="min-h-0 flex-1">
+      <LateCreationConfirmation />
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {state.isCreatingUniverse ? (
           <UniverseCreationForm onCreated={finishUniverseCreation} onCancel={cancelUniverseCreation} />
-        ) : state.isCreatingEntity ? (
-          <EntityCreationForm onCancel={cancelCreation} />
-        ) : isUniverseEmpty(universe.id) ? (
-          <UniverseEmptyState
-            key={universe.id}
-            universeName={universe.name}
-            wasJustCreated={universe.id === justCreatedUniverseId}
-          />
-        ) : state.view === "list" ? (
-          <EntityListView />
         ) : (
-          <GraphView />
+          <div className="mx-auto flex min-w-0 max-w-3xl flex-col gap-6 p-6">
+            <UniverseEmptyState
+              key={universe.id}
+              universe={universe}
+              headingRef={headingRef}
+              wasJustCreated={universe.id === justCreatedUniverseId}
+            />
+            {state.view === "list" ? <EntityListEmptyState /> : <GraphEmptyState />}
+          </div>
         )}
       </div>
     </div>

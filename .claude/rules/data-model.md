@@ -17,7 +17,7 @@ Nothing listed in `docs/open-decisions.md` may be implemented until it is resolv
 
 - Primary keys are UUIDs. Better Auth is configured to generate UUIDs for `User`.
 - Timestamps are `timestamptz`, stored in UTC and serialized as ISO 8601.
-- Every user-content table has `createdAt`, `updatedAt` and `deletedAt` (nullable, soft delete). The only exceptions are tables of user state, not content: `ReadingProgress` and `UserPreferences` have only `updatedAt` and are hard-deleted (with their work or user when it is purged).
+- Every user-content table has `createdAt`, `updatedAt` and `deletedAt` (nullable, soft delete). The only exceptions are tables of user state, not content: `ReadingProgress`, `RememberedUniverse` and `UserPreferences` have only `updatedAt` and are hard-deleted (with their work or user when it is purged).
 - `status` (`CONFIRMED | USER_NOTE | SPECULATION`) lives on `KnowledgeEntry`, `EntityAlias`, `Relationship` and `Event`; `Entity` has none because its knowledge already carries one per entry. `CONFIRMED` does not require a `Citation`; the interface flags confirmed items that have none as "without source".
 - Closed categories are enums. User-extensible categories are catalog tables (e.g. `RelationshipType`).
 - Foreign keys are always declared. Writes touching several records run in one transaction.
@@ -52,9 +52,21 @@ These four are identity and credential tables, not user content, so they carry n
 | ownerId | uuid | FK User |
 | name | text | 1-120 characters (Unicode code points), trimmed |
 | description | text? | at most 2000 characters (Unicode code points), trimmed; only whitespace counts as none |
-| coverImageUrl | text? | external URL only |
 | mode | enum `READER` \| `AUTHOR` | default `READER`; cannot change after creation |
-| createdAt, updatedAt, deletedAt | timestamptz | |
+| createdAt, updatedAt, deletedAt | timestamptz | `deletedAt` is filtered by every repository query from spec 004 and written by the trash of spec 005 |
+
+Stored since spec 004. The migration adds `CHECK` constraints on the length of `name` and `description` (in code points) and `ON DELETE CASCADE` from the owner. A unique `(id, ownerId)` is the target of the composite foreign key of `RememberedUniverse`; the list is read by `(ownerId, createdAt, id)`. A universe has no cover image: `coverImageUrl` is not in the schema (plan 004, approval 1); adding one needs its own spec and migration.
+
+### RememberedUniverse
+The last-used universe of an account (spec 004). User state, not content.
+
+| Field | Type | Notes |
+|---|---|---|
+| userId | uuid | PK and FK User (`ON DELETE CASCADE`); one row per account |
+| universeId | uuid | composite FK `(universeId, userId) → Universe(id, ownerId)` (`ON DELETE CASCADE`), so the database refuses a universe of another account |
+| updatedAt | timestamptz | |
+
+No `deletedAt`: it is hard-deleted with its user or its universe. Saving is a plain upsert. A universe in the trash (`deletedAt` set) reads as no remembered universe (the oldest one is selected instead),; the lifecycle of spec 005 decides what else happens to the row.
 
 ### Work
 | Field | Type | Notes |
@@ -233,7 +245,7 @@ Links a source to one piece of knowledge.
 Unique `(userId, workId)`. Only the current position is stored; no history.
 
 ### UserPreferences
-Per-user accessibility preferences. Today they live in the browser (`localStorage`, key `lorekeeper.accessibility`); with accounts they move here so they follow the user. User state, not content.
+Per-user accessibility preferences. Today (after spec 004) they still live only in the browser (`localStorage`, key `lorekeeper.accessibility`) and this table does not exist yet; moving them to the account so they follow the user is an open item (OD-23 in `docs/open-decisions.md`). User state, not content.
 
 | Field | Type | Notes |
 |---|---|---|

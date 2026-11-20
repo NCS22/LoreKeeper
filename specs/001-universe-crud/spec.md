@@ -2,6 +2,15 @@
 
 Status: implemented
 
+> **Superseded in part by spec 004 (stored universes), 2026-11-17.** The requirement text below is kept as it was approved and implemented; this spec stays `implemented`. These items no longer hold as written:
+> - FR-24 (a created universe is gone after a reload): a created universe is now stored with its owner and stays. Nothing created in memory by this spec was kept.
+> - FR-22 (the empty state "invites the user to continue"): the empty state is now honest, says the universe is empty and that works, entities and relationships arrive in future versions, and offers no button or link to an action that does not exist (004 FR-15, FR-17).
+> - NFR-1, last sentence ("No code for a real storage is added in this version"): universes are now kept in PostgreSQL. Its first part (the rules are independent of where universes are kept) stays, restated in 004 NFR-1 and proven with the test fake and the PostgreSQL repository.
+> - FR-11 and FR-13 (comparison with "an existing universe"): narrowed to the acting user's own, stored, non-deleted universes; another account's universes never count.
+> - FR-5 to FR-8 (lengths): made precise by 004. A character is a Unicode code point, the description is trimmed like the name, a description with only whitespace is no description, and text with the null character or invalid Unicode is a validation error.
+> - Text that describes the application as having no backend, no accounts, no stored data or memory-only universes (Context and goal), the edge case "page reloaded after creating: the universe is gone" and the criteria about reloading and the "sample universes": the sample universes no longer exist anywhere in the application and universes survive a reload.
+> The implementation, its tests and the UI are described in `specs/004-stored-universes/`.
+
 ## Context and goal
 
 LoreKeeper organizes knowledge in universes: isolated knowledge bases, one per fictional world. Today the application only shows two sample universes and offers no way to start a new one.

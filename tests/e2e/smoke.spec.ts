@@ -4,7 +4,7 @@ import { verifyPasswordAsTyped } from "../../src/shared/infrastructure/scrypt-pa
 import { seedAccountInDatabase } from "./support/seed-account-in-database";
 import { HEALTHY_SERVER_ADDRESS, UNREACHABLE_DATA_SERVER_ADDRESS } from "./support/test-servers";
 import { withTestDatabaseClient } from "./support/with-test-database-client";
-import { SAMPLE_UNIVERSE_NAME } from "./support/workspace-content";
+import { expectWorkspaceIsNotShown, WORKSPACE_ONLY_TEXTS } from "./support/workspace-content";
 
 
 test.describe("harness smoke test", () => {
@@ -16,7 +16,7 @@ test.describe("harness smoke test", () => {
     expect(response?.status()).toBe(200);
     expect(page.url()).toBe(`${HEALTHY_SERVER_ADDRESS}/sign-in?returnTo=%2F`);
     await expect(page.getByRole("heading", { name: en.accountForms.signIn.title })).toBeVisible();
-    await expect(page.getByText(SAMPLE_UNIVERSE_NAME)).toHaveCount(0);
+    await expectWorkspaceIsNotShown(page);
   });
 
   test("the workspace root redirects a signed-out client to sign-in on the unreachable-data server too (the guard needs no data without a cookie)", async ({
@@ -26,7 +26,10 @@ test.describe("harness smoke test", () => {
 
     expect(response.status()).toBe(303);
     expect(response.headers()["location"]).toBe("/sign-in?returnTo=%2F");
-    expect(await response.text()).not.toContain(SAMPLE_UNIVERSE_NAME);
+    const body = await response.text();
+    for (const workspaceText of WORKSPACE_ONLY_TEXTS) {
+      expect(body).not.toContain(workspaceText);
+    }
   });
 
   test("a seeded account is stored with a credential the application's hasher verifies", async () => {

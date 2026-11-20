@@ -1,23 +1,34 @@
 import type { Universe } from "@/modules/universes/domain/universe";
-import type { UniverseRepository } from "@/modules/universes/domain/universe-repository";
-import { createInMemoryUniverseRepository } from "@/modules/universes/infrastructure/in-memory-universe-repository";
+import type {
+  UniverseStorage,
+  UniverseStorageFactory,
+} from "./contracts/universe-repository-contract";
+import { createFakeRememberedUniverseRepository } from "./fakes/fake-remembered-universe-repository";
 import { createFakeUniverseRepository } from "./fakes/fake-universe-repository";
+import { createPostgresUniverseStorage } from "./database/postgres-universe-storage";
+import { FIRST_OWNER_ID } from "./universe-owners";
 
-export type UniverseRepositoryFactory = (
-  startingUniverses?: readonly Universe[],
-) => UniverseRepository;
+export { buildActingUser, FIRST_OWNER_ID, SECOND_OWNER_ID } from "./universe-owners";
 
-/** The two interchangeable repositories every use case scenario runs against (NFR-1). */
-export const universeRepositoryFactories: ReadonlyArray<
-  readonly [string, UniverseRepositoryFactory]
-> = [
-  ["in-memory repository", createInMemoryUniverseRepository],
-  ["fake repository", createFakeUniverseRepository],
+export async function createFakeUniverseStorage(
+  startingUniverses: readonly Universe[] = [],
+): Promise<UniverseStorage> {
+  return {
+    universeRepository: createFakeUniverseRepository(startingUniverses),
+    rememberedUniverseRepository: createFakeRememberedUniverseRepository(),
+  };
+}
+
+/** The interchangeable storages every use case scenario runs against (NFR-1). */
+export const universeStorageFactories: ReadonlyArray<readonly [string, UniverseStorageFactory]> = [
+  ["fake storage", createFakeUniverseStorage],
+  ["PostgreSQL storage", createPostgresUniverseStorage],
 ];
 
 export function buildUniverse(overrides: Partial<Universe> = {}): Universe {
   return {
-    id: "universe-1",
+    id: "00000000-0000-4000-8000-000000000010",
+    ownerId: FIRST_OWNER_ID,
     name: "First universe",
     description: null,
     mode: "READER",

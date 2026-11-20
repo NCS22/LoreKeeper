@@ -1,35 +1,36 @@
 import { en } from "@/messages/en";
-import {
-  UNIVERSE_DESCRIPTION_TOO_LONG_CODE,
-  UNIVERSE_MODE_INVALID_CODE,
-  UNIVERSE_NAME_REQUIRED_CODE,
-  UNIVERSE_NAME_TOO_LONG_CODE,
-} from "@/modules/universes";
-import type { ValidationIssue } from "@/shared/domain/validation-error";
+import type { UniverseFormVocabulary } from "@/components/universes/universe-form-vocabulary";
+import type { ActionFieldIssue } from "@/shared/presentation/action-result";
 
-function readMaximumLength(issue: ValidationIssue): number {
+function readMaximumLength(issue: ActionFieldIssue): number {
   // A length rule always reports its limit; the UI never supplies one of its own (NFR-5).
   if (issue.maximumLength === undefined) {
-    throw new Error(`Validation issue ${issue.code} on ${issue.field} carries no maximumLength`);
+    throw new Error(`Validation issue ${issue.code} carries no maximumLength`);
   }
   return issue.maximumLength;
 }
 
 /**
  * Turns a validation issue of universe creation into the text shown under its field.
- * Messages are chosen by the stable issue code; any limit shown comes from the issue details.
+ * Messages are chosen by the stable issue code, which the page hands down in the vocabulary (the
+ * browser never imports the universes module); any limit shown comes from the issue details.
  */
-export function getUniverseIssueMessage(issue: ValidationIssue): string {
+export function getUniverseIssueMessage(issue: ActionFieldIssue, vocabulary: UniverseFormVocabulary): string {
   const messages = en.universeCreation.issues;
+  const codes = vocabulary.issueCodes;
 
   switch (issue.code) {
-    case UNIVERSE_NAME_REQUIRED_CODE:
+    case codes.nameRequired:
       return messages.NAME_REQUIRED;
-    case UNIVERSE_NAME_TOO_LONG_CODE:
+    case codes.nameTooLong:
       return messages.NAME_TOO_LONG(readMaximumLength(issue));
-    case UNIVERSE_DESCRIPTION_TOO_LONG_CODE:
+    case codes.nameInvalidCharacters:
+      return messages.NAME_INVALID_CHARACTERS;
+    case codes.descriptionTooLong:
       return messages.DESCRIPTION_TOO_LONG(readMaximumLength(issue));
-    case UNIVERSE_MODE_INVALID_CODE:
+    case codes.descriptionInvalidCharacters:
+      return messages.DESCRIPTION_INVALID_CHARACTERS;
+    case codes.modeInvalid:
       return messages.MODE_INVALID;
     default:
       return messages.UNKNOWN;

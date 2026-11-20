@@ -1,35 +1,32 @@
+import { getPrismaClient } from "@/shared/infrastructure/prisma-client";
+import type { ActingUser } from "@/shared/domain/acting-user";
 import { createUniverse, type CreateUniverseCommand } from "./application/create-universe";
 import { isUniverseNameInUse } from "./application/is-universe-name-in-use";
-import { listUniverses } from "./application/list-universes";
+import {
+  loadWorkspaceUniverses,
+  type WorkspaceUniverses,
+} from "./application/load-workspace-universes";
+import { rememberUniverse, type RememberUniverseCommand } from "./application/remember-universe";
 import type { UniverseDto } from "./application/universe-dto";
-import type { Universe } from "./domain/universe";
-import { createInMemoryUniverseRepository } from "./infrastructure/in-memory-universe-repository";
+import { createPrismaRememberedUniverseRepository } from "./infrastructure/prisma-remembered-universe-repository";
+import { createPrismaUniverseRepository } from "./infrastructure/prisma-universe-repository";
 
-/** The use cases of the module, already bound to their storage. */
+/** The use cases of the module, already bound to PostgreSQL. Each one takes the acting user first. */
 export type UniversesModule = {
-  readonly createUniverse: (command: CreateUniverseCommand) => Promise<UniverseDto>;
-  readonly listUniverses: () => Promise<UniverseDto[]>;
-  readonly isUniverseNameInUse: (name: string) => Promise<boolean>;
+  readonly createUniverse: (actor: ActingUser, command: CreateUniverseCommand) => Promise<UniverseDto>;
+  readonly loadWorkspaceUniverses: (actor: ActingUser) => Promise<WorkspaceUniverses>;
+  readonly isUniverseNameInUse: (actor: ActingUser, name: string) => Promise<boolean>;
+  readonly rememberUniverse: (actor: ActingUser, command: RememberUniverseCommand) => Promise<void>;
 };
 
-function toUniverse(startingUniverse: UniverseDto): Universe {
-  return {
-    ...startingUniverse,
-    createdAt: new Date(startingUniverse.createdAt),
-    updatedAt: new Date(startingUniverse.updatedAt),
-  };
-}
-
 /**
- * TEMPORARY: wires the use cases to a repository kept in memory, so created universes live
- * only while the page is open (FR-24). Each call builds a new repository; two compositions
- * never share data. It is replaced by a composition over a Prisma repository when real
- * storage arrives; the domain and the use cases do not change.
+ * Wires the four use cases to the Prisma repositories. Creating the module touches nothing: the
+ * environment and the Prisma client are built the first time a use case needs them, so importing
+ * this file and calling this function work without a database or a `.env`.
  */
-export function createUniversesInMemory(
-  startingUniverses: readonly UniverseDto[] = [],
-): UniversesModule {
-  const universeRepository = createInMemoryUniverseRepository(startingUniverses.map(toUniverse));
+export function createUniversesModule(): UniversesModule {
+  const universeRepository = createPrismaUniverseRepository(getPrismaClient);
+  const rememberedUniverseRepository = createPrismaRememberedUniverseRepository(getPrismaClient);
   const createUniverseDependencies = {
     universeRepository,
     generateUniverseId: () => crypto.randomUUID(),
@@ -37,8 +34,11 @@ export function createUniversesInMemory(
   };
 
   return {
-    createUniverse: (command) => createUniverse(createUniverseDependencies, command),
-    listUniverses: () => listUniverses({ universeRepository }),
-    isUniverseNameInUse: (name) => isUniverseNameInUse({ universeRepository }, name),
+    createUniverse: (actor, command) => createUniverse(createUniverseDependencies, actor, command),
+    loadWorkspaceUniverses: (actor) =>
+      loadWorkspaceUniverses({ universeRepository, rememberedUniverseRepository }, actor),
+    isUniverseNameInUse: (actor, name) => isUniverseNameInUse({ universeRepository }, actor, name),
+    rememberUniverse: (actor, command) =>
+      rememberUniverse({ universeRepository, rememberedUniverseRepository }, actor, command),
   };
 }

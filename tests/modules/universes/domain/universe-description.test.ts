@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MAXIMUM_UNIVERSE_DESCRIPTION_LENGTH,
+  UNIVERSE_DESCRIPTION_INVALID_CHARACTERS_CODE,
   validateUniverseDescription,
 } from "@/modules/universes/domain/universe-description";
 
@@ -53,6 +54,28 @@ describe("validateUniverseDescription", () => {
 
     expect(validateUniverseDescription(description)).toEqual({ isValid: true, description });
     expect(validateUniverseDescription(`${description}😀`)).toMatchObject({ isValid: false });
+  });
+
+  it("counts a letter followed by a combining accent as two characters", () => {
+    const decomposedLetter = "é";
+    const description = decomposedLetter.repeat(MAXIMUM_UNIVERSE_DESCRIPTION_LENGTH / 2);
+
+    expect(validateUniverseDescription(description)).toEqual({ isValid: true, description });
+    expect(validateUniverseDescription(`${description}a`)).toMatchObject({
+      isValid: false,
+      issue: { code: "DESCRIPTION_TOO_LONG" },
+    });
+  });
+
+  it.each([
+    ["the null character", "Notes\u0000 on the age"],
+    ["a lone high surrogate", "Notes \uD800 on the age"],
+    ["a lone low surrogate", "Notes \uDC00 on the age"],
+  ])("rejects a description with %s on the description field", (_description, rawDescription) => {
+    expect(validateUniverseDescription(rawDescription)).toEqual({
+      isValid: false,
+      issue: { field: "description", code: UNIVERSE_DESCRIPTION_INVALID_CHARACTERS_CODE },
+    });
   });
 
   it("preserves line breaks inside the description", () => {
