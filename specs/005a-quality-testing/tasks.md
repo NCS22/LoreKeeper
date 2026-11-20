@@ -17,7 +17,7 @@ Reading notes for the whole list:
   - Tests: none (no code); baseline of the existing suite.
   - Done when: both lists exist outside the repository, every listed test passes, and `git status` shows no change besides this checkbox.
 
-- [ ] **T2. Install and configure coverage.** Add the development dependency `@vitest/coverage-v8` at `^5.1.0` (same version as `vitest`, confirmed), `coverage/` in `.gitignore`, the `coverage` block of the Vitest configuration (V8, production `src/` included, generated and declaration files excluded, JSON reporter, no `thresholds`) and a `test:coverage` script that runs the `unit` and `database` projects one at a time. Stop and ask if `@vitejs/plugin-react` or any package beyond the approved one is needed. FR-7, FR-8
+- [x] **T2. Install and configure coverage.** Add the development dependency `@vitest/coverage-v8` at `^5.1.0` (same version as `vitest`, confirmed), `coverage/` in `.gitignore`, the `coverage` block of the Vitest configuration (V8, production `src/` included, generated and declaration files excluded, JSON reporter, no `thresholds`) and a `test:coverage` script that runs the `unit` and `database` projects one at a time. Stop and ask if `@vitejs/plugin-react` or any package beyond the approved one is needed. FR-7, FR-8
   - Tests: none (tooling); `pnpm typecheck`, `pnpm lint`, `pnpm test` and the same-result check against the baseline.
   - Done when: `pnpm test:coverage` leaves one JSON report per project and exits successfully, the configuration has no `thresholds` key, `onlyBuiltDependencies` is unchanged, and the same-result check equals the baseline.
 

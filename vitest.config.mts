@@ -40,6 +40,17 @@ export default defineConfig({
     // the session cookie whenever a unit test file (the composition test) imported Better Auth in
     // the same run without this setting.
     server: { deps: { inline: ["better-auth"] } },
+    // Coverage is off unless `--coverage` is passed (`pnpm test:coverage`), so `pnpm test` is
+    // unchanged. Every source file is included, so a file no test imports shows up at 0 %. The
+    // script runs one project at a time and gives each its own `reportsDirectory`, so the report
+    // can tell which test type covered what (spec 005a, plan 2.2). No coverage gate is active
+    // yet (FR-8).
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/shared/infrastructure/generated/**", "**/*.d.ts"],
+      reporter: ["json"],
+    },
     projects: [
       {
         extends: true,
