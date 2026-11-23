@@ -45,7 +45,7 @@ Reading notes for the whole list:
   - Tests: none (document); every figure is traceable to a command written next to it.
   - Done when: the file shows volumes, split by type, runtime, the verified or corrected 3.4 claim, and a distribution table whose rows the diagnosis supports.
 
-- [ ] **T8. Evaluate the four optional tools.** Benefit, cost, complexity and recommendation for mutation testing, extra static analysis, redundancy-detection scripts and mechanisms to keep the inventory current; nothing is installed. FR-11
+- [x] **T8. Evaluate the four optional tools.** Benefit, cost, complexity and recommendation for mutation testing, extra static analysis, redundancy-detection scripts and mechanisms to keep the inventory current; nothing is installed. FR-11
   - Tests: none (document); `git diff` shows no dependency or script added by this task.
   - Done when: the four tools each have benefit, cost, complexity and a recommendation.
 

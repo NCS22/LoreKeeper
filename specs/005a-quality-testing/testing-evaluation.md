@@ -136,4 +136,40 @@ Notes:
 
 ## 3. Evaluation of the optional tools
 
-Pending: task T8.
+None of these tools is installed, configured or scripted by 005a (FR-11). Adding any of them is a dependency or tooling change that needs the user's approval (`CLAUDE.md`, ASK FIRST). Costs are estimated from the diagnosis above, not measured; package names are examples of the kind of tool and were not checked against the registry.
+
+### 3.1 Mutation testing
+
+- **What it is.** A tool (for TypeScript and Vitest, for example StrykerJS with its Vitest runner) changes the production code in small ways (a `<` for a `<=`, a condition removed, a returned value replaced) and runs the tests against each change. A change that no test notices points to an assertion that is too weak or to a branch that is run but never checked.
+- **Benefit.** It answers the question that coverage cannot: CORE is already at or near 100 % (1.5), so coverage no longer tells strong tests from tests that only execute the code. On the CORE domain files (ACC-1, ACC-2, SHR-4, `session-policy.ts`) it would find the weak assertions the audit is looking for by hand, with evidence per line. It also gives 005b an objective check after removing tests: the mutations killed before and after must stay the same.
+- **Cost.** At least two new development dependencies (the core and the Vitest runner) and a configuration file. Run time grows with the number of mutations times the tests that cover each one: acceptable on the unit project (1315 cases in about 6 s), not acceptable on the database project (485 cases in about 55 s, one file at a time over one shared database) or on end-to-end tests, which would have to be excluded.
+- **Complexity.** Medium. The tool must be limited to a list of files and to the `unit` project; surviving mutants have to be read one by one, and some are equivalent (a change that cannot alter behavior), which takes judgment.
+- **Recommendation: a one-off run, not a permanent step.** After the 005b cleanup, ask for approval to run it once on a few CORE domain files with the `unit` project only, and record the surviving mutants as findings. Do not add it to `pnpm test` or to any gate; reconsider a recurring run only if that first run finds weak assertions that the audit missed.
+
+### 3.2 Extra static analysis of the tests
+
+- **What it is.** ESLint plugins for test files (for example `@vitest/eslint-plugin` and `eslint-plugin-playwright`) with rules such as "a test has at least one assertion", "no focused or skipped test", "no conditional assertion" and "no identical test titles".
+- **Benefit.** Small today. Skipped and focused tests are already caught: every Vitest and Playwright case passed with 0 skipped (1.4) and the verification gate forbids skipping. The rules would catch a test with no assertion, which the audit looks for by hand, and keep catching it in future specs without anyone reading the test.
+- **Cost.** One or two new development dependencies, configuration in `eslint.config.mjs`, and a first pass over 138 test files (1.3) to fix or justify the hits, because `pnpm lint` fails on any warning. Plugin upgrades follow Vitest and Playwright versions.
+- **Complexity.** Low to install, medium to tune: rules such as "expect in every test" misfire on tests whose assertions live in shared helpers (`tests/support/contracts/`, `tests/e2e/support/`) and need an allow-list of those helpers.
+- **Recommendation: not now.** The gain over the audit and the review is small. Reconsider after 005b, picking only the assertion rules if the audit finds tests without real assertions, as a separate approved change.
+
+### 3.3 Scripts that detect redundant tests
+
+- **What it is.** A script that records the lines each single test covers (per-test coverage) and lists tests whose covered lines are a subset of another test's, or of tests of a lower type (for example an end-to-end case whose rule is fully covered by unit tests).
+- **Benefit.** In theory it would point at the overlap of 1.7 (5), such as the 40 cases of `access.spec.ts` against the page access policy and guard at 100 % by unit tests.
+- **Cost.** High for this project. Vitest coverage is per run, not per test, so it would need one run per test or a custom reporter (2008 cases; the database project alone takes about 55 s per full run), and end-to-end tests are not measured at all (1.4, plan 2.2), so the most expensive overlap would stay invisible. The output is noisy: two tests that cover the same lines can still check different behavior (a different input, a different assertion), so every hit needs a human verdict anyway.
+- **Complexity.** High. A new script under `tests/support/` with its own maintenance and its own risk of wrong results, for a decision the user takes group by group.
+- **Recommendation: do it by hand during the audit.** The audit report (T11 to T14) already judges each test group against the eleven criteria, including overlap with lower levels for the end-to-end specs, and the user decides at the 005b gate. Spec 005a's own decision D7 discarded per-test coverage for the same reason. Not to be built.
+
+### 3.4 Mechanisms to keep the inventory current
+
+- **What it is.** Whatever makes the inventory fail loudly when a production file is added, moved or deleted without its entry being updated (FR-4).
+- **Already in place after 005a.**
+  1. The rule: every plan and task shows the level that decided its tests, and the task that changes a production component updates its entry (FR-4; the level shown in the test design section of the plan and task templates, T17).
+  2. The report of `pnpm test:coverage` prints the unmatched files, the files in two entries and the inventory patterns that match no file (D-T4-1), and the measured figures that refresh the `Protection` snapshots.
+  3. Validation checks the reclassification (FR-2, added by T17), so `@reviewer` looks at the inventory once per spec.
+- **Benefit of a further step.** Today the report only prints; nothing fails if a task forgets the inventory, and it runs only when someone runs `pnpm test:coverage`. A failing check (exit code other than 0 when a list is not empty) would make the forgotten entry impossible to miss.
+- **Cost.** Small for the check itself: an option of the existing report script, no new dependency. The real cost is where it runs: `pnpm test:coverage` needs the local PostgreSQL and takes longer than `pnpm test`, and there is no continuous integration yet (no `.github/workflows`; OD-22 in `docs/open-decisions.md`).
+- **Complexity.** Low for the check; the decision of when it runs depends on OD-22.
+- **Recommendation: the rule plus the printed lists now; a failing check only after 005b.** Keep the inventory upkeep in the flow and the lists of the report as they are in 005a. Once 005b has cleaned the tests and turned on the coverage thresholds, propose turning the unmatched and duplicated lists into a failure of the same command, and run it in continuous integration when OD-22 is decided. The check that a pattern matches no file stays a warning, because a deleted file is not always a mistake until its entry is removed.
