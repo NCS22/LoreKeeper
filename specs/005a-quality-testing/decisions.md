@@ -17,3 +17,11 @@ Decisions taken after the plan was approved, not recorded in `plan.md`.
 - **Also added:** a list of inventory patterns that match no file, so a pattern left behind by a move or a deletion is visible (FR-4 upkeep). It fails nothing.
 - **Note:** untracked files at the root that are not part of the project (today `CALIDAD.md`, a user file) also appear as unmatched until T5 lists them in the "Not production" table.
 - **Approved by:** the user, 2026-11-23, at the T4 implementation gate.
+
+## D-T5-1. The "Not production" table lists only files the report script can see
+
+- **Decided:** the `Files` column of the "Not production (not classified)" table holds only root files and `prisma/migrations/migration_lock.toml`. The folders outside the production candidates (`tests/`, the generated Prisma client, `docs/`, `specs/`, `.claude/`, `.agents/`) are named in the paragraph above the table, not as patterns.
+- **Why:** the script (D-T4-1) matches every pattern against the production candidates only (`src/` without the generated client, `prisma/`, the root) and lists any pattern that matches no file. A pattern such as `tests/**` would always appear in that list, and T5 is done only when it is empty.
+- **Discarded:** listing those folders as patterns (a permanent false alarm in the report); changing the script to skip the patterns of that table (a change to T4's tooling outside this task).
+- **Also decided:** `prisma/migrations/migration_lock.toml` is "Not production" (written by the Prisma CLI), and `tsconfig.json` is production TIER 0 (CFG-4, read by the build); the first is in the table with its reason, the second is listed under "Open judgment calls" of the inventory.
+- **Approved by:** pending, to be shown to the user at the T5 implementation gate.
