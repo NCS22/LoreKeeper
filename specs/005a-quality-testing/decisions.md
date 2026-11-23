@@ -32,3 +32,10 @@ Decisions taken after the plan was approved, not recorded in `plan.md`.
 - **Resolved by the definitions (kept as they are):** type-only files TIER 0 (ACC-6, UNI-6, types of SHR-7); `server-error-logger.ts` and `error-messages.ts` TIER 0; CMP-6 CORE; `presets.ts` TIER 0; `account-form-field.tsx` and `account-form-message.tsx` IMPORTANT; CFG-3 CORE.
 - **Decided by the user (current levels kept):** ACC-2 CORE, SHR-4 CORE, SHR-6 IMPORTANT, CMP-3 IMPORTANT with no protected test, CMP-11 IMPORTANT, CMP-13 TIER 0, CFG-2 CORE, CFG-4 TIER 0 production, APP-4 IMPORTANT as one entry.
 - **Approved by:** the user, 2026-11-23, at the T6 implementation gate.
+
+## D-T7-1. The lockfile is left out of the volume ratios and the end-to-end report of T4 is reused
+
+- **Decided:** `pnpm-lock.yaml` (production TIER 0, CFG-1) is reported on its own line of the production volume and left out of every ratio, because its 8171 lines are written by pnpm and would almost double the production figure. The Playwright figures come from the JSON report of the T4 run (2026-11-23) instead of a new `pnpm test:e2e`, because no file under `src/` or `tests/` changed after it (`git diff --stat 2c11c7a HEAD -- src tests` is empty); the Vitest reports were run again for this task. Section 3 of `testing-evaluation.md` is left as "Pending: task T8".
+- **Why:** plan 2.3 defines the production volume as the production set of 2.1, which includes the lockfile, but does not say how to treat a generated file in a ratio.
+- **Discarded:** counting the lockfile in the ratios (the ratio would describe pnpm, not the code); leaving it out silently (the figure would not match the inventory); a new end-to-end run (a build and 76 s for the same result).
+- **Approved by:** pending, at the T7 implementation gate.

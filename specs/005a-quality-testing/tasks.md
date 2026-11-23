@@ -41,7 +41,7 @@ Reading notes for the whole list:
 
 ## Evaluation (testing-evaluation.md)
 
-- [ ] **T7. Write the diagnosis and the recommended distribution.** Production and test volume by area and type, cases and runtime per type from the Vitest and Playwright JSON reports, the check of the "3.4 times" claim for spec 004 with `git diff --numstat`, and the table of recommended test types by criticality and layer (the proportion is a consequence, not a quota), with the method written so it can be repeated. FR-11
+- [x] **T7. Write the diagnosis and the recommended distribution.** Production and test volume by area and type, cases and runtime per type from the Vitest and Playwright JSON reports, the check of the "3.4 times" claim for spec 004 with `git diff --numstat`, and the table of recommended test types by criticality and layer (the proportion is a consequence, not a quota), with the method written so it can be repeated. FR-11
   - Tests: none (document); every figure is traceable to a command written next to it.
   - Done when: the file shows volumes, split by type, runtime, the verified or corrected 3.4 claim, and a distribution table whose rows the diagnosis supports.
 
