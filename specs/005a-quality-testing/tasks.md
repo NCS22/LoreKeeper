@@ -35,7 +35,7 @@ Reading notes for the whole list:
   - Tests: none (document); the report script's unmatched and duplicate lists are empty, and two entries are cross-checked by hand against the raw JSON.
   - Done when: every production file matches exactly one entry, the two hand-checked figures equal the script output, and the manifest row is TIER 0 with no tests.
 
-- [ ] **T6. Close the inventory.** Resolve or list each "Open judgment calls" item for the user, check the levels of the ten reference components (plan section 7) against what their files contain, swap and report any that contradicts its level, and refresh the dated snapshots from one full `pnpm test:coverage`. FR-2, FR-3, NFR-3
+- [x] **T6. Close the inventory.** Resolve or list each "Open judgment calls" item for the user, check the levels of the ten reference components (plan section 7) against what their files contain, swap and report any that contradicts its level, and refresh the dated snapshots from one full `pnpm test:coverage`. FR-2, FR-3, NFR-3
   - Tests: none (document); the one-off listing of production files against the inventory.
   - Done when: unmatched and duplicate lists are both empty, every reference component has its entry with a consistent level, and each swap is reported.
 

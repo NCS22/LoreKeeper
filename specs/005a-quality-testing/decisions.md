@@ -24,4 +24,11 @@ Decisions taken after the plan was approved, not recorded in `plan.md`.
 - **Why:** the script (D-T4-1) matches every pattern against the production candidates only (`src/` without the generated client, `prisma/`, the root) and lists any pattern that matches no file. A pattern such as `tests/**` would always appear in that list, and T5 is done only when it is empty.
 - **Discarded:** listing those folders as patterns (a permanent false alarm in the report); changing the script to skip the patterns of that table (a change to T4's tooling outside this task).
 - **Also decided:** `prisma/migrations/migration_lock.toml` is "Not production" (written by the Prisma CLI), and `tsconfig.json` is production TIER 0 (CFG-4, read by the build); the first is in the table with its reason, the second is listed under "Open judgment calls" of the inventory.
-- **Approved by:** pending, to be shown to the user at the T5 implementation gate.
+- **Approved by:** the user, 2026-11-23, at the T5 implementation gate.
+
+## D-T6-1. The judgment calls of the inventory are closed and removed
+
+- **Proposed and rejected:** keeping the calls settled by the level definitions in a "Resolved judgment calls" section of `docs/criticality-inventory.md`. Rejected by the user on 2026-11-23: the resolved and the decided calls are deleted from the inventory, and "Open judgment calls" says none is open.
+- **Resolved by the definitions (kept as they are):** type-only files TIER 0 (ACC-6, UNI-6, types of SHR-7); `server-error-logger.ts` and `error-messages.ts` TIER 0; CMP-6 CORE; `presets.ts` TIER 0; `account-form-field.tsx` and `account-form-message.tsx` IMPORTANT; CFG-3 CORE.
+- **Decided by the user (current levels kept):** ACC-2 CORE, SHR-4 CORE, SHR-6 IMPORTANT, CMP-3 IMPORTANT with no protected test, CMP-11 IMPORTANT, CMP-13 TIER 0, CFG-2 CORE, CFG-4 TIER 0 production, APP-4 IMPORTANT as one entry.
+- **Approved by:** the user, 2026-11-23, at the T6 implementation gate.

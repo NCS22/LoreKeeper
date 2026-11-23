@@ -119,20 +119,6 @@ The script only looks for production candidates under `src/` (without the genera
 
 ## Open judgment calls
 
-Classifications that could reasonably go either way, each with the level chosen and the alternative, to be confirmed by the user at validation.
+Classifications that could reasonably go either way, each with the level chosen and the alternative, to be confirmed by the user.
 
-- **Type-only files in CORE layers** (ACC-6, UNI-6 and the types of SHR-7): chosen TIER 0, because they hold no runtime code and the type checker guarantees them. Alternative: put each in the CORE entry of its layer, as the provisional guide of plan 2.1 groups them by layer.
-- **ACC-2 `page-access-policy.ts`**: chosen CORE with `return-destination.ts` (accounts domain, and it decides which operation calls are refused before the action runs). Alternative: IMPORTANT, like the guard (SHR-5) and `src/proxy.ts` (APP-3) that apply it, since real authorization is the acting-user check.
-- **SHR-4 error kinds**: chosen CORE, because the error mapper (SHR-3) chooses every response by these codes. Alternative: IMPORTANT (a wrong code falls back to the generic message, it leaks nothing).
-- **SHR-6 `prisma-client.ts`**: chosen IMPORTANT (a factory with no rule, whose failure is loud). Alternative: CORE as part of the critical persistence.
-- **SHR-7 `server-error-logger.ts` and `error-messages.ts`**: chosen TIER 0 (one log call and a constant table). Alternative: CORE inside SHR-3, since the generic messages are what keeps internals out of responses. Both already have or are used by tests; whether those tests stay is the audit's question, not the inventory's.
-- **CMP-6 `load-workspace-universes-for-page.ts`**: chosen CORE although it lives in `src/components/`, because it is the page read path of the own universes and holds the protected test "never loads the universes of another account". Alternative: IMPORTANT with the other client-side logic of plan 2.1.
-- **CMP-3 `account-guard-decision.ts`**: chosen IMPORTANT; its test "starts again, sending nothing, when the server names another account" protects a tab, not the data, because the backend enforces ownership (APP-2, UNI-3), so it is not counted as a protected test. Alternative: CORE with that test protected.
-- **CMP-11 graph helpers**: chosen IMPORTANT, because they compute and have tests. Alternative: TIER 0 until Phase 3, since nothing renders them.
-- **CMP-13 placeholder empty states** (entities, graph, inspector, works, workspace loading): chosen TIER 0, because they are text only with no state, although the spec's definition lists empty states under IMPORTANT. Alternative: IMPORTANT with CMP-5.
-- **CMP-13 `presets.ts`**: chosen TIER 0 (constants and types) although `tests/components/accessibility/presets.test.ts` exists. Alternative: IMPORTANT with CMP-10.
-- **CMP-2 `account-form-field.tsx` and `account-form-message.tsx`**: chosen IMPORTANT for the accessible error linking. Alternative: TIER 0 as static markup.
-- **CFG-2 `next.config.ts`**: chosen CORE for the security headers. Alternative: IMPORTANT (defense in depth; access and ownership do not depend on it).
-- **CFG-3 schema and migrations**: chosen CORE because the database itself refuses a remembered universe of another owner. Alternative: TIER 0, the spec's default for the schema ("protected by the integration tests of the components that use them").
-- **CFG-4 `tsconfig.json`**: chosen production TIER 0, because the build reads its path alias and strict mode. Alternative: "Not production" as tool configuration.
-- **APP-4 pages and root layout**: chosen IMPORTANT with only browser-test protection (0 % measured). Alternative: TIER 0 for the pages that only compose (`page.tsx`, `not-found.tsx`, `session-check-failed/page.tsx`), keeping IMPORTANT for the account pages that resolve the destination.
+None open (the calls listed by spec 005a were decided by the user on 2026-11-23; see `specs/005a-quality-testing/decisions.md`, D-T6-1).
