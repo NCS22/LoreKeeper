@@ -9,7 +9,7 @@
     "lint": "eslint --max-warnings 0",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "test:coverage": "vitest run --project unit --coverage --coverage.reportsDirectory=coverage/unit && vitest run --project database --coverage --coverage.reportsDirectory=coverage/database && vitest run --project component --passWithNoTests --coverage --coverage.reportsDirectory=coverage/component",
+    "test:coverage": "vitest run --project unit --coverage --coverage.reportsDirectory=coverage/unit && vitest run --project database --coverage --coverage.reportsDirectory=coverage/database && vitest run --project component --passWithNoTests --coverage --coverage.reportsDirectory=coverage/component && node tests/support/coverage/report-coverage-by-inventory-entry.mjs",
     "test:e2e": "next build && playwright test"
   },
   "dependencies": {

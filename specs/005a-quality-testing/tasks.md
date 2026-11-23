@@ -27,7 +27,7 @@ Reading notes for the whole list:
 
 ## Inventory (docs/criticality-inventory.md)
 
-- [ ] **T4. Create the inventory skeleton and the coverage report script.** The skeleton has the header (how to read it, levels by reference to the skill, targets 100/80/none on lines and branches, exceptions, authority order constitution > skill > inventory, thresholds defined but not active), empty tables per area with the agreed columns and the closing sections. The plain `.mjs` script, run at the end of `test:coverage`, reads the coverage JSON and the `Files` column and prints per entry lines and branches by test type and combined, level, target, distance, and unmatched or duplicated files. FR-3, FR-5, FR-7
+- [x] **T4. Create the inventory skeleton and the coverage report script.** The skeleton has the header (how to read it, levels by reference to the skill, targets 100/80/none on lines and branches, exceptions, authority order constitution > skill > inventory, thresholds defined but not active), empty tables per area with the agreed columns and the closing sections. The plain `.mjs` script, run at the end of `test:coverage`, reads the coverage JSON and the `Files` column and prints per entry lines and branches by test type and combined, level, target, distance, and unmatched or duplicated files. FR-3, FR-5, FR-7
   - Tests: none, tooling that protects no CORE or IMPORTANT component (FR-14); run on the empty inventory and on a throwaway entry.
   - Done when: `pnpm test:coverage` exits successfully, lists every production file as unmatched against the empty inventory, shows E2E as "not measured", and the throwaway entry is not committed.
 
