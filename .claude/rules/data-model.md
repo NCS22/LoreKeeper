@@ -53,7 +53,7 @@ These four are identity and credential tables, not user content, so they carry n
 | name | text | 1-120 characters (Unicode code points), trimmed |
 | description | text? | at most 2000 characters (Unicode code points), trimmed; only whitespace counts as none |
 | mode | enum `READER` \| `AUTHOR` | default `READER`; cannot change after creation |
-| createdAt, updatedAt, deletedAt | timestamptz | `deletedAt` is filtered by every repository query from spec 004 and written by the trash of spec 005 |
+| createdAt, updatedAt, deletedAt | timestamptz | `deletedAt` is filtered by every repository query from spec 004 and written by the trash of spec 006 |
 
 Stored since spec 004. The migration adds `CHECK` constraints on the length of `name` and `description` (in code points) and `ON DELETE CASCADE` from the owner. A unique `(id, ownerId)` is the target of the composite foreign key of `RememberedUniverse`; the list is read by `(ownerId, createdAt, id)`. A universe has no cover image: `coverImageUrl` is not in the schema (plan 004, approval 1); adding one needs its own spec and migration.
 
@@ -66,7 +66,7 @@ The last-used universe of an account (spec 004). User state, not content.
 | universeId | uuid | composite FK `(universeId, userId) → Universe(id, ownerId)` (`ON DELETE CASCADE`), so the database refuses a universe of another account |
 | updatedAt | timestamptz | |
 
-No `deletedAt`: it is hard-deleted with its user or its universe. Saving is a plain upsert. A universe in the trash (`deletedAt` set) reads as no remembered universe (the oldest one is selected instead),; the lifecycle of spec 005 decides what else happens to the row.
+No `deletedAt`: it is hard-deleted with its user or its universe. Saving is a plain upsert. A universe in the trash (`deletedAt` set) reads as no remembered universe (the oldest one is selected instead),; the lifecycle of spec 006 decides what else happens to the row.
 
 ### Work
 | Field | Type | Notes |

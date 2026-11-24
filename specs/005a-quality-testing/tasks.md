@@ -95,7 +95,7 @@ Reading notes for the whole list:
   - Tests: none (document); search for `spec-NNN` and "next free three-digit number".
   - Done when: no old numbering rule remains in those files and the example branch is `spec-005a-quality-testing`.
 
-- [ ] **T19. Roadmap renumbering and the references to spec 005 (category f).** Phase 1 lists 005a and 005b before 006 (six specs) in `docs/roadmap.md` with the note and the "needs resolved first" column aligned; the lifecycle spec with the trash decision is 006 in the roadmap, in "Current status" of `CLAUDE.md`, in OD-6 of `docs/open-decisions.md` and in the two data-model lines; the two code comments stay as documented. FR-20
+- [x] **T19. Roadmap renumbering and the references to spec 005 (category f).** Phase 1 lists 005a and 005b before 006 (six specs) in `docs/roadmap.md` with the note and the "needs resolved first" column aligned; the lifecycle spec with the trash decision is 006 in the roadmap, in "Current status" of `CLAUDE.md`, in OD-6 of `docs/open-decisions.md` and in the two data-model lines; the two code comments stay as documented. FR-20
   - Tests: none (document); search those four files for "005".
   - Done when: every spec 005 reference reads 005a, 005b or 006 as decided, Phase 1 counts six specs, and no production file changed.
 
