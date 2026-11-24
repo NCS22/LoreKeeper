@@ -73,7 +73,7 @@ Reading notes for the whole list:
   - Tests: none (document); a search of `tests/` for cross-user cases is compared with section C, and section D with the gaps of the inventory.
   - Done when: no owner-isolation test is missing from C, none carries a verdict other than KEEP or REVIEW, and D matches the inventory gaps.
 
-- [ ] **T14. Close the audit report.** Section A counts by verdict and type, section E decision sheet that only lists group ids (approval is the answer at the 005b gate), and the completeness check of every file under `tests/`. FR-9, NFR-4
+- [x] **T14. Close the audit report.** Section A counts by verdict and type, section E decision sheet that only lists group ids (approval is the answer at the 005b gate), and the completeness check of every file under `tests/`. FR-9, NFR-4
   - Tests: none (document); `Glob tests/**` against the report, and blob ids recomputed with `git hash-object` equal the recorded ones.
   - Done when: no test file is unmatched or duplicated, the recorded blob ids equal the current ones, and `git diff` shows no change under `tests/` except the new coverage folder.
 

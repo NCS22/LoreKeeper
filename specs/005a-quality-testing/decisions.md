@@ -106,3 +106,9 @@ Decisions taken after the plan was approved, not recorded in `plan.md`.
 - **Discarded:** counting every test that mentions another account or an identifier key (it would turn CMP-3, CMP-4 and CMP-9 into CORE components and freeze input validation tests as untouchable).
 - **Also done:** the `Why` cell of SHR-1 in `docs/criticality-inventory.md` now says "Contains protected tests", because P-02 to P-05 protect it (FR-10, as the other CORE entries with protected tests say). The A-31 note that called `parse-action-input.test.ts:117` a protected candidate was updated to the result of section C.
 - **Approved by:** taken by the main agent as the recommended option on 2026-11-24 (the user asked for the recommended choice while away); pending the user's review.
+
+## D-T14-1. Test types are normalized in the summary counts
+
+- **Decided:** section A of `audit-report.md` counts groups and files by type using the `Type` column of section B, with these variants merged and their group ids named in the report: the unit tests that run in the database project without using it (D-T11-5, D-T12-3) in one row; the database-backed tests run on the fake and on PostgreSQL in one row; the contract variants inside "test support". A-01 (a unit test that runs the shared contract on the fake) keeps a row of its own.
+- **Discarded:** one row per exact wording of the `Type` column (rows of one group that make the summary hard to read); merging every variant into the five plain types (hides where each test runs).
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24 (the user asked for the recommended choice while away); pending the user's review.

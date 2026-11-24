@@ -51,7 +51,56 @@ The protected tests of a group marked `REVIEW` this way are re-checked individua
 
 ## A. Summary
 
-Pending: task T14.
+Figures taken on 2026-11-24 at commit `4077747`. Each one names how it was obtained, so it can be repeated. "Table rows" means the lines of section B that start with `| A-`, split on the column separator `|` (no cell of section B contains an escaped `\|`); the verdict is column 5 and the type column 4.
+
+**Test files covered: 138**, all of them (NFR-4). Method: `git ls-files --cached --others --exclude-standard tests | wc -l` gives 138; the backticked `` `path` `blobid` `` pairs in the `Test files` column of section B are also 138, one per file (see the completeness check).
+
+**Groups by verdict: 105 groups.** Method: count of table rows of section B by the verdict column.
+
+| Verdict | Groups |
+|---|---|
+| `KEEP` | 86 |
+| `REFACTOR` | 17 |
+| `DELETE` | 1 |
+| `REPLACE` | 0 |
+| `REVIEW` | 1 |
+| **Total** | **105** |
+
+**Groups and test files by type.** Method: count of table rows of section B by the type column, and count of `` `path` `blobid` `` pairs in those rows. The type column is used as written, with three normalizations, said here so the figures can be repeated: (1) the variants "unit (runs in the database project because of its folder; it uses no database)" and "unit (runs a shared contract on test support; runs in the database project ...)" are one row, "unit, run in the database project (uses no database)": A-24, A-25, A-26, A-34, A-38, A-52; (2) the variants "database-backed (each scenario on the fake and on PostgreSQL)" and "database-backed (lines 13-97 on the fake and on PostgreSQL; line 99 on the fake only)" are one row, "database-backed, on the fake and on PostgreSQL": A-33, A-35, A-36, A-37; (3) the variants "test support (a contract run on ...)" are counted with "test support": A-80, A-81, A-82, A-84, A-85, A-86.
+
+| Type | Groups | Test files |
+|---|---|---|
+| unit | 50 | 50 |
+| unit, runs a shared contract on test support (A-01) | 1 | 1 |
+| unit, run in the database project (uses no database) | 6 | 6 |
+| unit (lint rule) | 4 | 4 |
+| database-backed | 15 | 15 |
+| database-backed, on the fake and on PostgreSQL | 4 | 4 |
+| test support | 6 | 20 |
+| tooling script (A-87) | 1 | 1 |
+| end-to-end | 15 | 15 |
+| end-to-end support | 3 | 22 |
+| **Total** | **105** | **138** |
+
+**Verdict by type (groups).** Method: count of table rows of section B by the pair (normalized type, verdict).
+
+| Type | `KEEP` | `REFACTOR` | `DELETE` | `REPLACE` | `REVIEW` | Total |
+|---|---|---|---|---|---|---|
+| unit | 43 | 6 | 1 | 0 | 0 | 50 |
+| unit, runs a shared contract on test support | 1 | 0 | 0 | 0 | 0 | 1 |
+| unit, run in the database project (uses no database) | 5 | 0 | 0 | 0 | 1 | 6 |
+| unit (lint rule) | 4 | 0 | 0 | 0 | 0 | 4 |
+| database-backed | 9 | 6 | 0 | 0 | 0 | 15 |
+| database-backed, on the fake and on PostgreSQL | 2 | 2 | 0 | 0 | 0 | 4 |
+| test support | 6 | 0 | 0 | 0 | 0 | 6 |
+| tooling script | 1 | 0 | 0 | 0 | 0 | 1 |
+| end-to-end | 12 | 3 | 0 | 0 | 0 | 15 |
+| end-to-end support | 3 | 0 | 0 | 0 | 0 | 3 |
+| **Total** | **86** | **17** | **1** | **0** | **1** | **105** |
+
+**Protected tests: 29**, 27 `KEEP` and 2 `REVIEW` (P-06, P-16). Method: count of the lines of section C that start with `| P-`, by the verdict column (column 7). **A group verdict never applies to them**, and approving their group in 005b does not cover them (see "Protected tests are never covered by a group verdict").
+
+**Coverage gaps: 15 entries**, 3 `CORE` and 12 `IMPORTANT`, plus none found by the audit outside the inventory. Method: count of the lines of section D whose first cell is an inventory entry id, by the `Level` column (column 2).
 
 ## B. Groups
 
@@ -321,8 +370,23 @@ None. Every C10 finding of section B is already an inventory gap: A-12 (ACC-2), 
 
 ## E. Decision sheet
 
-Pending: task T14.
+**This file is not an approval.** The user gives the choice per group as the answer at the approval gate of spec 005b, and the 005b spec lists the approved group ids (FR-9). Before asking, 005b re-checks the blob ids against the ones recorded in section B (rule in "The 005b re-check by blob ids") and marks `REVIEW` every group that changed; the lists below are then updated before the question is asked.
+
+Group ids by verdict (105 groups):
+
+- `KEEP` (86): A-01, A-02, A-03, A-04, A-05, A-06, A-07, A-09, A-10, A-11, A-12, A-13, A-15, A-16, A-22, A-23, A-24, A-25, A-27, A-29, A-30, A-31, A-32, A-34, A-36, A-37, A-38, A-39, A-40, A-41, A-43, A-44, A-45, A-46, A-47, A-49, A-50, A-51, A-52, A-53, A-55, A-56, A-57, A-58, A-59, A-60, A-61, A-62, A-64, A-65, A-66, A-67, A-68, A-69, A-70, A-71, A-73, A-74, A-75, A-76, A-77, A-78, A-79, A-80, A-81, A-82, A-83, A-84, A-85, A-86, A-87, A-89, A-90, A-91, A-92, A-94, A-96, A-97, A-98, A-99, A-100, A-101, A-102, A-103, A-104, A-105.
+- `REFACTOR` (17): A-08, A-14, A-18, A-19, A-20, A-21, A-28, A-33, A-35, A-42, A-48, A-54, A-63, A-72, A-88, A-93, A-95.
+- `DELETE` (1): A-17.
+- `REPLACE` (0): none.
+- `REVIEW` (1): A-26.
+
+Protected tests, a separate list that **no group approval covers** (29): P-01, P-02, P-03, P-04, P-05, P-06, P-07, P-08, P-09, P-10, P-11, P-12, P-13, P-14, P-15, P-16, P-17, P-18, P-19, P-20, P-21, P-22, P-23, P-24, P-25, P-26, P-27, P-28, P-29. Each one changes only with its own explicit approval of the user at a flow gate and never reduces what it checks (FR-10, D-6); `REVIEW`: P-06, P-16; the rest `KEEP`.
 
 ## Completeness check
 
-Pending: task T14.
+Made on 2026-11-24 at commit `4077747` (`git rev-parse --short HEAD`). The 005b re-check compares the current blob ids against the ids recorded in section B by this check. All four checks pass; no fix of the report was needed.
+
+1. **Every test file appears exactly once, with its current blob id.** Command: `git ls-files --cached --others --exclude-standard tests` (138 files) against every `` `path` `blobid` `` pair of the `Test files` column of section B (138 pairs), and for each file `git hash-object <file>` cut to 12 characters compared with the recorded id. Result: unmatched 0, duplicated 0, id mismatches 0; no path in section B that is not a current file (0); no backticked `tests/` path in that column without its id (0).
+2. **Each group has exactly one verdict among the five.** Method: the verdict column of the 105 table rows of section B, without backticks, is one of `KEEP`, `REFACTOR`, `DELETE`, `REPLACE`, `REVIEW`. Result: 105 of 105; group ids A-01 to A-105, none repeated.
+3. **The column each verdict requires is filled.** Method: the `Missing information` cell of every `REVIEW` group and the `Protection kept` cell of every `DELETE` and `REPLACE` group are neither empty nor `-`. Result: A-26 (`REVIEW`) has its missing information; A-17 (`DELETE`) has its protection kept; there are no `REPLACE` groups.
+4. **No existing test changed.** Commands: `git diff --name-status main...HEAD -- tests` gives only `A tests/support/coverage/report-coverage-by-inventory-entry.mjs` (the new coverage folder of T4, audited as A-87); `git status --short tests` gives nothing. Result: no existing file under `tests/` was modified, added elsewhere or removed (NFR-1).
