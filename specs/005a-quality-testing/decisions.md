@@ -39,3 +39,10 @@ Decisions taken after the plan was approved, not recorded in `plan.md`.
 - **Why:** plan 2.3 defines the production volume as the production set of 2.1, which includes the lockfile, but does not say how to treat a generated file in a ratio.
 - **Discarded:** counting the lockfile in the ratios (the ratio would describe pnpm, not the code); leaving it out silently (the figure would not match the inventory); a new end-to-end run (a build and 76 s for the same result).
 - **Approved by:** the user, 2026-11-23, at the T7 and T8 implementation gate.
+
+## D-T9-1. The skill lives only in `.claude/skills/quality-testing-core/`
+
+- **Decided:** `quality-testing-core` is a real folder under `.claude/skills/` with a single copy; nothing is added to `.agents/skills/` or `skills-lock.json`. The checks of plan section 7 ("visible through both paths and the two git copies are identical") and of T10 ("any two skill copies are identical") read as "one copy".
+- **Why:** `.agents/skills/` is the store of skills installed from a source and locked in `skills-lock.json`; `.claude/skills/frontend-design` is a junction to it, so "link" in `CLAUDE.md` means a link per installed skill, not a link of the whole folder. A skill written by the project has no source to lock.
+- **Discarded:** a real folder in `.agents/skills/quality-testing-core/` with a junction from `.claude/skills/`, like `frontend-design` (puts a project-written skill in the installer's store without a lock entry).
+- **Approved by:** the user, 2026-11-24, at the T9 implementation gate.

@@ -51,7 +51,7 @@ Reading notes for the whole list:
 
 ## The skill (.claude/skills/quality-testing-core/)
 
-- [ ] **T9. Create the skill `quality-testing-core` with `SKILL.md`.** Front matter and the ten sections (procedure; levels and reclassification; coverage targets and thresholds policy not active; behaviors and test type; useful versus coverage-only test; already covered; simplify or remove; way of working with the exact evidence line; inventory upkeep; checks before finishing), in about 250 lines. Check whether `.agents/skills` needs an identical copy; stop and ask if unclear. FR-12, FR-13, FR-14
+- [x] **T9. Create the skill `quality-testing-core` with `SKILL.md`.** Front matter and the ten sections (procedure; levels and reclassification; coverage targets and thresholds policy not active; behaviors and test type; useful versus coverage-only test; already covered; simplify or remove; way of working with the exact evidence line; inventory upkeep; checks before finishing), in about 250 lines. Check whether `.agents/skills` needs an identical copy; stop and ask if unclear. FR-12, FR-13, FR-14
   - Tests: none (document); front matter parses, the folder is visible through the skills paths, and a search finds the four evidence-line cases.
   - Done when: the ten sections exist, no entry is added to `skills-lock.json`, the copy question is settled and reported, and `SKILL.md` has about 250 lines or fewer.
 
