@@ -113,6 +113,6 @@ Reading notes for the whole list:
   - Tests: none (comparison of the suite with its own baseline).
   - Done when: every check is green, the two lists equal the baseline, and `git diff --name-status` shows under `tests/` only added files in `tests/support/coverage/`.
 
-- [ ] **T23. Completion-criteria check.** The coordinator launches two independent read-only runs for each of the ten reference components (plan section 7), giving each only the skill, the inventory and the component path to answer the eight questions; the results are compared with each other and with the inventory entry and shown as a table to the user. FR-12
+- [x] **T23. Completion-criteria check.** The coordinator launches two independent read-only runs for each of the ten reference components (plan section 7), giving each only the skill, the inventory and the component path to answer the eight questions; the results are compared with each other and with the inventory entry and shown as a table to the user. FR-12
   - Tests: none (consistency check; no file created).
   - Done when: for the ten components both runs give the same level and test type and match the inventory entry, or each difference is listed for the user.
