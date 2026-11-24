@@ -69,7 +69,7 @@ Reading notes for the whole list:
   - Tests: none (document); `git diff --name-status` shows nothing under `tests/`.
   - Done when: every other test file is in exactly one group with one verdict, and each group holding an owner-isolation test names it.
 
-- [ ] **T13. Write the protected tests and coverage gaps sections.** Section C lists every owner-isolation test individually (file, describe and test name, line, what it proves, KEEP or REVIEW, "untouchable") with cross-references from the groups; section D lists CORE and IMPORTANT components without enough protection, with the inventory entry id. FR-10, FR-9
+- [x] **T13. Write the protected tests and coverage gaps sections.** Section C lists every owner-isolation test individually (file, describe and test name, line, what it proves, KEEP or REVIEW, "untouchable") with cross-references from the groups; section D lists CORE and IMPORTANT components without enough protection, with the inventory entry id. FR-10, FR-9
   - Tests: none (document); a search of `tests/` for cross-user cases is compared with section C, and section D with the gaps of the inventory.
   - Done when: no owner-isolation test is missing from C, none carries a verdict other than KEEP or REVIEW, and D matches the inventory gaps.
 

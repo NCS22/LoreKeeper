@@ -99,3 +99,10 @@ Decisions taken after the plan was approved, not recorded in `plan.md`.
 - **Decided:** `tests/support/coverage/report-coverage-by-inventory-entry.mjs` is group A-87 with type "tooling script" and KEEP; it has no test cases and carries none (FR-14).
 - **Discarded:** leaving it out of the report (NFR-4 asks for every file under `tests/`).
 - **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+
+## D-T13-1. Which tests count as protected
+
+- **Decided:** a test is protected when its failure would let one account read, list, change or remember data of another account, or choose the acting account from the request. Under this rule section C lists 29 tests (P-01 to P-29). Rejecting an unknown `userId` key at the input schema is input validation, not protection, because the account is never read from the input (P-06, P-17, P-18 and P-28 prove that). Isolation between devices of the same account, a tab's state after an account change in the same browser and how the user menu shows the account are not owner isolation either. They stay with their IMPORTANT or CORE components without making them CORE.
+- **Discarded:** counting every test that mentions another account or an identifier key (it would turn CMP-3, CMP-4 and CMP-9 into CORE components and freeze input validation tests as untouchable).
+- **Also done:** the `Why` cell of SHR-1 in `docs/criticality-inventory.md` now says "Contains protected tests", because P-02 to P-05 protect it (FR-10, as the other CORE entries with protected tests say). The A-31 note that called `parse-action-input.test.ts:117` a protected candidate was updated to the result of section C.
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24 (the user asked for the recommended choice while away); pending the user's review.
