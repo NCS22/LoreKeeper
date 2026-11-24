@@ -109,7 +109,7 @@ Reading notes for the whole list:
   - Tests: none (document check); search results recorded in the validation report.
   - Done when: every changed hunk fits one category, no old marker remains, and only the two documented code comments mention spec 005.
 
-- [ ] **T22. Final same-result check.** With the database up, run `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:e2e` and the same-result comparison against the baseline of T1, and confirm no `thresholds` key. NFR-1, FR-8
+- [x] **T22. Final same-result check.** With the database up, run `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:e2e` and the same-result comparison against the baseline of T1, and confirm no `thresholds` key. NFR-1, FR-8
   - Tests: none (comparison of the suite with its own baseline).
   - Done when: every check is green, the two lists equal the baseline, and `git diff --name-status` shows under `tests/` only added files in `tests/support/coverage/`.
 
