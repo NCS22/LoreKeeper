@@ -1,6 +1,6 @@
 # Spec 005a — Quality testing strategy
 
-Status: approved
+Status: implemented
 
 ## Context and goal
 
