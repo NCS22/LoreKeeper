@@ -87,7 +87,7 @@ Reading notes for the whole list:
   - Tests: none (document); search those folders for "with its tests" and "none skipped or deleted".
   - Done when: no marker hit remains there and no standalone line was added.
 
-- [ ] **T17. Templates and validation checks (categories c and d).** Add the test design section to the plan template and the evidence line to the task template in `sdd.md` and to their copies in `sdd-plan`, `sdd-tasks` and the planner definition, and add the FR-18 checks and the FR-2 reclassification check to Validation in `sdd.md`, `sdd-validate` and the reviewer's validation brief. FR-17, FR-18, FR-13
+- [x] **T17. Templates and validation checks (categories c and d).** Add the test design section to the plan template and the evidence line to the task template in `sdd.md` and to their copies in `sdd-plan`, `sdd-tasks` and the planner definition, and add the FR-18 checks and the FR-2 reclassification check to Validation in `sdd.md`, `sdd-validate` and the reviewer's validation brief. FR-17, FR-18, FR-13
   - Tests: none (document); each copy compared with `sdd.md`, and the three validation files list the same checks.
   - Done when: all template copies equal `sdd.md` in wording, the three validation files list the same checks, and nothing else changed in them.
 

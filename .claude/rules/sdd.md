@@ -128,7 +128,7 @@ Starts from an approved spec with no open questions. It carries `Status: draft |
 4. **Contracts**: Server Actions or Route Handlers, with their Zod input schemas and response shape.
 5. **UI**: routes and components, Server vs Client Components, states (empty, loading, error), accessibility.
 6. **Spoiler impact**: where the visibility rule is applied for every read path touched.
-7. **Tests**: per layer, mirroring `src/` in `tests/`; which need the spoiler suite; E2E if a user flow changes.
+7. **Test design**: for every affected component, its level in `docs/criticality-inventory.md`, the behaviors to protect and the test type chosen (skill `quality-testing-core`), mirroring `src/` in `tests/`; which need the spoiler suite; E2E if a user flow changes. When the spec has no production component with behavior, the section says "no production component with behavior".
 8. **Decisions**: each with the alternative discarded and why.
 9. **Coverage**: which FR each part covers; every FR must be covered.
 
@@ -137,10 +137,16 @@ Starts from an approved spec with no open questions. It carries `Status: draft |
 ```
 Status: draft | approved
 
+## Test design
+<every affected component with its level, the behaviors to protect and the test type, as in the plan; or "no production component with behavior">
+
 - [ ] **Tn. <Description>.** FR-x, FR-y
   - Tests: <tests written with the task, in tests/>
   - Done when: <verifiable check>
+  - Evidence: <red then green | green before and after | characterization then green before and after | behavior removed with approval of <date> at <gate>>: <tests involved>
 ```
+
+- The `Evidence:` line goes only under a task that changes a CORE or IMPORTANT component; it is written when the task is done, in exactly one of the four forms of the skill `quality-testing-core`, naming the tests involved. TIER 0 tasks, and specs with no production component with behavior, carry none.
 
 - One task = one verifiable result = one commit, in dependency order. Description of 1-3 lines; no "Scope" paragraph listing files (the plan and the implementer decide the files). `Tests:` and `Done when:` are one line each. Every task carries tests proportional to the criticality of what it changes: CORE and IMPORTANT carry tests, TIER 0 none (skill `quality-testing-core`).
 - At most ~3 FR per task. A task that needs more, or that hides several steps ("and", "also", a list of files), is split into several tasks. A group of simple mechanical tasks of the same kind (for example moving messages to `en.ts`) may be one task.
@@ -178,6 +184,7 @@ When the tasks end, or it stops, the user gets the report of every task done and
 Validation (whole spec) repeats the verification gate and then goes through every FR and the completion criteria. It starts only when every task is `- [x]`.
 
 - `@reviewer` (FR by FR) always runs. `@hacker` (security and robustness, spoiler leaks, ownership and validation first) runs only if the spec touches authentication, ownership, spoilers or exposure of data. `@frontend-tester` (real browser: desktop, 320 px, dark theme, console, keyboard) runs once, only if the spec has UI FRs. They run in parallel.
+- Test checks of `@reviewer` (skill `quality-testing-core`): every affected component has its level in `docs/criticality-inventory.md`; no component classified TIER 0 holds relevant logic (one that does is reported, to be reclassified before any decision about its tests); each task that changes a CORE or IMPORTANT component has its `Evidence:` line; where it says red then green or characterization, the tests it names exist; where it says behavior removed, the user's approval is recorded; no tests were added for TIER 0 components.
 - Reports go through `@explainer` only when the user asks for it; otherwise they are shown in Spanish, short, keeping their order and severity. The original reports are kept for the technical team.
 - If all are clean (`VERDICT: APPROVED`, `SAFE` and `UI VERDICT: PASSES`), the gate offers to close the spec. A `UI VERDICT: INCOMPLETE (DATABASE NEEDED)` counts as clean only after the user chose "Seguir sin ella" (the FRs on its list stay "not verified in browser"). Otherwise it offers to fix the problems.
 - Fix loop, at most 1 round: one `@implementer` pass for each report that asked for changes (its findings list is the task; nothing else is added, and the verification gate must pass), then only the checks that had findings run again, and the gate is asked again. If problems remain after that round, stop and explain to the user what keeps failing; the options are then `/sdd-change` (the spec is wrong or incomplete) or stopping.
