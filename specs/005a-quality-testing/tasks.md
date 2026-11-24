@@ -83,7 +83,7 @@ Reading notes for the whole list:
   - Tests: none (document); search the three files for "tests with every change" and "new tests for the change", and `git diff -U0` shows the NEVER exception on tests only.
   - Done when: no old marker remains in the three files, the rewritten lines say CORE and IMPORTANT carry tests and TIER 0 none, and the other three NEVER prohibitions stay unconditional.
 
-- [ ] **T16. Tests proportional to criticality in agents and commands (category a).** Rewrite the sentences about tests in the implementer, reviewer and planner definitions and in `sdd-implement`, `sdd-plan` and `sdd-tasks`, with the pointer to the skill inside them. FR-16
+- [x] **T16. Tests proportional to criticality in agents and commands (category a).** Rewrite the sentences about tests in the implementer, reviewer and planner definitions and in `sdd-implement`, `sdd-plan` and `sdd-tasks`, with the pointer to the skill inside them. FR-16
   - Tests: none (document); search those folders for "with its tests" and "none skipped or deleted".
   - Done when: no marker hit remains there and no standalone line was added.
 

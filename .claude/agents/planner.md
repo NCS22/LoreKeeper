@@ -27,7 +27,7 @@ Subagents do not see the conversation: work only from what the coordinator gives
 - Mark which FR each part covers; every FR must be covered.
 
 ## If asked for the tasks
-- Start from the approved plan. Generate `tasks.md` with the format in `sdd.md`: in dependency order, each one a single verifiable result (one commit) described in 1-3 lines, with at most ~3 FRs, a one-line "Tests:" and a one-line "Done when:". No "Scope" paragraph or file lists. If a task hides several steps, split it. There is no maximum number of tasks; if the list is long because the spec is too big, propose splitting the spec instead.
+- Start from the approved plan. Generate `tasks.md` with the format in `sdd.md`: in dependency order, each one a single verifiable result (one commit) described in 1-3 lines, with at most ~3 FRs, a one-line "Tests:" proportional to the criticality of what the task changes (skill `quality-testing-core`: CORE and IMPORTANT carry tests, TIER 0 none) and a one-line "Done when:". No "Scope" paragraph or file lists. If a task hides several steps, split it. There is no maximum number of tasks; if the list is long because the spec is too big, propose splitting the spec instead.
 
 ## If asked for a change
 First update `spec.md` (new or changed FR in EARS + edge cases + out of scope) and return the diff. List which parts of `plan.md` and `tasks.md` would have to change, but do not touch them until you are asked to.
