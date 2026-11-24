@@ -51,64 +51,76 @@ Decisions taken after the plan was approved, not recorded in `plan.md`.
 
 - **Decided:** each test file is its own group in `audit-report.md`, also when two files share an inventory entry (for example `require-acting-user.test.ts` and `get-acting-user.test.ts`, both SHR-2), because they protect different components and can deserve different verdicts.
 - **Discarded:** one group per inventory entry (it would force one verdict on files of different quality).
-- **Approved by:** taken by the main agent as the recommended option on 2026-11-24 (the user asked for the recommended choice while away); pending the user's review.
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24 (the user asked for the recommended choice while away); approved by the user on 2026-11-24 at the validation gate.
 
 ## D-T11-2. A small redundancy next to strong checks keeps KEEP
 
 - **Decided:** a single redundant or weak case next to strong assertions is noted in the `Reason` and the group stays KEEP; REFACTOR is used when a behavior promised by a test name has only weak checks, or when several tests repeat each other (as `assertion-quality.md` says: a weak line next to strong lines is not a defect).
 - **Discarded:** REFACTOR for any weak line (it would flag almost every group and hide the real defects).
-- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; approved by the user on 2026-11-24 at the validation gate.
 
 ## D-T11-3. The server error logger test is REVIEW, not DELETE
 
 - **Decided:** A-26 (`tests/shared/infrastructure/server-error-logger.test.ts`, TIER 0) gets REVIEW: two of its cases are exercised elsewhere, but its `@ts-expect-error` case is the only check that the log context cannot take a password or a body. The missing information is whether the user wants that compile-time guard kept as a test.
 - **Discarded:** DELETE (would lose that guard without the user's say).
-- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; approved by the user on 2026-11-24 at the validation gate.
 
 ## D-T11-4. Doubtful protected tests are named as candidates
 
 - **Decided:** tests that may be owner-isolation tests but are not clearly so are named in `Protected tests inside` as "candidate", and T13 confirms or drops each one individually in section C.
 - **Discarded:** leaving them out until T13 (one could be forgotten).
-- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; approved by the user on 2026-11-24 at the validation gate.
 
 ## D-T11-5. Type column for unit tests that run in the database project
 
 - **Decided:** the tests of `scrypt-password-hasher`, `server-environment` and `server-error-logger` are typed "unit (runs in the database project because of its folder; it uses no database)", because `vitest.config.mts` sends all of `tests/shared/infrastructure/**` to the `database` project.
 - **Discarded:** typing them as database-backed (false: they touch no database) or as plain unit (hides where they run).
-- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; approved by the user on 2026-11-24 at the validation gate.
 
 ## D-T12-1. Test support is grouped by purpose
 
 - **Decided:** the files of `tests/support/` form 8 groups (A-80 to A-87) and the end-to-end support files 3 groups (A-103 to A-105), each grouped by purpose and with one verdict that judges whether the support is correct and faithful (C6, C7).
 - **Discarded:** one group per support file (44 groups with no assertions of their own, the same verdict repeated).
-- **Approved by:** taken by the main agent as the recommended option on 2026-11-24 (the user asked for the recommended choice while away); pending the user's review.
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24 (the user asked for the recommended choice while away); approved by the user on 2026-11-24 at the validation gate.
 
 ## D-T12-2. A contract and its fake share a group, and the protected tests of a contract live there
 
 - **Decided:** each repository contract is in one group with its fake and its real adapter support (A-80 accounts, A-81 universes). The owner-isolation tests written in the universe repository contract are named in A-81; the groups that run the contract (A-34 on the fake, A-48 on PostgreSQL) say that they run them. Each protected test has one place.
 - **Discarded:** naming the contract tests in every group that runs them (the same protected test in two or three rows).
-- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; approved by the user on 2026-11-24 at the validation gate.
 
 ## D-T12-3. D-T11-5 also applies to universes and app files
 
 - **Decided:** `fake-universe-storage.test.ts`, `universe-dto.test.ts` and `tests/app/error.test.ts` are typed as unit tests that run in the database project because of their folder, as D-T11-5 says.
-- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; approved by the user on 2026-11-24 at the validation gate.
 
 ## D-T12-4. The coverage report script is audited as a tooling script
 
 - **Decided:** `tests/support/coverage/report-coverage-by-inventory-entry.mjs` is group A-87 with type "tooling script" and KEEP; it has no test cases and carries none (FR-14).
 - **Discarded:** leaving it out of the report (NFR-4 asks for every file under `tests/`).
-- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; approved by the user on 2026-11-24 at the validation gate.
 
 ## D-T13-1. Which tests count as protected
 
 - **Decided:** a test is protected when its failure would let one account read, list, change or remember data of another account, or choose the acting account from the request. Under this rule section C lists 29 tests (P-01 to P-29). Rejecting an unknown `userId` key at the input schema is input validation, not protection, because the account is never read from the input (P-06, P-17, P-18 and P-28 prove that). Isolation between devices of the same account, a tab's state after an account change in the same browser and how the user menu shows the account are not owner isolation either. They stay with their IMPORTANT or CORE components without making them CORE.
 - **Discarded:** counting every test that mentions another account or an identifier key (it would turn CMP-3, CMP-4 and CMP-9 into CORE components and freeze input validation tests as untouchable).
 - **Also done:** the `Why` cell of SHR-1 in `docs/criticality-inventory.md` now says "Contains protected tests", because P-02 to P-05 protect it (FR-10, as the other CORE entries with protected tests say). The A-31 note that called `parse-action-input.test.ts:117` a protected candidate was updated to the result of section C.
-- **Approved by:** taken by the main agent as the recommended option on 2026-11-24 (the user asked for the recommended choice while away); pending the user's review.
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24 (the user asked for the recommended choice while away); approved by the user on 2026-11-24 at the validation gate.
 
 ## D-T14-1. Test types are normalized in the summary counts
 
 - **Decided:** section A of `audit-report.md` counts groups and files by type using the `Type` column of section B, with these variants merged and their group ids named in the report: the unit tests that run in the database project without using it (D-T11-5, D-T12-3) in one row; the database-backed tests run on the fake and on PostgreSQL in one row; the contract variants inside "test support". A-01 (a unit test that runs the shared contract on the fake) keeps a row of its own.
 - **Discarded:** one row per exact wording of the `Type` column (rows of one group that make the summary hard to read); merging every variant into the five plain types (hides where each test runs).
-- **Approved by:** taken by the main agent as the recommended option on 2026-11-24 (the user asked for the recommended choice while away); pending the user's review.
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24 (the user asked for the recommended choice while away); approved by the user on 2026-11-24 at the validation gate.
+
+## D-V-1. A behavior protected only by a browser test can still record a coverage gap
+
+- **Decided:** `SKILL.md` section 3 says that such a behavior is not an unprotected behavior (a behavior-keeping change needs no characterization tests), but that an entry whose measured coverage is below its target still records `gap:` with its plan, as `audit-report.md` section D already reads it. The inventory entries that record both (APP-4, APP-5, CMP-2, CMP-4, CMP-5, CMP-8, CMP-9) stay as they are.
+- **Discarded:** removing those `gap:` records from the inventory and from section D of the audit report (005b would then see those entries as having no gap).
+- **Approved by:** the user, 2026-11-24, at the validation gate (finding 1 of the reviewer).
+
+## D-V-2. `app-menu-bar.tsx` stays TIER 0
+
+- **Decided:** the menu bar stays in CMP-13 (TIER 0) although its "New universe" item skips returning focus to the menu so that focus stays in the creation form; the entry's responsibility now names that choice. No test is written for it.
+- **Discarded:** moving it to an IMPORTANT entry of interactive components with a gap and "component tests when touched".
+- **Approved by:** the user, 2026-11-24, at the validation gate (finding 2 of the reviewer, FR-2).
