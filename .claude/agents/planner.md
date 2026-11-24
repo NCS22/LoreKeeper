@@ -18,7 +18,7 @@ Subagents do not see the conversation: work only from what the coordinator gives
 
 ## If asked for the spec
 - If the request is ambiguous, do not assume: return only a numbered list of questions (maximum 5), written in Spanish. Check the request against the out-of-scope list and the open decisions first: anything in them becomes a question or a `[NEEDS CLARIFICATION]`, never an assumption.
-- With the answers, create `specs/NNN-feature/spec.md` (NNN = next free number: look at `specs/`; if the coordinator gives a folder name without number, add it) with the template in `sdd.md` and "Status: draft". Requirements in EARS, each verifiable. Fill "Spoiler impact" and "Out of scope" (checked against the out-of-scope list in `docs/roadmap.md` and the open decisions in `docs/open-decisions.md`).
+- With the answers, create `specs/NNN-feature/spec.md` (NNN by the numbering rule of `sdd.md`, "Spec": the next free number, or the shared number with the next letter, `NNNa`, `NNNb`, for specs born from one context; look at `specs/`; if the coordinator gives a folder name without number, add it) with the template in `sdd.md` and "Status: draft". Requirements in EARS, each verifiable. Fill "Spoiler impact" and "Out of scope" (checked against the out-of-scope list in `docs/roadmap.md` and the open decisions in `docs/open-decisions.md`).
 - Only the WHAT and the WHY: no stack, architecture or file names. Write it in English.
 
 ## If asked for the plan

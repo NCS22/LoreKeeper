@@ -91,7 +91,7 @@ Reading notes for the whole list:
   - Tests: none (document); each copy compared with `sdd.md`, and the three validation files list the same checks.
   - Done when: all template copies equal `sdd.md` in wording, the three validation files list the same checks, and nothing else changed in them.
 
-- [ ] **T18. Numbering with letters (category e).** Spec numbers shared by one context take consecutive letters and branches are `spec-` plus number, letter and name, in `sdd.md`, `git.md`, `sdd-spec`, the planner definition and any `argument-hint` that says digits only. FR-19
+- [x] **T18. Numbering with letters (category e).** Spec numbers shared by one context take consecutive letters and branches are `spec-` plus number, letter and name, in `sdd.md`, `git.md`, `sdd-spec`, the planner definition and any `argument-hint` that says digits only. FR-19
   - Tests: none (document); search for `spec-NNN` and "next free three-digit number".
   - Done when: no old numbering rule remains in those files and the example branch is `spec-005a-quality-testing`.
 

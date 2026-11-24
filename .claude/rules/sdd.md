@@ -67,7 +67,7 @@ Read the `Status:` lines and the task checkboxes of `specs/NNN-feature/` and ask
 
 ## Spec (`specs/NNN-feature/spec.md`)
 
-`NNN` is the next free three-digit number (e.g. `specs/001-universe-crud/`). The spec describes the WHAT and the WHY: no stack, architecture or file names.
+`NNN` is a three-digit number: the next free one (e.g. `specs/001-universe-crud/`), or, for specs born from one shared context, the same number with consecutive letters, `NNNa`, `NNNb`... (e.g. `specs/005a-quality-testing/`). The spec describes the WHAT and the WHY: no stack, architecture or file names.
 
 ```
 # Spec NNN — <Name>
@@ -216,7 +216,7 @@ Everything the flow needs is in files (`Status:` lines, checkboxes, commits), so
 
 ## Git
 
-Every spec lives in its own branch (`spec-NNN-name`, created from an up-to-date `main` before the first file is written) and is committed at defined points; all the rules are in `.claude/rules/git.md`. In short:
+Every spec lives in its own branch (`spec-` plus the number with its letter, if any, plus the name, e.g. `spec-005a-quality-testing`, created from an up-to-date `main` before the first file is written) and is committed at defined points; all the rules are in `.claude/rules/git.md`. In short:
 - Documents (spec, plan, tasks, a change) are committed when their gate is approved; the closing is its own commit.
 - Each task is committed after its verification gate is green, before the Implementation gate is asked; each fix pass of the validation is a commit.
 - "Stop here" at any gate commits what is in a good state.
