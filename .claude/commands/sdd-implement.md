@@ -7,7 +7,7 @@ Read `.claude/rules/sdd.md` first (Flow, Approval gates, Implementation) and fol
 $ARGUMENTS has the format `NNN-feature [Tn]`; if `Tn` is omitted, take the first unchecked task in `tasks.md`. Before launching anything, read the `Status:` lines yourself: if `plan.md` or `tasks.md` is not `approved`, tell me which one is pending and stop.
 
 For each task, delegate to the @implementer subagent (Agent tool, subagent_type "implementer"), passing it the folder, the task id, the FR/NFR ids the task lists and the plan sections it cites (read them from `tasks.md` yourself, only that task), so it reads by section as "Reading budget" in `sdd.md` says, not whole files. It also reads `CLAUDE.md` and the rules for the code it touches.
-1. Write the minimum code that fulfills the task, with its tests, respecting the architecture rules (layers, Zod at the boundaries, spoiler filtering in the backend, descriptive names, no `any`).
+1. Write the minimum code that fulfills the task, with tests proportional to its criticality (skill `quality-testing-core`: CORE and IMPORTANT carry tests, TIER 0 none), respecting the architecture rules (layers, Zod at the boundaries, spoiler filtering in the backend, descriptive names, no `any`).
 2. Run `pnpm typecheck`, `pnpm lint` and `pnpm test` (plus the spoiler suite or `pnpm test:e2e` when the task requires them).
 3. Mark that task as done in `tasks.md` and indicate which FRs it covers.
 4. If it needs something from CLAUDE.md "ASK FIRST" (dependency, module, schema change…), it stops and I decide.

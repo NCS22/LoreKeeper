@@ -40,6 +40,17 @@ export default defineConfig({
     // the session cookie whenever a unit test file (the composition test) imported Better Auth in
     // the same run without this setting.
     server: { deps: { inline: ["better-auth"] } },
+    // Coverage is off unless `--coverage` is passed (`pnpm test:coverage`), so `pnpm test` is
+    // unchanged. Every source file is included, so a file no test imports shows up at 0 %. The
+    // script runs one project at a time and gives each its own `reportsDirectory`, so the report
+    // can tell which test type covered what (spec 005a, plan 2.2). No coverage gate is active
+    // yet (FR-8).
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/shared/infrastructure/generated/**", "**/*.d.ts"],
+      reporter: ["json"],
+    },
     projects: [
       {
         extends: true,
@@ -57,6 +68,18 @@ export default defineConfig({
           fileParallelism: false,
           globalSetup: ["./tests/support/database/global-setup.ts"],
           provide: { testDatabaseUrl: readTestDatabaseUrl() },
+        },
+      },
+      // Component tests render React in a simulated browser document. The `.test.tsx` extension
+      // selects them, so the other projects keep the Node environment (spec 005a, D9). While the
+      // project has no files, only its step in `test:coverage` passes `--passWithNoTests` (the
+      // option is root-only in Vitest), so an empty `unit` or `database` run still fails.
+      {
+        extends: true,
+        test: {
+          name: "component",
+          include: ["tests/**/*.test.tsx"],
+          environment: "jsdom",
         },
       },
     ],

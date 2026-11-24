@@ -16,7 +16,8 @@ Read `specs/NNN-feature/spec.md`, `CLAUDE.md`, `docs/roadmap.md`, `docs/open-dec
    - Dependency direction `presentation → application → domain ← infrastructure`; no Prisma, Next.js, React or SDK imports in domain or application; no deep imports into another module; Prisma types not leaving infrastructure; no `utils`/`helpers` folders.
    - Business logic only in use cases (not in pages, components, Route Handlers or Server Actions); Zod validation at every external input; typed errors, never swallowed.
    - Every query scoped to the authenticated user; read use cases take a `ViewerContext`; spoiler filtering in the backend, not only in the UI.
-   - Tests exist for each change and mirror `src/` in `tests/`; none skipped or deleted.
+   - Tests are proportional to the criticality of each changed component (skill `quality-testing-core`): CORE and IMPORTANT changes carry tests that mirror `src/` in `tests/`, TIER 0 changes carry none; no test skipped, and no test deleted or simplified without a justified proposal approved by the user.
+   - Test checks (skill `quality-testing-core`): every affected component has its level in `docs/criticality-inventory.md`; no component classified TIER 0 holds relevant logic (one that does is reported, to be reclassified before any decision about its tests); each task that changes a CORE or IMPORTANT component has its `Evidence:` line; where it says red then green or characterization, the tests it names exist; where it says behavior removed, the user's approval is recorded; no tests were added for TIER 0 components.
    - Descriptive names, strict TypeScript, no unjustified `any`.
    - UI: dark-first, desktop-first with a narrow viewport also usable, accessible (labels, focus, contrast).
    - Nothing outside the task or the spec, no secrets, no new dependency or schema change that was not approved.

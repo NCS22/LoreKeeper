@@ -17,12 +17,12 @@ Ask first, every time: merge into `main` or open/merge a pull request, commit or
 
 Never work on `main`. If you find yourself on `main` with changes, `git switch -c <branch>` first (the changes come along).
 
-Names are lowercase kebab-case; `NNN-name` is the spec folder.
+Names are lowercase kebab-case; `<folder>` is the spec folder: `NNN-name`, or `NNNa-name` for specs that share a number with consecutive letters (`sdd.md`, "Spec").
 
 | Situation | Branch | Starts from |
 |---|---|---|
-| New spec | `spec-NNN-name` (e.g. `spec-003-account-screens`) | up-to-date `main` |
-| Change to a spec already merged (`/sdd-change`) | `change-NNN-name` | up-to-date `main` |
+| New spec | `spec-<folder>` (e.g. `spec-005a-quality-testing`) | up-to-date `main` |
+| Change to a spec already merged (`/sdd-change`) | `change-<folder>` | up-to-date `main` |
 | Change to a spec whose branch is still open | the same branch | - |
 | Bug that changes no requirement | `fix-name` | up-to-date `main` |
 | Bug that shows a wrong requirement | goes through `/sdd-change` | up-to-date `main` |
@@ -30,7 +30,7 @@ Names are lowercase kebab-case; `NNN-name` is the spec folder.
 | Dependencies or tooling (with approval) | `chore-name` | up-to-date `main` |
 | Experiment that may be thrown away | `spike-name`: deleted, or turned into a spec | up-to-date `main` |
 
-Before creating a branch: `git fetch`, `git status -sb`; the tree must be clean. If it has changes that are not part of the new work, ask the user what to do (commit them on their own branch, or leave them); never mix them in. Then `git switch main`, `git pull --ff-only`, `git switch -c <branch>`. The branch exists before the first file of the work is written (for `/sdd-spec`, take the next free number from `specs/` yourself so branch and folder agree).
+Before creating a branch: `git fetch`, `git status -sb`; the tree must be clean. If it has changes that are not part of the new work, ask the user what to do (commit them on their own branch, or leave them); never mix them in. Then `git switch main`, `git pull --ff-only`, `git switch -c <branch>`. The branch exists before the first file of the work is written (for `/sdd-spec`, take the number from `specs/` yourself, the next free one or the shared number with the next letter, so branch and folder agree).
 
 One active spec at a time. The next spec starts from `main` after the previous one is merged (003 after 002). If it needs code that is not merged yet, use a stacked branch and tell the user.
 
@@ -66,7 +66,7 @@ Rules for the content of a commit:
 
 ## Message format
 
-English. `type(scope): imperative summary`, at most 72 characters, scope is the spec number or an area (`git`, `docs`). Types: `spec`, `plan`, `tasks`, `feat`, `fix`, `test`, `refactor`, `docs`, `chore`, `wip`. A body only when the why is not obvious. Commit messages end with the attribution line given in the session.
+English. `type(scope): imperative summary`, at most 72 characters, scope is the spec number with its letter, if any (`003`, `005a`), or an area (`git`, `docs`). Types: `spec`, `plan`, `tasks`, `feat`, `fix`, `test`, `refactor`, `docs`, `chore`, `wip`. A body only when the why is not obvious. Commit messages end with the attribution line given in the session.
 
 ## Push
 

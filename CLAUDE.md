@@ -3,7 +3,7 @@
 LoreKeeper is a knowledge management platform for fictional universes. It helps avid readers of dense works build their own interconnected knowledge bases to remember what they read without spoilers, and helps authors keep track of details of their own works written long ago.
 This file guides Claude and any AI agent working in this repository.
 
-**Current status:** Phase 0 - design, with the first Phase 1 specs implemented (detail per spec in `docs/roadmap.md` and `specs/NNN-feature/`). Real: accounts (spec 002, PostgreSQL, Prisma 7, Better Auth) and the account screens with the page-access guard (spec 003, Playwright E2E with `pnpm test:e2e`). Also real since spec 004 (2026-11-17): universes saved in PostgreSQL with an owner, creation through Server Actions with Zod, and the last-used universe remembered per account. The sample data and `src/mocks/` are gone; the sections that showed sample content show honest empty states. Not built yet: works, entities, graph, timeline and reading position (Phase 2 onwards), and the universe lifecycle (edit, trash, restore, purge: spec 005). The only thing stored in the browser is the accessibility preferences (`localStorage`; moving them to the account is OD-23). Nothing marked as pending may be implemented.
+**Current status:** Phase 0 - design, with the first Phase 1 specs implemented (detail per spec in `docs/roadmap.md` and `specs/NNN-feature/`). Real: accounts (spec 002, PostgreSQL, Prisma 7, Better Auth) and the account screens with the page-access guard (spec 003, Playwright E2E with `pnpm test:e2e`). Also real since spec 004 (2026-11-17): universes saved in PostgreSQL with an owner, creation through Server Actions with Zod, and the last-used universe remembered per account. The sample data and `src/mocks/` are gone; the sections that showed sample content show honest empty states. Since spec 005a (2026-11-24) testing follows the skill `quality-testing-core` and the levels of `docs/criticality-inventory.md`, coverage is measured with `pnpm test:coverage` (no thresholds yet) and an audit report waits for the cleanup of spec 005b. Not built yet: works, entities, graph, timeline and reading position (Phase 2 onwards), and the universe lifecycle (edit, trash, restore, purge: spec 006, after the quality testing specs 005a and 005b). The only thing stored in the browser is the accessibility preferences (`localStorage`; moving them to the account is OD-23). Nothing marked as pending may be implemented.
 
 **Where things live:** feature requirements in `specs/NNN-feature/spec.md`; phases and the project out-of-scope list in `docs/roadmap.md`; everything not decided yet in `docs/open-decisions.md`. There is no `docs/spec.md`.
 
@@ -30,7 +30,8 @@ This file guides Claude and any AI agent working in this repository.
 - UI shell dependencies, approved on 2026-11-06 because they came with the migrated interface: `cytoscape` and `d3-force` (graph canvas and its force layout; installed but unused since spec 004 removed the sample graph, until Phase 3), `react-resizable-panels` (resizable workspace panels), `tw-animate-css` (animations in `globals.css`), `@tailwindcss/turbopack` (Tailwind loader in `next.config.ts`). The `playwright` library is also used for the browser checks agents run in disposable scripts.
 - Installed by spec 002 (approved 2026-11-06): `zod` (input shape at Server Actions and Route Handlers only; today used only at the Server Action boundary), `better-auth`, `@prisma/client`, `@prisma/adapter-pg`, `pg`, `prisma` and `@types/pg`. The install-script allow-list `onlyBuiltDependencies` in `package.json` is limited to `prisma` and `@prisma/engines`.
 - Agent tooling (approved 2026-11-08, not a project dependency): the Playwright MCP server (`@playwright/mcp`, pinned in `.mcp.json`, run with `npx` in an isolated profile) lets agents drive the app in a browser during development. Its output folder `.playwright-mcp/` is git-ignored and is emptied when a spec is closed.
-- Installed by spec 003 (approved 2026-11-06): `@playwright/test` (E2E, local runs, with Chromium), used only for the account flows. `jsdom` and testing-library are not approved.
+- Installed by spec 003 (approved 2026-11-06): `@playwright/test` (E2E, local runs, with Chromium), used only for the account flows. `jsdom` and testing-library came later, with spec 005a.
+- Installed by spec 005a (approved 2026-11-20, development only): `@vitest/coverage-v8` (coverage for `pnpm test:coverage`), `jsdom`, `@testing-library/react` and `@testing-library/dom` (the `component` Vitest project for `.test.tsx` files). `@testing-library/user-event`, `@testing-library/jest-dom` and `@vitejs/plugin-react` are not approved.
 - No other dependency is added without approval.
 
 ## Structure
@@ -51,7 +52,7 @@ src/
 tests/                        # Mirrors src/; support/ for fakes, e2e/ for Playwright, lint/ for tests of the ESLint rules
 prisma/                       # Schema (Better Auth tables) and migrations
 docs/                         # roadmap.md, open-decisions.md
-.claude/                      # Agent setup: agents/, commands/ (/sdd-*), rules/, hooks/, skills/ (a local link to .agents/skills; git stores both as identical copies)
+.claude/                      # Agent setup: agents/, commands/ (/sdd-*), rules/, hooks/, skills/ (frontend-design is a local link to .agents/skills, git stores both as identical copies; quality-testing-core is written by the project and lives only here)
 .agents/skills/               # Installed skills (frontend-design), locked in skills-lock.json
 specs/NNN-feature/            # SDD artifacts per feature: spec, plan, tasks and an optional decisions.md (e.g. specs/001-universe-crud/)
 ```
@@ -117,15 +118,21 @@ Full domain model in `.claude/rules/data-model.md`.
 - Go step by step. For any non-trivial task, propose a plan (plan mode) and wait for approval before editing.
 - Before implementing: understand the affected code, identify modules, review the relevant rules and spec sections.
 - Design decisions are presented with alternatives and trade-offs; never silently choose the complex option.
-- Implement the smallest coherent solution, with its tests, without touching unrelated code.
+- Implement the smallest coherent solution, with tests proportional to the criticality of what it changes (skill `quality-testing-core`), without touching unrelated code.
 - Follow the SDD flow: spec → clarification → plan → tasks → implementation → validation → closing (and change when requirements change), with artifacts in `specs/NNN-feature/` and the `/sdd-*` commands. Every phase ends with a question to the user; approving it marks the document `approved` and starts the next phase, so there is no need to type the next command. Start with `/sdd-spec`, resume with `/sdd-status`, or run it all from `claude --agent coordinator`. Rules in `.claude/rules/sdd.md`.
 - A resolved open decision is recorded in the `plan.md` of the feature that resolves it (or in that spec's optional `decisions.md` when it is taken after the plan was approved; a cross-cutting one with no feature goes in this file) and removed from `docs/open-decisions.md`. There is no `docs/decisions/` folder.
 - Delegate broad exploration and reviews to subagents to keep the main context clean.
 - Git: every change goes in its own branch (never directly on `main`), is committed at the points defined in `.claude/rules/git.md` (each approved document and each verified task) and the branch is pushed after every commit. The main agent makes the commits, not the subagents. Merging into `main` is the user's decision, through a pull request.
+- Testing: the rules live in the skill `.claude/skills/quality-testing-core/SKILL.md` and the levels in `docs/criticality-inventory.md`. Consult the skill before writing or changing a production file or a test.
+  - Classify the component first: find its inventory entry, or add one (CORE, IMPORTANT or TIER 0).
+  - Tests are proportional to criticality and give a real guarantee: behavior over implementation, no test written only for coverage.
+  - A CORE or IMPORTANT change that alters behavior is test-first (red, then green); one that keeps behavior adds no test and keeps the existing ones green before and after (on a known gap, characterization tests first).
+  - TIER 0 gets no tests, bug fixes included.
+  - A test is deleted or simplified only through a justified proposal approved by the user.
 
 ## Commands
 
-Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`, `docker compose` and `pnpm prisma ...`. `pnpm test` also runs database-backed tests, so it needs the local PostgreSQL running (`docker compose up -d`) and fails loudly without it; the generated Prisma client is not committed, so run `pnpm prisma generate` once after installing. `pnpm test:e2e` runs `next build && playwright test`; it needs the local PostgreSQL and `TEST_DATABASE_URL`. Not available yet because its tool is not installed: `pnpm format` (Prettier), confirmed when it is set up.
+Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`, `docker compose` and `pnpm prisma ...`. `pnpm test` also runs database-backed tests, so it needs the local PostgreSQL running (`docker compose up -d`) and fails loudly without it; the generated Prisma client is not committed, so run `pnpm prisma generate` once after installing. `pnpm test:e2e` runs `next build && playwright test`; it needs the local PostgreSQL and `TEST_DATABASE_URL`. `pnpm test:coverage` runs the `unit`, `database` and `component` Vitest projects one at a time with coverage and prints lines and branches per entry of `docs/criticality-inventory.md`; it needs the local PostgreSQL and enforces no threshold. Not available yet because its tool is not installed: `pnpm format` (Prettier), confirmed when it is set up.
 
 | Command | Purpose |
 |---|---|
@@ -137,6 +144,7 @@ Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`
 | `pnpm typecheck` | `next typegen && tsc --noEmit` |
 | `pnpm test` | Vitest unit and integration tests |
 | `pnpm test:e2e` | Playwright tests |
+| `pnpm test:coverage` | Coverage by test type, reported per inventory entry |
 | `pnpm prisma migrate dev` | Create and apply a migration |
 | `pnpm prisma generate` | Regenerate the Prisma client |
 
@@ -161,7 +169,7 @@ Invariants of the system. They are never broken, whatever the task.
 
 **ALWAYS**
 - Read the relevant rules and spec sections before touching a module.
-- Add or update tests with every change.
+- Add or update tests in proportion to criticality: CORE and IMPORTANT changes carry tests, TIER 0 changes carry none (skill `quality-testing-core`, levels in `docs/criticality-inventory.md`).
 - Leave the application working at the end of each task.
 - Update the documentation, `docs/roadmap.md` and `docs/open-decisions.md` when something changes.
 - Report what changed, why, and what remains open.
@@ -178,7 +186,8 @@ Invariants of the system. They are never broken, whatever the task.
 **NEVER**
 - Implement features that were not requested or approved.
 - Read, edit or print `.env` files or secrets.
-- Silence errors, skip or delete tests, or relax strict mode to make something pass.
+- Silence errors, skip tests, or relax strict mode to make something pass.
+- Delete or simplify tests, except a justified proposal approved by the user.
 - Commit, push or merge on `main`, force-push, rewrite git history (`amend`, `reset`, `rebase`), delete branches or run destructive commands without permission. Creating branches, committing and pushing branches other than `main` is allowed by `.claude/rules/git.md`.
 - Store AI-generated content as verified knowledge.
 
@@ -187,7 +196,7 @@ Invariants of the system. They are never broken, whatever the task.
 Before declaring a task finished:
 
 1. `pnpm typecheck` and `pnpm lint` pass with no new warnings.
-2. `pnpm test` passes, including new tests for the change.
+2. `pnpm test` passes, including the tests the change needs by its criticality (CORE and IMPORTANT carry tests, TIER 0 none).
 3. `pnpm test:e2e` for changes that affect user flows.
 4. Any change to queries, visibility or reading progress runs the spoiler protection tests. They are mandatory.
 5. Schema changes: the migration applies cleanly on an empty database.

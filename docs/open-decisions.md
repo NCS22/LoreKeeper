@@ -17,7 +17,7 @@ Items marked "Decided" are closed but stay here until the `plan.md` of the spec 
 | OD-3 | Participation-level spoilers: a hidden participant in a visible event | 3 | |
 | OD-4 | Links between related events | 3 | |
 | OD-5 | Showing that locked information exists (counts or indicators) without revealing it | 4 | |
-| OD-6 | Trash retention period and automatic purge | 1 | **Decided 2026-11-06, executed by spec 005:** items stay in the trash until the owner purges them; no automatic purge (it needs a scheduler, which depends on the deployment target, OD-9). Only the owner can purge, since there is no sharing. Reconsider an automatic purge in Phase 5. |
+| OD-6 | Trash retention period and automatic purge | 1 | **Decided 2026-11-06, executed by spec 006:** items stay in the trash until the owner purges them; no automatic purge (it needs a scheduler, which depends on the deployment target, OD-9). Only the owner can purge, since there is no sharing. Reconsider an automatic purge in Phase 5. |
 | OD-7 | Concrete attribute schemas per entity type | 2 | One Zod schema per type, defined in the entities domain. |
 | OD-19 | Sending a work to the trash while other items have their spoiler boundary on it: block it, send them to the trash too, or keep them pointing to a trashed work | 2 | Raised while closing the soft-delete rules. A unit referenced by any boundary cannot be purged. |
 | OD-20 | Visibility in `READER` universes of sources that have no narrative unit (`SUPPLEMENTARY`, `USER_NOTE`, `EXTERNAL`) | 3 | Sources with a unit follow the unit. |
