@@ -76,3 +76,26 @@ Decisions taken after the plan was approved, not recorded in `plan.md`.
 - **Decided:** the tests of `scrypt-password-hasher`, `server-environment` and `server-error-logger` are typed "unit (runs in the database project because of its folder; it uses no database)", because `vitest.config.mts` sends all of `tests/shared/infrastructure/**` to the `database` project.
 - **Discarded:** typing them as database-backed (false: they touch no database) or as plain unit (hides where they run).
 - **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+
+## D-T12-1. Test support is grouped by purpose
+
+- **Decided:** the files of `tests/support/` form 8 groups (A-80 to A-87) and the end-to-end support files 3 groups (A-103 to A-105), each grouped by purpose and with one verdict that judges whether the support is correct and faithful (C6, C7).
+- **Discarded:** one group per support file (44 groups with no assertions of their own, the same verdict repeated).
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24 (the user asked for the recommended choice while away); pending the user's review.
+
+## D-T12-2. A contract and its fake share a group, and the protected tests of a contract live there
+
+- **Decided:** each repository contract is in one group with its fake and its real adapter support (A-80 accounts, A-81 universes). The owner-isolation tests written in the universe repository contract are named in A-81; the groups that run the contract (A-34 on the fake, A-48 on PostgreSQL) say that they run them. Each protected test has one place.
+- **Discarded:** naming the contract tests in every group that runs them (the same protected test in two or three rows).
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+
+## D-T12-3. D-T11-5 also applies to universes and app files
+
+- **Decided:** `fake-universe-storage.test.ts`, `universe-dto.test.ts` and `tests/app/error.test.ts` are typed as unit tests that run in the database project because of their folder, as D-T11-5 says.
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+
+## D-T12-4. The coverage report script is audited as a tooling script
+
+- **Decided:** `tests/support/coverage/report-coverage-by-inventory-entry.mjs` is group A-87 with type "tooling script" and KEEP; it has no test cases and carries none (FR-14).
+- **Discarded:** leaving it out of the report (NFR-4 asks for every file under `tests/`).
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.

@@ -65,7 +65,7 @@ Reading notes for the whole list:
   - Tests: none (document); `git diff --name-status` shows nothing under `tests/`.
   - Done when: every test file under `tests/modules/accounts` and `tests/shared` is in exactly one group with one verdict and a reason.
 
-- [ ] **T12. Audit the remaining test areas.** The same format for universes (noting groups that hold owner-isolation tests), app, components, styles, the proxy test, lint tests, test support (groups of their own) and the end-to-end specs and their support (checking overlap with lower levels). FR-9, FR-10
+- [x] **T12. Audit the remaining test areas.** The same format for universes (noting groups that hold owner-isolation tests), app, components, styles, the proxy test, lint tests, test support (groups of their own) and the end-to-end specs and their support (checking overlap with lower levels). FR-9, FR-10
   - Tests: none (document); `git diff --name-status` shows nothing under `tests/`.
   - Done when: every other test file is in exactly one group with one verdict, and each group holding an owner-isolation test names it.
 
