@@ -99,7 +99,7 @@ Reading notes for the whole list:
   - Tests: none (document); search those four files for "005".
   - Done when: every spec 005 reference reads 005a, 005b or 006 as decided, Phase 1 counts six specs, and no production file changed.
 
-- [ ] **T20. Structure, Stack and the reference block in `CLAUDE.md` (categories g and h).** The Structure `.claude/` entry names `quality-testing-core`; the Stack gets the "Installed by spec 005a" bullet with the packages of T2 and T3 and the date, and the "`jsdom` and testing-library are not approved" sentence is updated (`@vitejs/plugin-react` stays not approved); and one Workflow block, 12 lines or fewer, points to the skill and the inventory with the plan's rules. FR-12, FR-7, NFR-2
+- [x] **T20. Structure, Stack and the reference block in `CLAUDE.md` (categories g and h).** The Structure `.claude/` entry names `quality-testing-core`; the Stack gets the "Installed by spec 005a" bullet with the packages of T2 and T3 and the date, and the "`jsdom` and testing-library are not approved" sentence is updated (`@vitejs/plugin-react` stays not approved); and one Workflow block, 12 lines or fewer, points to the skill and the inventory with the plan's rules. FR-12, FR-7, NFR-2
   - Tests: none (document); `git diff -U0 CLAUDE.md` counts the added lines of the block, and the bullet matches the `package.json` ranges.
   - Done when: the block has 15 lines or fewer and links to files that exist, the bullet lists exactly the installed packages, and the skill is named in Structure.
 

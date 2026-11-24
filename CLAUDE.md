@@ -30,7 +30,8 @@ This file guides Claude and any AI agent working in this repository.
 - UI shell dependencies, approved on 2026-11-06 because they came with the migrated interface: `cytoscape` and `d3-force` (graph canvas and its force layout; installed but unused since spec 004 removed the sample graph, until Phase 3), `react-resizable-panels` (resizable workspace panels), `tw-animate-css` (animations in `globals.css`), `@tailwindcss/turbopack` (Tailwind loader in `next.config.ts`). The `playwright` library is also used for the browser checks agents run in disposable scripts.
 - Installed by spec 002 (approved 2026-11-06): `zod` (input shape at Server Actions and Route Handlers only; today used only at the Server Action boundary), `better-auth`, `@prisma/client`, `@prisma/adapter-pg`, `pg`, `prisma` and `@types/pg`. The install-script allow-list `onlyBuiltDependencies` in `package.json` is limited to `prisma` and `@prisma/engines`.
 - Agent tooling (approved 2026-11-08, not a project dependency): the Playwright MCP server (`@playwright/mcp`, pinned in `.mcp.json`, run with `npx` in an isolated profile) lets agents drive the app in a browser during development. Its output folder `.playwright-mcp/` is git-ignored and is emptied when a spec is closed.
-- Installed by spec 003 (approved 2026-11-06): `@playwright/test` (E2E, local runs, with Chromium), used only for the account flows. `jsdom` and testing-library are not approved.
+- Installed by spec 003 (approved 2026-11-06): `@playwright/test` (E2E, local runs, with Chromium), used only for the account flows. `jsdom` and testing-library came later, with spec 005a.
+- Installed by spec 005a (approved 2026-11-20, development only): `@vitest/coverage-v8` (coverage for `pnpm test:coverage`), `jsdom`, `@testing-library/react` and `@testing-library/dom` (the `component` Vitest project for `.test.tsx` files). `@testing-library/user-event`, `@testing-library/jest-dom` and `@vitejs/plugin-react` are not approved.
 - No other dependency is added without approval.
 
 ## Structure
@@ -51,7 +52,7 @@ src/
 tests/                        # Mirrors src/; support/ for fakes, e2e/ for Playwright, lint/ for tests of the ESLint rules
 prisma/                       # Schema (Better Auth tables) and migrations
 docs/                         # roadmap.md, open-decisions.md
-.claude/                      # Agent setup: agents/, commands/ (/sdd-*), rules/, hooks/, skills/ (a local link to .agents/skills; git stores both as identical copies)
+.claude/                      # Agent setup: agents/, commands/ (/sdd-*), rules/, hooks/, skills/ (frontend-design is a local link to .agents/skills, git stores both as identical copies; quality-testing-core is written by the project and lives only here)
 .agents/skills/               # Installed skills (frontend-design), locked in skills-lock.json
 specs/NNN-feature/            # SDD artifacts per feature: spec, plan, tasks and an optional decisions.md (e.g. specs/001-universe-crud/)
 ```
@@ -122,6 +123,12 @@ Full domain model in `.claude/rules/data-model.md`.
 - A resolved open decision is recorded in the `plan.md` of the feature that resolves it (or in that spec's optional `decisions.md` when it is taken after the plan was approved; a cross-cutting one with no feature goes in this file) and removed from `docs/open-decisions.md`. There is no `docs/decisions/` folder.
 - Delegate broad exploration and reviews to subagents to keep the main context clean.
 - Git: every change goes in its own branch (never directly on `main`), is committed at the points defined in `.claude/rules/git.md` (each approved document and each verified task) and the branch is pushed after every commit. The main agent makes the commits, not the subagents. Merging into `main` is the user's decision, through a pull request.
+- Testing: the rules live in the skill `.claude/skills/quality-testing-core/SKILL.md` and the levels in `docs/criticality-inventory.md`. Consult the skill before writing or changing a production file or a test.
+  - Classify the component first: find its inventory entry, or add one (CORE, IMPORTANT or TIER 0).
+  - Tests are proportional to criticality and give a real guarantee: behavior over implementation, no test written only for coverage.
+  - A CORE or IMPORTANT change that alters behavior is test-first (red, then green); one that keeps behavior adds no test and keeps the existing ones green before and after (on a known gap, characterization tests first).
+  - TIER 0 gets no tests, bug fixes included.
+  - A test is deleted or simplified only through a justified proposal approved by the user.
 
 ## Commands
 
