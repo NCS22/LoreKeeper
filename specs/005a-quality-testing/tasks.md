@@ -55,7 +55,7 @@ Reading notes for the whole list:
   - Tests: none (document); front matter parses, the folder is visible through the skills paths, and a search finds the four evidence-line cases.
   - Done when: the ten sections exist, no entry is added to `skills-lock.json`, the copy question is settled and reported, and `SKILL.md` has about 250 lines or fewer.
 
-- [ ] **T10. Write the three skill references and check the skill.** `assertion-quality.md` (weak-assertion criteria with examples from this repository), `test-type-strategies.md` (what each type protects, fake versus real) and `audit-and-removal.md` (verdicts, protected tests, proposal format, D-6 case, 005b re-check by blob ids); `SKILL.md` links all three. FR-6, FR-10, FR-12
+- [x] **T10. Write the three skill references and check the skill.** `assertion-quality.md` (weak-assertion criteria with examples from this repository), `test-type-strategies.md` (what each type protects, fake versus real) and `audit-and-removal.md` (verdicts, protected tests, proposal format, D-6 case, 005b re-check by blob ids); `SKILL.md` links all three. FR-6, FR-10, FR-12
   - Tests: none (document); each example names a real test and line, the strategies agree with the distribution of T7, and any two skill copies are identical.
   - Done when: the three files exist and are linked, each criterion has a weak and a strong example, and the re-check rule matches plan section 1.1.
 

@@ -28,6 +28,11 @@ Answer the eight questions in order; each points to its section.
 
 Then apply the way of working of section 8 and keep the inventory current (section 9).
 
+References, read only when the situation needs them:
+- [references/assertion-quality.md](references/assertion-quality.md): the six weak-assertion criteria, each with a weak and a strong example from this repository (section 5, FR-6).
+- [references/test-type-strategies.md](references/test-type-strategies.md): what each test type protects and how, fake versus real (section 4, FR-12).
+- [references/audit-and-removal.md](references/audit-and-removal.md): verdicts, protected tests, the proposal format, the D-6 case, the 005b re-check by blob ids (section 7, FR-9, FR-10, FR-15).
+
 ## 2. Levels and how to classify
 
 Classify by risk and behavior, never by location, size or technology. Every production component has exactly one level and a written reason.
@@ -87,7 +92,7 @@ Protect what a person or the data would notice: outcomes, typed errors, boundari
 | Any | User flows | End-to-end (Playwright), a small set of critical journeys | What only a browser shows: cookies, headers, real redirects, 320 px, keyboard |
 | TIER 0 | Types, `ui` primitives, messages, styles, configuration | None | - |
 
-Mocks and fakes: a fake is acceptable when it passes the same contract test as the real implementation; a hand-written stub that the real implementation is never checked against hides real errors. Anything about SQL, owner scoping or provider behavior is proved against the test database, not a fake. The proportion of unit, integration and end-to-end tests is a consequence of this table, never a quota.
+Mocks and fakes: a fake is acceptable when it passes the same contract test as the real implementation; a hand-written stub that the real implementation is never checked against hides real errors. Anything about SQL, owner scoping or provider behavior is proved against the test database, not a fake. The proportion of unit, integration and end-to-end tests is a consequence of this table, never a quota. Strategy per type with real examples: [references/test-type-strategies.md](references/test-type-strategies.md).
 
 ## 5. Useful test versus coverage-only test
 
@@ -100,7 +105,7 @@ A test is weak when it would still pass if the result were wrong (FR-6). Before 
 - It does not depend on private structure, call order or exact markup that a correct refactor would change.
 - Its name says the behavior, so a failure explains itself.
 
-A test written only to turn a coverage line green fails these checks; do not write it, record an override instead.
+A test written only to turn a coverage line green fails these checks; do not write it, record an override instead. Weak and strong examples of each check: [references/assertion-quality.md](references/assertion-quality.md).
 
 ## 6. Is it already covered
 
@@ -125,6 +130,8 @@ Protects: <behavior and inventory entry id>
 Why no protection is lost: <the test or strategy that keeps it>
 Protected test: no | yes, behavior removed entirely (D-6), other paths checked: <list>
 ```
+
+Verdicts, the protected-test list and the 005b re-check by blob ids: [references/audit-and-removal.md](references/audit-and-removal.md).
 
 ## 8. The way of working
 
