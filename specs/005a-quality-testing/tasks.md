@@ -105,7 +105,7 @@ Reading notes for the whole list:
 
 ## Final checks
 
-- [ ] **T21. Review the closed list.** Review `git diff -U0` of every instruction file against categories (a) to (h) and search for `tests with every change`, `none deleted`, `spec-NNN` and spec 005 as the lifecycle spec. FR-16, FR-19, FR-20
+- [x] **T21. Review the closed list.** Review `git diff -U0` of every instruction file against categories (a) to (h) and search for `tests with every change`, `none deleted`, `spec-NNN` and spec 005 as the lifecycle spec. FR-16, FR-19, FR-20
   - Tests: none (document check); search results recorded in the validation report.
   - Done when: every changed hunk fits one category, no old marker remains, and only the two documented code comments mention spec 005.
 
