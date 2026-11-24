@@ -79,7 +79,7 @@ Reading notes for the whole list:
 
 ## Instruction and flow files (FR-16, closed list)
 
-- [ ] **T15. Rules in `CLAUDE.md`, `sdd.md` and the architecture rule (categories a and b).** Rewrite the "tests with every change" sentences and the Commands row for coverage, with the pointer to the skill; update the architecture test table and `tests/` tree with the distribution of T7; and add "except a justified proposal approved by the user" to the NEVER rule for deleting or simplifying tests only (the wording is shown before the commit). FR-16, FR-15
+- [x] **T15. Rules in `CLAUDE.md`, `sdd.md` and the architecture rule (categories a and b).** Rewrite the "tests with every change" sentences and the Commands row for coverage, with the pointer to the skill; update the architecture test table and `tests/` tree with the distribution of T7; and add "except a justified proposal approved by the user" to the NEVER rule for deleting or simplifying tests only (the wording is shown before the commit). FR-16, FR-15
   - Tests: none (document); search the three files for "tests with every change" and "new tests for the change", and `git diff -U0` shows the NEVER exception on tests only.
   - Done when: no old marker remains in the three files, the rewritten lines say CORE and IMPORTANT carry tests and TIER 0 none, and the other three NEVER prohibitions stay unconditional.
 

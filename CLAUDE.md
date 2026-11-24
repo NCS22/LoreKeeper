@@ -117,7 +117,7 @@ Full domain model in `.claude/rules/data-model.md`.
 - Go step by step. For any non-trivial task, propose a plan (plan mode) and wait for approval before editing.
 - Before implementing: understand the affected code, identify modules, review the relevant rules and spec sections.
 - Design decisions are presented with alternatives and trade-offs; never silently choose the complex option.
-- Implement the smallest coherent solution, with its tests, without touching unrelated code.
+- Implement the smallest coherent solution, with tests proportional to the criticality of what it changes (skill `quality-testing-core`), without touching unrelated code.
 - Follow the SDD flow: spec → clarification → plan → tasks → implementation → validation → closing (and change when requirements change), with artifacts in `specs/NNN-feature/` and the `/sdd-*` commands. Every phase ends with a question to the user; approving it marks the document `approved` and starts the next phase, so there is no need to type the next command. Start with `/sdd-spec`, resume with `/sdd-status`, or run it all from `claude --agent coordinator`. Rules in `.claude/rules/sdd.md`.
 - A resolved open decision is recorded in the `plan.md` of the feature that resolves it (or in that spec's optional `decisions.md` when it is taken after the plan was approved; a cross-cutting one with no feature goes in this file) and removed from `docs/open-decisions.md`. There is no `docs/decisions/` folder.
 - Delegate broad exploration and reviews to subagents to keep the main context clean.
@@ -125,7 +125,7 @@ Full domain model in `.claude/rules/data-model.md`.
 
 ## Commands
 
-Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`, `docker compose` and `pnpm prisma ...`. `pnpm test` also runs database-backed tests, so it needs the local PostgreSQL running (`docker compose up -d`) and fails loudly without it; the generated Prisma client is not committed, so run `pnpm prisma generate` once after installing. `pnpm test:e2e` runs `next build && playwright test`; it needs the local PostgreSQL and `TEST_DATABASE_URL`. Not available yet because its tool is not installed: `pnpm format` (Prettier), confirmed when it is set up.
+Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`, `docker compose` and `pnpm prisma ...`. `pnpm test` also runs database-backed tests, so it needs the local PostgreSQL running (`docker compose up -d`) and fails loudly without it; the generated Prisma client is not committed, so run `pnpm prisma generate` once after installing. `pnpm test:e2e` runs `next build && playwright test`; it needs the local PostgreSQL and `TEST_DATABASE_URL`. `pnpm test:coverage` runs the `unit`, `database` and `component` Vitest projects one at a time with coverage and prints lines and branches per entry of `docs/criticality-inventory.md`; it needs the local PostgreSQL and enforces no threshold. Not available yet because its tool is not installed: `pnpm format` (Prettier), confirmed when it is set up.
 
 | Command | Purpose |
 |---|---|
@@ -137,6 +137,7 @@ Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`
 | `pnpm typecheck` | `next typegen && tsc --noEmit` |
 | `pnpm test` | Vitest unit and integration tests |
 | `pnpm test:e2e` | Playwright tests |
+| `pnpm test:coverage` | Coverage by test type, reported per inventory entry |
 | `pnpm prisma migrate dev` | Create and apply a migration |
 | `pnpm prisma generate` | Regenerate the Prisma client |
 
@@ -161,7 +162,7 @@ Invariants of the system. They are never broken, whatever the task.
 
 **ALWAYS**
 - Read the relevant rules and spec sections before touching a module.
-- Add or update tests with every change.
+- Add or update tests in proportion to criticality: CORE and IMPORTANT changes carry tests, TIER 0 changes carry none (skill `quality-testing-core`, levels in `docs/criticality-inventory.md`).
 - Leave the application working at the end of each task.
 - Update the documentation, `docs/roadmap.md` and `docs/open-decisions.md` when something changes.
 - Report what changed, why, and what remains open.
@@ -178,7 +179,8 @@ Invariants of the system. They are never broken, whatever the task.
 **NEVER**
 - Implement features that were not requested or approved.
 - Read, edit or print `.env` files or secrets.
-- Silence errors, skip or delete tests, or relax strict mode to make something pass.
+- Silence errors, skip tests, or relax strict mode to make something pass.
+- Delete or simplify tests, except a justified proposal approved by the user.
 - Commit, push or merge on `main`, force-push, rewrite git history (`amend`, `reset`, `rebase`), delete branches or run destructive commands without permission. Creating branches, committing and pushing branches other than `main` is allowed by `.claude/rules/git.md`.
 - Store AI-generated content as verified knowledge.
 
@@ -187,7 +189,7 @@ Invariants of the system. They are never broken, whatever the task.
 Before declaring a task finished:
 
 1. `pnpm typecheck` and `pnpm lint` pass with no new warnings.
-2. `pnpm test` passes, including new tests for the change.
+2. `pnpm test` passes, including the tests the change needs by its criticality (CORE and IMPORTANT carry tests, TIER 0 none).
 3. `pnpm test:e2e` for changes that affect user flows.
 4. Any change to queries, visibility or reading progress runs the spoiler protection tests. They are mandatory.
 5. Schema changes: the migration applies cleanly on an empty database.

@@ -52,10 +52,10 @@ src/
     └── presentation/                 # Error mapper, response helpers
 tests/                                # Mirrors src/
 ├── modules/<module>/{domain,application,infrastructure}/
-├── components/                       # Component tests, mirroring src/components
+├── components/                       # Mirrors src/components: unit tests of client logic (.test.ts) and component tests (.test.tsx, jsdom)
 ├── styles/                           # Design token tests (contrast)
 ├── shared/
-├── support/                          # In-memory fakes, builders, database helpers
+├── support/                          # In-memory fakes, builders, contract tests, database helpers; coverage/ holds the per-inventory-entry coverage report
 ├── lint/                             # Tests of the ESLint rules; the only folder with no src/ counterpart
 └── e2e/                              # Playwright
 ```
@@ -177,13 +177,20 @@ ESLint `no-restricted-imports` with overrides per folder:
 
 Tests live in `tests/`, mirroring `src/`: `src/modules/universes/application/create-universe.ts` → `tests/modules/universes/application/create-universe.test.ts`.
 
-| Layer | Type | How |
-|---|---|---|
-| Domain | Unit | Pure functions and objects, no mocks |
-| Application | Unit | In-memory fake repositories from `tests/support/` |
-| Infrastructure | Integration | Against the Docker PostgreSQL test database, reset between suites |
-| Presentation | Integration | Route Handlers and Server Actions with a real session and database |
-| User flows | E2E | Playwright in `tests/e2e/` |
+The test type depends on the layer and on the level of the component in `docs/criticality-inventory.md`; the full table, with what each test must protect, is in the skill `quality-testing-core`. The proportion between types is a consequence of this table, never a quota.
+
+| Level | Layer or kind | Type | How |
+|---|---|---|---|
+| CORE | Domain rules and value objects | Unit, exhaustive | Pure functions and objects, no mocks |
+| CORE | Application use cases | Unit | In-memory fakes from `tests/support/fakes/` that pass the contract tests in `tests/support/contracts/`; owner isolation also against the database |
+| CORE | Infrastructure | Integration | Against the Docker PostgreSQL test database, reset between suites |
+| CORE | Server Actions and Route Handlers | Integration | Through the action with a real session and database; unit for shared mappers and parsers |
+| CORE | Composition and security configuration | None of their own | The integration tests run through the real wiring |
+| IMPORTANT | Pure client logic (validators, reducers, layout math) | Unit | No DOM |
+| IMPORTANT | Interactive components, hooks, providers | Component | `.test.tsx` in the `component` Vitest project (jsdom, testing-library), written when the component is touched |
+| IMPORTANT | Pages composed of Server Components, the proxy | E2E | The journey that loads them; unit for logic extracted from them |
+| Any | User flows | E2E | Playwright in `tests/e2e/`: a small set of critical journeys and what only a browser shows |
+| TIER 0 | Types, `ui` primitives, messages, styles, configuration | None | - |
 
 - Fakes implement the same repository interfaces as Prisma repositories and live in `tests/support/fakes/`.
 - Spoiler visibility tests are mandatory for every read use case.

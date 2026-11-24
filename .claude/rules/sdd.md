@@ -142,7 +142,7 @@ Status: draft | approved
   - Done when: <verifiable check>
 ```
 
-- One task = one verifiable result = one commit, in dependency order. Description of 1-3 lines; no "Scope" paragraph listing files (the plan and the implementer decide the files). `Tests:` and `Done when:` are one line each. Every task includes its own tests (CLAUDE.md: tests with every change).
+- One task = one verifiable result = one commit, in dependency order. Description of 1-3 lines; no "Scope" paragraph listing files (the plan and the implementer decide the files). `Tests:` and `Done when:` are one line each. Every task carries tests proportional to the criticality of what it changes: CORE and IMPORTANT carry tests, TIER 0 none (skill `quality-testing-core`).
 - At most ~3 FR per task. A task that needs more, or that hides several steps ("and", "also", a list of files), is split into several tasks. A group of simple mechanical tasks of the same kind (for example moving messages to `en.ts`) may be one task.
 - Add `- Spoiler suite: required` when the task touches queries, visibility or reading progress.
 - There is no maximum number of tasks; what matters is that each one is small. If the task list is long because the spec is too big (see "Spec budget"), propose splitting the spec instead.
@@ -153,7 +153,7 @@ Design decisions with their discarded alternative live in section 8 of the `plan
 
 ## Implementation
 
-One task at a time: the minimum code that fulfills the task, with its tests. Then run the verification gate below, mark the task `- [x]` and stop; the command that called the implementer checks the report, commits the task (see "Git" below) and asks the approval gate. The implementer never runs git commands that write.
+One task at a time: the minimum code that fulfills the task, with tests proportional to its criticality (skill `quality-testing-core`). Then run the verification gate below, mark the task `- [x]` and stop; the command that called the implementer checks the report, commits the task (see "Git" below) and asks the approval gate. The implementer never runs git commands that write.
 
 `@frontend-tester` does not run per task: it runs once, in the validation, for specs with UI FRs (the implementer does not open a browser either). Exception: a task whose only risk is visual may ask for it explicitly in its `Done when:`.
 
@@ -167,7 +167,7 @@ When the tasks end, or it stops, the user gets the report of every task done and
 ### Verification gate (from CLAUDE.md)
 
 1. `pnpm typecheck` and `pnpm lint` pass with no new warnings.
-2. `pnpm test` passes, including the new tests.
+2. `pnpm test` passes, including the tests the task needs by its criticality (CORE and IMPORTANT carry tests, TIER 0 none).
 3. `pnpm test:e2e` if the change affects a user flow (once that script exists).
 4. The spoiler protection tests if the change touches queries, visibility or reading progress.
 5. Schema changes: the migration applies cleanly on an empty database.
