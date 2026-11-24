@@ -61,7 +61,7 @@ Reading notes for the whole list:
 
 ## Audit report (audit-report.md)
 
-- [ ] **T11. Create the audit report and audit the accounts and shared tests.** Header with the 005b re-check rule by blob ids, the groups table, the rule that a group verdict never applies to protected tests, and empty sections A to E; then groups (`A-01`...) with test files and short blob ids, inventory entries protected, type, one verdict and a reason by the eleven criteria for every test file of accounts and shared. FR-9
+- [x] **T11. Create the audit report and audit the accounts and shared tests.** Header with the 005b re-check rule by blob ids, the groups table, the rule that a group verdict never applies to protected tests, and empty sections A to E; then groups (`A-01`...) with test files and short blob ids, inventory entries protected, type, one verdict and a reason by the eleven criteria for every test file of accounts and shared. FR-9
   - Tests: none (document); `git diff --name-status` shows nothing under `tests/`.
   - Done when: every test file under `tests/modules/accounts` and `tests/shared` is in exactly one group with one verdict and a reason.
 

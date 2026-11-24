@@ -46,3 +46,33 @@ Decisions taken after the plan was approved, not recorded in `plan.md`.
 - **Why:** `.agents/skills/` is the store of skills installed from a source and locked in `skills-lock.json`; `.claude/skills/frontend-design` is a junction to it, so "link" in `CLAUDE.md` means a link per installed skill, not a link of the whole folder. A skill written by the project has no source to lock.
 - **Discarded:** a real folder in `.agents/skills/quality-testing-core/` with a junction from `.claude/skills/`, like `frontend-design` (puts a project-written skill in the installer's store without a lock entry).
 - **Approved by:** the user, 2026-11-24, at the T9 implementation gate.
+
+## D-T11-1. One test file per group in the audit
+
+- **Decided:** each test file is its own group in `audit-report.md`, also when two files share an inventory entry (for example `require-acting-user.test.ts` and `get-acting-user.test.ts`, both SHR-2), because they protect different components and can deserve different verdicts.
+- **Discarded:** one group per inventory entry (it would force one verdict on files of different quality).
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24 (the user asked for the recommended choice while away); pending the user's review.
+
+## D-T11-2. A small redundancy next to strong checks keeps KEEP
+
+- **Decided:** a single redundant or weak case next to strong assertions is noted in the `Reason` and the group stays KEEP; REFACTOR is used when a behavior promised by a test name has only weak checks, or when several tests repeat each other (as `assertion-quality.md` says: a weak line next to strong lines is not a defect).
+- **Discarded:** REFACTOR for any weak line (it would flag almost every group and hide the real defects).
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+
+## D-T11-3. The server error logger test is REVIEW, not DELETE
+
+- **Decided:** A-26 (`tests/shared/infrastructure/server-error-logger.test.ts`, TIER 0) gets REVIEW: two of its cases are exercised elsewhere, but its `@ts-expect-error` case is the only check that the log context cannot take a password or a body. The missing information is whether the user wants that compile-time guard kept as a test.
+- **Discarded:** DELETE (would lose that guard without the user's say).
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+
+## D-T11-4. Doubtful protected tests are named as candidates
+
+- **Decided:** tests that may be owner-isolation tests but are not clearly so are named in `Protected tests inside` as "candidate", and T13 confirms or drops each one individually in section C.
+- **Discarded:** leaving them out until T13 (one could be forgotten).
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
+
+## D-T11-5. Type column for unit tests that run in the database project
+
+- **Decided:** the tests of `scrypt-password-hasher`, `server-environment` and `server-error-logger` are typed "unit (runs in the database project because of its folder; it uses no database)", because `vitest.config.mts` sends all of `tests/shared/infrastructure/**` to the `database` project.
+- **Discarded:** typing them as database-backed (false: they touch no database) or as plain unit (hides where they run).
+- **Approved by:** taken by the main agent as the recommended option on 2026-11-24; pending the user's review.
