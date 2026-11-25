@@ -96,24 +96,17 @@ test.describe("sign-in: the way in", () => {
     await expectWorkspaceIsShown(page);
   });
 
-  for (const unsafeDestination of [
-    "https://evil.example/steal",
-    "//evil.example",
-    "%2F%2Fevil.example",
-    "%2Fsign-in",
-    "%2F_next%2Fstatic%2Fx.js",
-    "javascript:alert(1)",
-  ]) {
-    test(`an unsafe destination (${unsafeDestination}) is ignored and the workspace root is used (FR-20)`, async ({ page }) => {
-      const account = await seedAccountInDatabase();
-      await openSignInPage(page, `/sign-in?returnTo=${unsafeDestination}`);
+  // One real sign-in for the whole rule: every other unsafe form is proved by the unit tests of
+  // resolveReturnDestination (tests/modules/accounts/domain/return-destination.test.ts).
+  test("an unsafe destination on another site is ignored and the workspace root is used (FR-20)", async ({ page }) => {
+    const account = await seedAccountInDatabase();
+    await openSignInPage(page, "/sign-in?returnTo=https://evil.example/steal");
 
-      await signInThroughTheForm(page, account.email, account.password);
+    await signInThroughTheForm(page, account.email, account.password);
 
-      await expect(page).toHaveURL("/");
-      await expectWorkspaceIsShown(page);
-    });
-  }
+    await expect(page).toHaveURL("/");
+    await expectWorkspaceIsShown(page);
+  });
 
   test("the sign-up link carries the destination, also after a failed submission (FR-19)", async ({ page }) => {
     const account = await seedAccountInDatabase();
