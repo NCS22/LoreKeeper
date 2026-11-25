@@ -91,28 +91,35 @@ test.describe("a signed-out client asking for a page", () => {
 });
 
 test.describe("a signed-out client making an operation call to a workspace address", () => {
-  for (const method of ["POST", "PUT", "PATCH", "DELETE"] as const) {
-    for (const address of ["/", "/?x=1", "/nope"]) {
-      test(`gets the 401 text, not a redirect, for ${method} ${address} (FR-21 exception, NFR-4)`, async ({
-        request,
-      }) => {
-        const response = await request.fetch(address, {
-          method,
-          headers: FORGED_OPERATION_CALL_HEADERS,
-          data: "[]",
-          maxRedirects: 0,
-        });
+  // One address per method: the address does not change the decision, which the unit tests of the
+  // page-access policy prove for every address (tests/modules/accounts/domain/page-access-policy.test.ts).
+  const operationCalls: ReadonlyArray<{ method: "POST" | "PUT" | "PATCH" | "DELETE"; address: string }> = [
+    { method: "POST", address: "/" },
+    { method: "PUT", address: "/?x=1" },
+    { method: "PATCH", address: "/nope" },
+    { method: "DELETE", address: "/" },
+  ];
 
-        expect(response.status()).toBe(401);
-        expect(response.headers()["location"]).toBeUndefined();
-        expect(response.headers()["content-type"]).toBe("text/plain");
-        expect(response.headers()["cache-control"]).toBe("no-store");
-        expect(response.headers()["set-cookie"]).toBeUndefined();
-        const responseText = await response.text();
-        expect(responseText).toBe("Signed out.");
-        expectNoWorkspaceText(response, responseText);
+  for (const { method, address } of operationCalls) {
+    test(`gets the 401 text, not a redirect, for ${method} ${address} (FR-21 exception, NFR-4)`, async ({
+      request,
+    }) => {
+      const response = await request.fetch(address, {
+        method,
+        headers: FORGED_OPERATION_CALL_HEADERS,
+        data: "[]",
+        maxRedirects: 0,
       });
-    }
+
+      expect(response.status()).toBe(401);
+      expect(response.headers()["location"]).toBeUndefined();
+      expect(response.headers()["content-type"]).toBe("text/plain");
+      expect(response.headers()["cache-control"]).toBe("no-store");
+      expect(response.headers()["set-cookie"]).toBeUndefined();
+      const responseText = await response.text();
+      expect(responseText).toBe("Signed out.");
+      expectNoWorkspaceText(response, responseText);
+    });
   }
 
   test("does not run a real operation replayed from outside: no session starts and nothing is answered but the refusal", async ({
@@ -231,25 +238,18 @@ test.describe("the return destination in the browser (FR-13, FR-19, FR-20)", () 
     expect(page.url()).not.toContain("_rsc");
   });
 
-  const ignoredDestinations: ReadonlyArray<{ name: string; returnTo: string }> = [
-    { name: "an address of another site", returnTo: encodeURIComponent("https://evil.example/") },
-    { name: "an address that reads as another site", returnTo: encodeURIComponent("//evil.example/") },
-    { name: "a malformed encoding", returnTo: "%E0%A4%A" },
-    { name: "the sign-in page itself", returnTo: encodeURIComponent("/sign-in") },
-    { name: "the sign-up page with a query", returnTo: encodeURIComponent("/sign-up?x=1") },
-    { name: "a public resource", returnTo: encodeURIComponent("/favicon.ico") },
-  ];
+  // One real sign-in for the whole rule, with the one form the other browser files do not send: a
+  // malformed encoding, which goes through the framework's own reading of the query. Every other
+  // refused form is proved by the unit tests of resolveReturnDestination
+  // (tests/modules/accounts/domain/return-destination.test.ts); sign-in.spec.ts sends another site.
+  test("ignores a malformed encoding and uses the workspace root", async ({ page }) => {
+    const account = await seedAccountInDatabase();
 
-  for (const ignoredDestination of ignoredDestinations) {
-    test(`ignores ${ignoredDestination.name} and uses the workspace root`, async ({ page }) => {
-      const account = await seedAccountInDatabase();
+    await submitSignInForm(page, account, "/sign-in?returnTo=%E0%A4%A");
 
-      await submitSignInForm(page, account, `/sign-in?returnTo=${ignoredDestination.returnTo}`);
-
-      await expectWorkspaceIsShown(page);
-      expect(page.url()).toBe(`${HEALTHY_SERVER_ADDRESS}/`);
-    });
-  }
+    await expectWorkspaceIsShown(page);
+    expect(page.url()).toBe(`${HEALTHY_SERVER_ADDRESS}/`);
+  });
 });
 
 test.describe("a signed-in person", () => {
