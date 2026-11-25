@@ -8,15 +8,20 @@ const codes = vocabulary.issueCodes;
 
 describe("getUniverseIssueMessage", () => {
   it.each([
-    ["a missing name", codes.nameRequired],
-    ["a name with characters that cannot be stored", codes.nameInvalidCharacters],
-    ["a description with characters that cannot be stored", codes.descriptionInvalidCharacters],
-    ["an invalid mode", codes.modeInvalid],
-  ])("maps %s to its own message", (_description, code) => {
-    const message = getUniverseIssueMessage({ code }, vocabulary);
-
-    expect(message).not.toBe("");
-    expect(message).not.toBe(en.universeCreation.issues.UNKNOWN);
+    ["a missing name", codes.nameRequired, en.universeCreation.issues.NAME_REQUIRED],
+    [
+      "a name with characters that cannot be stored",
+      codes.nameInvalidCharacters,
+      en.universeCreation.issues.NAME_INVALID_CHARACTERS,
+    ],
+    [
+      "a description with characters that cannot be stored",
+      codes.descriptionInvalidCharacters,
+      en.universeCreation.issues.DESCRIPTION_INVALID_CHARACTERS,
+    ],
+    ["an invalid mode", codes.modeInvalid, en.universeCreation.issues.MODE_INVALID],
+  ])("maps %s to its own message", (_description, code, expectedMessage) => {
+    expect(getUniverseIssueMessage({ code }, vocabulary)).toBe(expectedMessage);
   });
 
   it.each([
