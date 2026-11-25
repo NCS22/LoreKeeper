@@ -61,9 +61,14 @@ No production component with behavior changes (NFR-1: `src/` is never touched; t
     | CFG-2 | CORE | not measured | not measured |
     | CFG-3 | CORE | not measured | not measured |
 
-- [ ] **T2. Group A-08: exact fixed message in `account-errors.test.ts`.** FR-1, FR-2, FR-4
+- [x] **T2. Group A-08: exact fixed message in `account-errors.test.ts`.** FR-1, FR-2, FR-4
   - Tests: the "same message for both failures" test asserts the exact message with `toBe` (criterion E); protected by `sign-in.test.ts` A-02.
   - Done when: procedure of plan 7.1 recorded (ACC-1 counts not lower than T1) and `pnpm typecheck`, `pnpm lint`, `pnpm test` green.
+  - Outcome (2026-11-25): applied, criterion E. In `account errors > InvalidCredentialsError has one fixed message that names neither the email nor the password` the comparison of two instances and the phrase regular expression were replaced by `toBe("The email or the password is incorrect.")`. Test name and the other two tests unchanged; no test removed (1800 tests before and after).
+  - Before (FR-1): `git hash-object` of `tests/modules/accounts/domain/account-errors.test.ts` = `a9d5687237e5`, same as the audit row; `git ls-files tests/modules/accounts/domain` lists 8 files, each with the blob id the audit report records, none added or removed. Section C lists no protected test in this file.
+  - After (a): `pnpm typecheck`, `pnpm lint` (0 warnings) and `pnpm test` (80 files, 1800 tests) green. Protected/kept by name: `sign-in.test.ts > signIn > answers a wrong password and an unknown email with the same error and starts no session` (A-02) passes, untouched.
+  - After (b), behaviors of the audit row mapped to remaining tests: business rule violation with its code -> `account errors > EmailAlreadyRegisteredError is a business rule violation with its code`; authentication error with its code -> `account errors > InvalidCredentialsError is an authentication error with its code`; one message for both failures -> `account errors > InvalidCredentialsError has one fixed message that names neither the email nor the password` (now exact) and `signIn > answers a wrong password and an unknown email with the same error and starts no session` (A-02).
+  - After (c), `pnpm test:coverage`: ACC-1 combined lines 66/66, branches 34/34 (T1: 66/66, 34/34); not lower.
 - [ ] **T3. Group A-42: exact not-found message in `universe-errors.test.ts`.** FR-1, FR-2, FR-4
   - Tests: same change as T2 for the not-found message (E); P-12 and P-19 untouched and run by name.
   - Done when: procedure of plan 7.1 recorded (UNI-3 counts not lower) and `pnpm typecheck`, `pnpm lint`, `pnpm test` green.

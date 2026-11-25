@@ -23,7 +23,6 @@ describe("account errors", () => {
   });
 
   it("InvalidCredentialsError has one fixed message that names neither the email nor the password", () => {
-    expect(new InvalidCredentialsError().message).toBe(new InvalidCredentialsError().message);
-    expect(new InvalidCredentialsError().message).not.toMatch(/unknown|not registered|wrong password/i);
+    expect(new InvalidCredentialsError().message).toBe("The email or the password is incorrect.");
   });
 });
