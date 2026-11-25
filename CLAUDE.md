@@ -132,7 +132,7 @@ Full domain model in `.claude/rules/data-model.md`.
 
 ## Commands
 
-Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`, `docker compose` and `pnpm prisma ...`. `pnpm test` also runs database-backed tests, so it needs the local PostgreSQL running (`docker compose up -d`) and fails loudly without it; the generated Prisma client is not committed, so run `pnpm prisma generate` once after installing. `pnpm test:e2e` runs `next build && playwright test`; it needs the local PostgreSQL and `TEST_DATABASE_URL`. `pnpm test:coverage` runs the `unit`, `database` and `component` Vitest projects one at a time with coverage and prints lines and branches per entry of `docs/criticality-inventory.md`; it needs the local PostgreSQL and enforces no threshold. Not available yet because its tool is not installed: `pnpm format` (Prettier), confirmed when it is set up.
+Confirmed and working: `pnpm dev`, `build`, `start`, `lint`, `typecheck`, `test`, `docker compose` and `pnpm prisma ...`. `pnpm test` also runs database-backed tests, so it needs the local PostgreSQL running (`docker compose up -d`) and fails loudly without it; the generated Prisma client is not committed, so run `pnpm prisma generate` once after installing. `pnpm test:e2e` runs `next build && playwright test`; it needs the local PostgreSQL and `TEST_DATABASE_URL`. `pnpm test:coverage` runs the `unit`, `database` and `component` Vitest projects one at a time with coverage and prints lines and branches per entry of `docs/criticality-inventory.md`; it needs the local PostgreSQL and fails (non-zero exit code) when a CORE or IMPORTANT entry is below its target or below the floor or override written in the inventory, when such a record is malformed, and when a production file matches no inventory entry or more than one; a figure above its floor or override prints a notice without failing. Not available yet because its tool is not installed: `pnpm format` (Prettier), confirmed when it is set up.
 
 | Command | Purpose |
 |---|---|
@@ -202,3 +202,5 @@ Before declaring a task finished:
 5. Schema changes: the migration applies cleanly on an empty database.
 6. The diff contains no secrets and no changes outside the task scope.
 7. Final summary to the user: what changed, why, how it was verified, what is still pending.
+
+At the validation of a spec, not at each task: `pnpm test:coverage` passes.
