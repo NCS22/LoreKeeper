@@ -11,10 +11,6 @@ describe("UniverseNotFoundError", () => {
   });
 
   it("always has the same message, so a foreign and a missing universe look identical", () => {
-    const firstError = new UniverseNotFoundError();
-    const secondError = new UniverseNotFoundError();
-
-    expect(firstError.message).toBe(secondError.message);
-    expect(firstError).toEqual(secondError);
+    expect(new UniverseNotFoundError().message).toBe("The universe was not found.");
   });
 });
