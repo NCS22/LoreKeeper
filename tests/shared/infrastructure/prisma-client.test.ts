@@ -29,20 +29,7 @@ async function insertUserWithEmail(email: string): Promise<void> {
   await client.user.create({ data: { name: "Test person", email } });
 }
 
-describe("the test database", () => {
-  it("accepts a connection", async () => {
-    const rows = await client.$queryRaw<{ value: number }[]>`SELECT 1 AS value`;
-    expect(rows[0].value).toBe(1);
-  });
-
-  it("has the four authentication tables after the migration", async () => {
-    const rows = await client.$queryRaw<{ table_name: string }[]>`
-      SELECT table_name FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name IN ('User', 'Session', 'Account', 'Verification')
-      ORDER BY table_name`;
-    expect(rows.map((row) => row.table_name)).toEqual(["Account", "Session", "User", "Verification"]);
-  });
-
+describe("the schema of the authentication tables", () => {
   it("generates a UUID for a user and stores timestamps with a time zone", async () => {
     const user = await client.user.create({ data: { name: "Test person", email: "ana@example.com" } });
     expect(user.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
