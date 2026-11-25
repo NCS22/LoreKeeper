@@ -8,3 +8,10 @@ Decisions taken after the plan was approved. Design decisions of the plan stay i
 - **Why:** the tasks change only tests, never `src/` (NFR-1), so a group cannot break files it does not touch; the user asked to shorten the wait. Tasks T2 to T17 only remove or tighten tests, so their covered counts can only stay or go down: if the T18 run is not lower than the baseline for any entry, no group lowered a count (FR-6). T18 only adds a control insert to a database test, so it cannot lower a count either. If one dropped, the groups that touch that entry are checked one by one and the one that caused it is reverted and recorded as REVIEW.
 - **Discarded:** the full suite and coverage after every group, as plan 7.1 says (several minutes per task for a check that the checkpoints give with the same result).
 - **Approved by:** the user, 2026-11-25, at the implementation gate after T2.
+
+## D-I2. T21 keeps the malformed-encoding destination in `access.spec.ts`
+
+- **Decided:** of the six refused-destination sign-ins of group A-88, the one kept is the malformed encoding (`returnTo=%E0%A4%A`), which lands on the workspace root.
+- **Why:** the address of another site is already sent in the browser by `sign-in.spec.ts` (T19) and `sign-up.spec.ts` (T20); the malformed encoding is the only one of the six that no other browser file sends, and it goes through the framework's own reading of the query before `resolveReturnDestination`, which the unit tests do not cover.
+- **Discarded:** keeping the address of another site here too (a third browser copy of the same case, losing the only browser check of a malformed encoding).
+- **Approved by:** the user, 2026-11-25, after T21.
