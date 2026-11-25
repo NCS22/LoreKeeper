@@ -220,9 +220,8 @@ describe("Better Auth over PostgreSQL: what the contract does not cover", () => 
       expect(cookieBeforeSignOut).not.toBeNull();
       const { internalAdapter } = await betterAuthInstance.$context;
       vi.spyOn(console, "error").mockImplementation(() => undefined);
-      vi.spyOn(internalAdapter, "deleteSession").mockRejectedValue(
-        new Error("connection lost at unreachable-secret"),
-      );
+      const deletionFailure = new Error("connection lost at unreachable-secret");
+      vi.spyOn(internalAdapter, "deleteSession").mockRejectedValue(deletionFailure);
 
       const failure = await accountAuthenticator.signOutCurrentSession().then(
         () => undefined,
@@ -232,7 +231,7 @@ describe("Better Auth over PostgreSQL: what the contract does not cover", () => 
       expect(failure).toBeInstanceOf(InfrastructureError);
       const infrastructureFailure = failure as InfrastructureError;
       expect(infrastructureFailure.message).not.toContain("unreachable-secret");
-      expect(infrastructureFailure.cause).toBeDefined();
+      expect(infrastructureFailure.cause).toBe(deletionFailure);
       expect(await prismaClient.session.count()).toBe(1);
       expect(emulatedBrowser.readCookieValue(SESSION_COOKIE_NAME)).toBe(cookieBeforeSignOut);
     });
@@ -578,7 +577,13 @@ describe("Better Auth over PostgreSQL: what the contract does not cover", () => 
       expect(failure).toBeInstanceOf(InfrastructureError);
       const infrastructureFailure = failure as InfrastructureError;
       expect(infrastructureFailure.message).not.toMatch(/unreachable-secret|127\.0\.0\.1|nowhere|nobody/);
-      expect(infrastructureFailure.cause).toBeDefined();
+      // The sign-up failed and the second look for the email failed too: both failures are kept.
+      expect(infrastructureFailure.cause).toBeInstanceOf(AggregateError);
+      const keptFailures = (infrastructureFailure.cause as AggregateError).errors;
+      expect(keptFailures).toHaveLength(2);
+      for (const keptFailure of keptFailures) {
+        expect(keptFailure).toBeInstanceOf(Error);
+      }
     });
 
     it("fails sign-in with an InfrastructureError, not with the credential error", async () => {
