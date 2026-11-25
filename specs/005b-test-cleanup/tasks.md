@@ -194,9 +194,52 @@ No production component with behavior changes (NFR-1: `src/` is never touched; t
   - After (a), checks of D-I1: `pnpm typecheck` green; `pnpm lint` (0 warnings) green; `pnpm vitest run --reporter=verbose` of the file, twice: 1 file, 24 tests passed each time (same count as before, none skipped); passing by name: P-22 `universe storage contract: PostgreSQL > universes > never lists the universes of another owner`, P-23 `... > answers null for a universe of another owner and for one that does not exist alike`, P-24 `... > remembered universe > never crosses to another owner`, and the four changed tests.
   - After (b), behaviors of the audit row mapped to remaining tests (written before the change; nothing was removed): passes the storage contract -> line 12 (P-22, P-23, P-24 and the other contract cases); deleted universes not listed, found or counted -> `are not listed`, `are not found by identifier`, `are not counted by the name check`; the database enforces name and description lengths in code points -> `accepts names of 1 and 120 code points, counting an emoji as one`, `refuses an empty name and a name of 121 code points`, `accepts no description and descriptions of 1 and 2000 code points`, `refuses an empty description and one of 2001 code points`; an existing owner -> `refuses a universe whose owner does not exist`; storage failures become infrastructure errors without the original message -> `turn a failed write into an InfrastructureError that keeps the cause`, `turn a failed read into an InfrastructureError that keeps the cause`, `never put the original message or a query in the message of the error`. All passed in the runs of (a).
   - After (c), coverage: checkpoint after T18 (D-I1) for UNI-4; CFG-3 not measured.
-- [ ] **T18. Strengthen P-16 (D-3) in the file of A-47.** FR-3, FR-6
+- [x] **T18. Strengthen P-16 (D-3) in the file of A-47.** FR-3, FR-6
   - Tests: the refused direct insert asserts the specific database error and that no row exists, then a control insert of the account's own universe is accepted; P-15 and the other cases untouched. Verified green before and after.
   - Done when: the real error code is written in the task, procedure of plan 7.1 recorded and the three gates green.
+  - Outcome (2026-11-25): applied, as plan 7.3 and D-3 say. First, a temporary probe case appended to the file ran the direct insert and printed the error raised; the file was then copied back from a copy taken before the probe (hash back to `1462f9d4e439`) and only then changed. The real error: `PrismaClientKnownRequestError`, Prisma `P2003`, raised through the PostgreSQL driver adapter (`meta.driverAdapterError.cause`) with PostgreSQL `23503`, kind `ForeignKeyConstraintViolation`, constraint `RememberedUniverse_universeId_userId_fkey` (the composite owner key, CFG-3). Change in `tests/modules/universes/infrastructure/prisma-remembered-universe-repository.test.ts`, only in P-16 `refuses at the database even a direct insert of a universe of another owner`: `rejects.toThrow()` became `rejects.toMatchObject` on `P2003`, `23503`, the kind and the constraint index; then `count()` is 0; then a control direct insert of the account's own universe (`ownUniverse`) is accepted and `count()` is 1 (the control comes after the refusal because the table keeps one row per account). It checks at least what it checked before (a refusal), plus the cause and the control. A temporary mutation (constraint index swapped for `RememberedUniverse_userId_fkey`) made exactly P-16 fail, then the file was copied back (hash `ed02cdb45e0e`, the final change). Untouched: P-15 and the other five cases. No import added. No other test file changed; `src/` only read.
+  - Before (FR-1): `git hash-object` of the file = `1462f9d4e439`, same as the audit row A-47; `git ls-files tests/modules/universes/infrastructure` listed the three files of the folder, none added or removed (the row lists only this file). Protected tests in the file: P-15 and P-16, re-read against section C. Before the change, the file ran green: 1 file, 7 tests.
+  - After (a): `pnpm vitest run --reporter=verbose` of the file: 1 file, 7 tests passed (same count, none skipped); passing by name: P-15 `PostgreSQL remembered universe repository > refuses to remember a universe of another owner and stores nothing` and P-16 `PostgreSQL remembered universe repository > refuses at the database even a direct insert of a universe of another owner`.
+  - After (b), behaviors of the audit row mapped to remaining tests (nothing was removed): refused for another owner's universe -> P-15 and P-16 (now with the specific key and a control); refused for a universe that does not exist -> `refuses a universe that does not exist`; one row per account, last write wins -> `keeps one row per account, the last write replacing the previous one`; a deleted universe read as none -> `reads a remembered universe that is deleted as none`; removed with its universe and its account -> `disappears with its universe and with its account`; read failures as infrastructure errors with the cause -> `turns a failed read into an InfrastructureError that keeps the cause`.
+  - Checkpoint D-I1 (after T18, for T2 to T18): `pnpm typecheck` green; `pnpm lint` (0 warnings) green; `pnpm test` whole: 79 files, 1751 tests passed, none skipped (T1: 80 files, 1800 tests; the difference is the tests removed or merged by T2 to T17). `pnpm test:coverage`: unit 1308 tests in 54 files, database 443 tests in 25 files, component project found no `.test.tsx` file; 0 files that match no entry, 0 that match more than one, 0 stale patterns. Combined covered/total of every CORE and IMPORTANT entry compared with the T1 baseline: all equal, covered and totals.
+
+    | Entry | Lines | Branches | Against T1 |
+    |---|---|---|---|
+    | ACC-1 | 66/66 | 34/34 | = baseline |
+    | ACC-2 | 80/80 | 73/74 | = baseline |
+    | ACC-3 | 13/13 | 4/4 | = baseline |
+    | ACC-4 | 41/41 | 18/18 | = baseline |
+    | ACC-5 | 6/6 | - | = baseline |
+    | UNI-1 | 37/37 | 22/22 | = baseline |
+    | UNI-2 | 5/5 | 6/6 | = baseline |
+    | UNI-3 | 36/36 | 17/17 | = baseline |
+    | UNI-4 | 23/24 | 7/8 | = baseline |
+    | UNI-5 | 10/10 | - | = baseline |
+    | SHR-1 | 118/122 | 47/48 | = baseline |
+    | SHR-2 | 5/5 | 2/2 | = baseline |
+    | SHR-3 | 74/74 | 48/48 | = baseline |
+    | SHR-4 | 22/22 | 4/4 | = baseline |
+    | SHR-5 | 26/26 | 13/13 | = baseline |
+    | SHR-6 | 5/5 | - | = baseline |
+    | APP-1 | 22/22 | - | = baseline |
+    | APP-2 | 31/31 | 4/4 | = baseline |
+    | APP-3 | 1/2 | - | = baseline |
+    | APP-4 | 0/25 | 0/8 | = baseline |
+    | APP-5 | 0/86 | 0/40 | = baseline |
+    | APP-6 | 3/6 | - | = baseline |
+    | CMP-1 | 79/79 | 82/83 | = baseline |
+    | CMP-2 | 0/21 | 0/6 | = baseline |
+    | CMP-3 | 106/106 | 138/140 | = baseline |
+    | CMP-4 | 0/151 | 0/72 | = baseline |
+    | CMP-5 | 0/12 | 0/6 | = baseline |
+    | CMP-6 | 6/6 | 2/2 | = baseline |
+    | CMP-7 | 18/25 | 28/32 | = baseline |
+    | CMP-8 | 0/147 | 0/72 | = baseline |
+    | CMP-9 | 0/30 | 0/14 | = baseline |
+    | CMP-10 | 12/102 | 4/32 | = baseline |
+    | CMP-11 | 61/82 | 23/32 | = baseline |
+    | CFG-2 | not measured | not measured | = baseline |
+    | CFG-3 | not measured | not measured | = baseline |
 - [ ] **T19. Group A-93: one unsafe-destination sign-in in `sign-in.spec.ts`.** FR-1, FR-2, FR-4
   - Tests: the six sign-ins for unsafe destinations become one real sign-in with a foreign destination (R, `return-destination.test.ts:144`); form behavior cases untouched.
   - Done when: `pnpm test:e2e` whole passes, including the kept browser tests (plan 7.1(d)), and the three gates green.

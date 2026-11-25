@@ -41,7 +41,27 @@ describe("PostgreSQL remembered universe repository", () => {
       client.rememberedUniverse.create({
         data: { userId: FIRST_OWNER_ID, universeId: otherOwnerUniverse.id },
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({
+      name: "PrismaClientKnownRequestError",
+      code: "P2003",
+      meta: {
+        driverAdapterError: {
+          cause: {
+            originalCode: "23503",
+            kind: "ForeignKeyConstraintViolation",
+            constraint: { index: "RememberedUniverse_universeId_userId_fkey" },
+          },
+        },
+      },
+    });
+    expect(await client.rememberedUniverse.count()).toBe(0);
+
+    // Control: the same direct insert with the account's own universe is accepted, so the refusal
+    // above came from the composite owner key and not from another defect of the row.
+    await client.rememberedUniverse.create({
+      data: { userId: FIRST_OWNER_ID, universeId: ownUniverse.id },
+    });
+    expect(await client.rememberedUniverse.count()).toBe(1);
   });
 
   it("refuses a universe that does not exist", async () => {
