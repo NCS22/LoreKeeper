@@ -1,6 +1,6 @@
 # Spec 005b — Test cleanup and coverage thresholds
 
-Status: approved
+Status: implemented
 
 ## Context and goal
 
