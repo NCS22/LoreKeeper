@@ -130,15 +130,15 @@ Where: `tests/support/coverage/report-coverage-by-inventory-entry.mjs`, run last
 
 Written forms in the cell `Exceptions and floors` (the column is renamed from `Exceptions and gaps`, decision U4; the script reads the column by its new name, in the same task that renames it, so the command never reads a missing column):
 - Override: `override: lines <n>, branches <n>, reason: <text>` (as in 005a, both metrics, one decimal at most).
-- Floor: `floor: lines <n>, branches <n>, plan: <text>`; at least one metric; a metric that is not written keeps the policy target (or nothing to measure). The plan text of a floor is "raise it when the component is next touched" (or the reason it cannot be raised).
+- Floor: `floor: lines <n>, branches <n>, plan: <text>`; only on an IMPORTANT entry, never on a CORE one (D-I5, P15); at least one metric; a metric that is not written keeps the policy target (or nothing to measure). The plan text of a floor is "raise it when the component is next touched" (or the reason it cannot be raised).
 - At most one of the two per entry. Other text in the cell (`-`, `Not measured: ...`) contains neither token and is ignored.
 
 Rules per entry (CORE and IMPORTANT only; TIER 0 excluded):
-- Required figure of a metric = the override figure, else the floor figure, else the policy target. The measured figure is the combined one, taken as printed: `Number(percent.toFixed(1))`. It fails if the printed measured figure is below the required one. A drop smaller than one decimal is not detected (accepted, FR-10).
+- Required figure of a metric = the override figure, else the floor figure (IMPORTANT entries only; a floor on a CORE entry is never applied, see "Malformed record"), else the policy target. The measured figure is the combined one, taken as printed: `Number(percent.toFixed(1))`. It fails if the printed measured figure is below the required one. A drop smaller than one decimal is not detected (accepted, FR-10).
 - A metric with no elements (no branches) is "not applicable" and never fails. An entry with no measured file is printed as "not measured" and does not fail.
 - Notice, no failure: the printed figure is above the override or floor figure of that metric (D-7). The notice names entry, metric, figure and the record.
 - Failure lines carry the entry id, the metric, the measured figure and the required figure and its source (policy, floor or override).
-- Malformed record (a cell with `override:` or `floor:` that does not match its form, an empty reason or plan, both tokens, a non-number): failure that names the entry.
+- Malformed record (a cell with `override:` or `floor:` that does not match its form, an empty reason or plan, both tokens, a non-number, a floor on a CORE entry): failure that names the entry; a floor on a CORE entry is not applied (D-I5).
 - FR-11: a production file with no entry or with two entries is a failure that names the file. The existing warning for a pattern that matches no file stays a warning. The header text of the script and its banner ("thresholds are not active") are rewritten. The comment in `vitest.config.mts` that says no gate is active is updated; no `thresholds` key is added.
 
 Test design for this tooling (skill, tooling rule): the script is not a classified component and no CORE or IMPORTANT behavior changes through it, so it gets no permanent test (as in 005a FR-14). Verification is the set of temporary checks required by the completion criteria, done after the script task, each one reverted afterwards and the revert shown by `git diff --stat` (only the intended files differ). The checks re-run only the final script (the `coverage/` reports from the last full run are reused), so they are quick:
@@ -150,10 +150,11 @@ Test design for this tooling (skill, tooling rule): the script is not a classifi
 6. A malformed record, a record without reason, a floor without plan: failure that names the entry (three cases).
 7. A floor and an override set 0.1 below the figure: notice printed, exit code 0.
 8. `pnpm test` is run before and after the script task and shows the same result (no coverage dependency); `vitest.config.mts` has no `thresholds` key.
+9. A floor on a CORE entry (temporarily write one on ACC-1): failure that names the entry, the floor not applied. Added after the plan was approved (D-I5) and already done, see the follow-up of T33 in the task list.
 
 ### 7.5 Overrides, floors and inventory updates (FR-7, FR-8, FR-9, FR-12)
 
-- After all groups and the gap-closing tests, `pnpm test:coverage` is run once and the figures as printed are written (one decimal): ACC-2 override (`lines 100, branches 98.6` expected, reason of D-8 for the undecodable path); UNI-4 override (`lines 95.8, branches 87.5` expected, reason of D-8 for the unknown stored mode); SHR-1 override only if something stays uncovered, naming each path and why a test of it would be artificial (the lazy instance only runs in the server during the browser tests, if the test of 7.3 could not reach it; the scrypt failure path, if no stored value reaches it); a floor per IMPORTANT entry that did not reach 80 (APP-4, APP-5, CMP-2, CMP-4, CMP-5, CMP-8, CMP-9, CMP-10, CMP-11), with the printed figure of each metric below target; and no record for CMP-7, APP-3 and APP-6 if they reach 80 in both metrics (if one does not after its tests, the tests are already written and the entry gets a floor; the task states this before writing them, with the expected figure above).
+- After all groups and the gap-closing tests, `pnpm test:coverage` is run once and the figures as printed are written (one decimal): ACC-2 override (`lines 100, branches 98.6` expected, reason of D-8 for the undecodable path); UNI-4 override (`lines 95.8, branches 87.5` expected, reason of D-8 for the unknown stored mode); SHR-1 override only if something stays uncovered, naming each path and why a test of it would be artificial (the lazy instance only runs in the server during the browser tests, if the test of 7.3 could not reach it; the scrypt failure path, if no stored value reaches it); a floor per IMPORTANT entry that did not reach 80 (floors only on IMPORTANT entries, never on CORE, D-I5; APP-4, APP-5, CMP-2, CMP-4, CMP-5, CMP-8, CMP-9, CMP-10, CMP-11), with the printed figure of each metric below target; and no record for CMP-7, APP-3 and APP-6 if they reach 80 in both metrics (if one does not after its tests, the tests are already written and the entry gets a floor; the task states this before writing them, with the expected figure above).
 - The `gap:` records and the `none: gap` form of `Protection` disappear (FR-9); the dated `Protection` snapshots of the entries whose counts changed get the new date.
 - Rename of the column (U4): in one task, `Exceptions and gaps` becomes `Exceptions and floors` in the seven table headers of the inventory, in the column description and the "Exceptions" bullet of "How to read it", in the "Exception" bullet of skill section 3 (it names the cell), and in the one place of the coverage script that reads the column by name. The script and the inventory change together, so no run reads a missing column. The task also searches the repository for any other mention (the only ones found today are those listed; the audit report of 005a is frozen and is not edited).
 - Inventory header and skill (FR-12(d)): the "defined but not active" paragraphs, the `Gap` bullet, the reclassification sentence "records a gap ... fails nothing" (skill section 2), the reading of `pnpm test:coverage` (skill section 3), the exception definition and the "Exceptions" bullet of the inventory ("How to read it") are rewritten for overrides, floors and active thresholds; the inventory entry SHR-7 records the retained compile-time check (FR-12(e)).
@@ -185,6 +186,7 @@ The tasks change no production component, so none carries an `Evidence:` line (s
 - **P12. The coverage script gets no permanent test, only the temporary checks of 7.4.** Discarded: exporting its functions and testing them in `tests/lint` (a refactor of the script with no requirement behind it; the spec's completion criteria ask for temporary checks).
 - **P13. `--passWithNoTests` stays in the `component` step of `test:coverage`** even though component tests now exist (decision U5, approved 2026-11-24). Discarded: removing it in the task of N-1.
 - **P14. The `Protection` snapshot is refreshed by each group task only when its counts changed**, and once at the end for the entries with a record. Discarded: refreshing every entry on every task.
+- **P15. No floors on CORE entries (D-I5, approved by the user on 2026-11-25 at the implementation gate after T34; the spec was aligned by `/sdd-change`).** A CORE entry below 100 % reaches it or records an override with its reason; a floor is allowed only on IMPORTANT entries, and the coverage script treats a floor on a CORE entry as a malformed record. Discarded: floors on CORE and IMPORTANT, as 7.4 first wrote them (a CORE component could stay below its target with only a plan to raise it); writing the rule only in the documents (the script would still apply a CORE floor and pass). Numbered P15 because P13 and P14 were already taken.
 
 ## 9. Coverage (FR and NFR to the parts of this plan)
 
@@ -198,8 +200,8 @@ The tasks change no production component, so none carries an `Evidence:` line (s
 | FR-6 | 7.1 (a) to (d) |
 | FR-7 | 7.3 (SHR-1 tests), 7.5 (ACC-2, UNI-4, SHR-1 overrides) |
 | FR-8 | 7.3 (small tests with figures, floors with reasons), 7.5 |
-| FR-9 | 7.2 (snapshots, P14), 7.5 |
-| FR-10 | 7.4 |
+| FR-9 | 7.2 (snapshots, P14), 7.5, decision P15 (no floor on CORE) |
+| FR-10 | 7.4 (check 9), decision P15 |
 | FR-11 | 7.4, 7.5 (the command passes at the end) |
 | FR-12 | 7.5 (a), (b), (d), (e), (f); (c) in the closing step |
 | NFR-1 | Section 1 (no `src/` change); A-17 temporary check reverted in the same step and never committed (U3) |
