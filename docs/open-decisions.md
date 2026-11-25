@@ -21,7 +21,6 @@ Items marked "Decided" are closed but stay here until the `plan.md` of the spec 
 | OD-7 | Concrete attribute schemas per entity type | 2 | One Zod schema per type, defined in the entities domain. |
 | OD-19 | Sending a work to the trash while other items have their spoiler boundary on it: block it, send them to the trash too, or keep them pointing to a trashed work | 2 | Raised while closing the soft-delete rules. A unit referenced by any boundary cannot be purged. |
 | OD-20 | Visibility in `READER` universes of sources that have no narrative unit (`SUPPLEMENTARY`, `USER_NOTE`, `EXTERNAL`) | 3 | Sources with a unit follow the unit. |
-| OD-16 | Seed list of predefined relationship types | 2 | Proposed in `data-model.md`: `MEMBER_OF`, `LEADER_OF`, `ALLY_OF`, `ENEMY_OF`, `PARENT_OF`, `SIBLING_OF`, `LOCATED_IN`, `POSSESSES`. |
 
 ## Platform
 
