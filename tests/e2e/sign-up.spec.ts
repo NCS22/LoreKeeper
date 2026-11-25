@@ -24,14 +24,6 @@ const MAXIMUM_DISPLAY_NAME_LENGTH = 120;
 const MINIMUM_PASSWORD_LENGTH = 8;
 const MAXIMUM_PASSWORD_LENGTH = 128;
 
-// The control characters a single-line text field can hold (plan item 8): tab, bell and the Unicode
-// line separator. Built from code points so no editor or tool can turn them into something else.
-const CONTROL_CHARACTERS_BY_NAME = [
-  ["tab", String.fromCharCode(0x0009)],
-  ["bell (U+0007)", String.fromCharCode(0x0007)],
-  ["line separator (U+2028)", String.fromCharCode(0x2028)],
-] as const;
-
 type SignUpValues = {
   displayName: string;
   email: string;
@@ -170,16 +162,16 @@ test.describe("sign-up: the way in", () => {
     await expectWorkspaceIsShown(page);
   });
 
-  for (const unsafeDestination of ["https://evil.example/steal", "//evil.example", "%2Fsign-up", "%2Fsign-in"]) {
-    test(`an unsafe destination (${unsafeDestination}) is ignored and the workspace root is used (FR-20)`, async ({ page }) => {
-      await openSignUpPage(page, `/sign-up?returnTo=${unsafeDestination}`);
+  test("an unsafe destination on another site is ignored and the workspace root is used (FR-20)", async ({ page }) => {
+    // The other unsafe forms (two slashes, the sign-in and sign-up pages, encoded tricks) are proved
+    // by the unit tests of `resolveReturnDestination` in `return-destination.test.ts`.
+    await openSignUpPage(page, "/sign-up?returnTo=https://evil.example/steal");
 
-      await signUpThroughTheForm(page, buildSignUpValues());
+    await signUpThroughTheForm(page, buildSignUpValues());
 
-      await expect(page).toHaveURL("/");
-      await expectWorkspaceIsShown(page);
-    });
-  }
+    await expect(page).toHaveURL("/");
+    await expectWorkspaceIsShown(page);
+  });
 
   test("the sign-in link carries the destination, also after a failed submission (FR-19)", async ({ page }) => {
     const signInLink = findSignInLink(page);
@@ -239,18 +231,18 @@ test.describe("sign-up: display name", () => {
     await expectWorkspaceIsShown(page);
   });
 
-  for (const [characterName, character] of CONTROL_CHARACTERS_BY_NAME) {
-    test(`a name with a control character (${characterName}) shows the "not allowed" message (FR-4)`, async ({ page }) => {
-      const displayNameWithControlCharacter = `Ada${character}Lovelace`;
-      await openSignUpPage(page);
+  test('a name with a control character (tab) shows the "not allowed" message (FR-4)', async ({ page }) => {
+    // One case per message: the other control and separator characters are proved by the unit tests
+    // of `validateAccountDisplayName` in `account-display-name.test.ts`.
+    const displayNameWithControlCharacter = `Ada${String.fromCharCode(0x0009)}Lovelace`;
+    await openSignUpPage(page);
 
-      await signUpThroughTheForm(page, buildSignUpValues({ displayName: displayNameWithControlCharacter }));
+    await signUpThroughTheForm(page, buildSignUpValues({ displayName: displayNameWithControlCharacter }));
 
-      // The field kept the character as typed: the page did not clean it before the rules saw it (FR-3).
-      await expect(findDisplayNameField(page)).toHaveValue(displayNameWithControlCharacter);
-      await expectErrorOnField(findDisplayNameField(page), messages.issues.displayNameInvalidCharacters, page);
-    });
-  }
+    // The field kept the character as typed: the page did not clean it before the rules saw it (FR-3).
+    await expect(findDisplayNameField(page)).toHaveValue(displayNameWithControlCharacter);
+    await expectErrorOnField(findDisplayNameField(page), messages.issues.displayNameInvalidCharacters, page);
+  });
 
   test("a name that is too long and has a control character gets the message the account rules choose (FR-4)", async ({ page }) => {
     // The account rules report one issue per field, in a fixed order of precedence, so the form
@@ -264,15 +256,15 @@ test.describe("sign-up: display name", () => {
     await expectErrorOnField(findDisplayNameField(page), messages.issues.displayNameInvalidCharacters, page);
   });
 
-  for (const emptyName of ["", "   "]) {
-    test(`a name that is empty or only spaces (${JSON.stringify(emptyName)}) shows that it is required (FR-4)`, async ({ page }) => {
-      await openSignUpPage(page);
+  test("a name of only spaces shows that it is required (FR-4)", async ({ page }) => {
+    // One case per message: the empty name is also sent by the empty form case below, and every
+    // form of a missing name is proved by the unit tests in `account-display-name.test.ts`.
+    await openSignUpPage(page);
 
-      await signUpThroughTheForm(page, buildSignUpValues({ displayName: emptyName }));
+    await signUpThroughTheForm(page, buildSignUpValues({ displayName: "   " }));
 
-      await expectErrorOnField(findDisplayNameField(page), messages.issues.displayNameRequired, page);
-    });
-  }
+    await expectErrorOnField(findDisplayNameField(page), messages.issues.displayNameRequired, page);
+  });
 });
 
 test.describe("sign-up: other fields and failures of the account rules", () => {
