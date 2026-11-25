@@ -5,33 +5,18 @@ import { ValidationError, type ValidationIssue } from "@/shared/domain/validatio
 describe("ValidationError", () => {
   const issues: readonly ValidationIssue[] = [
     { field: "name", code: "NAME_TOO_LONG", maximumLength: 120 },
+    { field: "password", code: "PASSWORD_LENGTH_OUT_OF_RANGE", minimumLength: 8, maximumLength: 128 },
     { field: "mode", code: "MODE_INVALID" },
   ];
 
-  it("keeps every issue in the order it was given", () => {
+  it("keeps every issue with its details in the order it was given", () => {
     const error = new ValidationError(issues);
 
-    expect(error.issues).toEqual(issues);
-  });
-
-  it("keeps the numeric detail of an issue", () => {
-    const error = new ValidationError(issues);
-
-    expect(error.issues[0]?.maximumLength).toBe(120);
-    expect(error.issues[1]?.maximumLength).toBeUndefined();
-  });
-
-  it("carries the minimum and the maximum length of an issue together", () => {
-    const error = new ValidationError([
+    expect(error.issues).toEqual([
+      { field: "name", code: "NAME_TOO_LONG", maximumLength: 120 },
       { field: "password", code: "PASSWORD_LENGTH_OUT_OF_RANGE", minimumLength: 8, maximumLength: 128 },
+      { field: "mode", code: "MODE_INVALID" },
     ]);
-
-    expect(error.issues[0]?.minimumLength).toBe(8);
-    expect(error.issues[0]?.maximumLength).toBe(128);
-  });
-
-  it("leaves the minimum length unset when the rule has none", () => {
-    expect(new ValidationError(issues).issues[0]?.minimumLength).toBeUndefined();
   });
 
   it("has a stable code", () => {
@@ -48,7 +33,6 @@ describe("ValidationError", () => {
   });
 
   it("names the failing fields in its message", () => {
-    expect(new ValidationError(issues).message).toContain("name");
-    expect(new ValidationError(issues).message).toContain("mode");
+    expect(new ValidationError(issues).message).toBe("Validation failed for: name, password, mode");
   });
 });
