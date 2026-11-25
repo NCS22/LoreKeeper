@@ -18,9 +18,48 @@ No production component with behavior changes (NFR-1: `src/` is never touched; t
 
 ## Tasks
 
-- [ ] **T1. Baseline coverage.** FR-6
+- [x] **T1. Baseline coverage.** FR-6
   - Tests: none; runs `pnpm test:coverage` once before any change and records the covered/total counts of lines and branches per entry in this task.
   - Done when: the counts of every CORE and IMPORTANT entry are written under the task and `git status` shows no file changed.
+  - Baseline (2026-11-25, `pnpm test:coverage` before any change; unit 1315 tests in 55 files, database 485 tests in 25 files, component project found no `.test.tsx` file; 0 unmatched files, 0 duplicated, 0 stale patterns). Combined covered/total; `-` = nothing to measure.
+
+    | Entry | Level | Lines | Branches |
+    |---|---|---|---|
+    | ACC-1 | CORE | 66/66 | 34/34 |
+    | ACC-2 | CORE | 80/80 | 73/74 |
+    | ACC-3 | CORE | 13/13 | 4/4 |
+    | ACC-4 | CORE | 41/41 | 18/18 |
+    | ACC-5 | CORE | 6/6 | - |
+    | UNI-1 | IMPORTANT | 37/37 | 22/22 |
+    | UNI-2 | IMPORTANT | 5/5 | 6/6 |
+    | UNI-3 | CORE | 36/36 | 17/17 |
+    | UNI-4 | CORE | 23/24 | 7/8 |
+    | UNI-5 | CORE | 10/10 | - |
+    | SHR-1 | CORE | 118/122 | 47/48 |
+    | SHR-2 | CORE | 5/5 | 2/2 |
+    | SHR-3 | CORE | 74/74 | 48/48 |
+    | SHR-4 | CORE | 22/22 | 4/4 |
+    | SHR-5 | IMPORTANT | 26/26 | 13/13 |
+    | SHR-6 | IMPORTANT | 5/5 | - |
+    | APP-1 | CORE | 22/22 | - |
+    | APP-2 | CORE | 31/31 | 4/4 |
+    | APP-3 | IMPORTANT | 1/2 | - |
+    | APP-4 | IMPORTANT | 0/25 | 0/8 |
+    | APP-5 | IMPORTANT | 0/86 | 0/40 |
+    | APP-6 | IMPORTANT | 3/6 | - |
+    | CMP-1 | IMPORTANT | 79/79 | 82/83 |
+    | CMP-2 | IMPORTANT | 0/21 | 0/6 |
+    | CMP-3 | IMPORTANT | 106/106 | 138/140 |
+    | CMP-4 | IMPORTANT | 0/151 | 0/72 |
+    | CMP-5 | IMPORTANT | 0/12 | 0/6 |
+    | CMP-6 | CORE | 6/6 | 2/2 |
+    | CMP-7 | IMPORTANT | 18/25 | 28/32 |
+    | CMP-8 | IMPORTANT | 0/147 | 0/72 |
+    | CMP-9 | IMPORTANT | 0/30 | 0/14 |
+    | CMP-10 | IMPORTANT | 12/102 | 4/32 |
+    | CMP-11 | IMPORTANT | 61/82 | 23/32 |
+    | CFG-2 | CORE | not measured | not measured |
+    | CFG-3 | CORE | not measured | not measured |
 
 - [ ] **T2. Group A-08: exact fixed message in `account-errors.test.ts`.** FR-1, FR-2, FR-4
   - Tests: the "same message for both failures" test asserts the exact message with `toBe` (criterion E); protected by `sign-in.test.ts` A-02.
