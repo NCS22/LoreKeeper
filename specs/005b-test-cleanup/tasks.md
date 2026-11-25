@@ -357,3 +357,8 @@ No production component with behavior changes (NFR-1: `src/` is never touched; t
   - Tests: none (docs); runs only after the user confirms that 005a and 005b cover its content; without it the task stays unchecked.
   - Done when: the user's file is deleted and `CALIDAD.md` is removed from the NP-5 row of the inventory.
   - Outcome (2026-11-25): the user confirmed at the implementation gate after T34 that 005a and 005b cover its content. `CALIDAD.md` (untracked) deleted; removed from the NP-5 row of `docs/criticality-inventory.md` with its description ("the user's quality notes ..."). The coverage script on the saved data: exit 0, 0 patterns that match no file, `Coverage check passed.`
+
+- [ ] **T36. No coverage floors on CORE entries (D-I5, P15).** FR-9, FR-10
+  - Note: the work was already made in commit 71a1eb2 (D-I4, D-I5 in `decisions.md`; follow-up of T33), so this task verifies that state and records check 9; it adds no new change unless a check fails.
+  - Tests: temporary check 9 of plan 7.4 (a floor written on a CORE entry makes the script fail naming the entry and is not applied), reverted afterwards with `git diff --stat` showing only the intended files.
+  - Done when: the skill (section 1 table, section 2 reclassification sentence, section 3 `Floor` bullet) and the inventory header say that floors are only for IMPORTANT entries, the script fails on a floor in a CORE entry, check 9 is recorded in this task, and `pnpm typecheck`, `pnpm lint` and `pnpm test` pass.
