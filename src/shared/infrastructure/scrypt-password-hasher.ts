@@ -153,7 +153,9 @@ function parseStoredHash(storedText: string): StoredHash | null {
     parallelization === null ||
     salt === null ||
     key === null ||
-    !isPowerOfTwoGreaterThanOne(cost)
+    !isPowerOfTwoGreaterThanOne(cost) ||
+    !fitsInMemoryLimit(cost, parallelization) ||
+    !isCostBelowBlockSizeBound(cost, blockSize)
   ) {
     return null;
   }
@@ -183,4 +185,15 @@ function readBoundedHexadecimal(
 // scrypt requires its cost to be a power of two (and Node refuses anything else with an exception).
 function isPowerOfTwoGreaterThanOne(value: number): boolean {
   return value > 1 && (value & (value - 1)) === 0;
+}
+
+// OpenSSL needs 128 * r * (N + 2) + 128 * r * p bytes, and `deriveKey` allows 2 * 128 * N * r, so
+// the memory fits only when N >= p + 2 (otherwise Node refuses the parameters with an exception).
+function fitsInMemoryLimit(cost: number, parallelization: number): boolean {
+  return cost >= parallelization + 2;
+}
+
+// OpenSSL requires N < 2^(16 * r) (and Node refuses anything else with an exception).
+function isCostBelowBlockSizeBound(cost: number, blockSize: number): boolean {
+  return cost < 2 ** (16 * blockSize);
 }
