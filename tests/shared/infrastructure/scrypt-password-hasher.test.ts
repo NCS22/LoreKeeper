@@ -212,6 +212,40 @@ describe("scrypt password hasher", () => {
       ).toBe(false);
     });
 
+    it.each([
+      ["a cost of 2, below what scrypt needs with any parallelization", "scrypt$2$1$1"],
+      ["a cost of 4 with a parallelization of 3", "scrypt$4$1$3"],
+      ["a cost of 4 with a parallelization of 4", "scrypt$4$1$4"],
+      ["a cost of 65536 with a block size of 1", "scrypt$65536$1$1"],
+    ])(
+      "returns false, without throwing, for parameters within the limits that scrypt refuses: %s",
+      async (_label, parametersPart) => {
+        const salt = "ab".repeat(16);
+        const key = "cd".repeat(32);
+        const hashWithRefusedParameters = `${parametersPart}$${salt}$${key}`;
+
+        await expect(
+          verifyPasswordAsTyped({ hash: hashWithRefusedParameters, password: "correct horse" }),
+        ).resolves.toBe(false);
+      },
+    );
+
+    it.each([
+      ["a cost of 4 with a parallelization of 2", { N: 4, r: 1, p: 2 }],
+      ["a cost of 8 with a parallelization of 4", { N: 8, r: 1, p: 4 }],
+      ["a cost of 65536 with a block size of 2", { N: 65536, r: 2, p: 1 }],
+    ])(
+      "still verifies a hash with parameters just inside what scrypt accepts: %s",
+      async (_label, parameters) => {
+        const salt = Buffer.from("0123456789abcdef0123456789abcdef", "hex");
+        const key = scryptSync("edge cost", salt, 32, { ...parameters, maxmem: 64 * 1024 * 1024 });
+        const hash = `scrypt$${parameters.N}$${parameters.r}$${parameters.p}$${salt.toString("hex")}$${key.toString("hex")}`;
+
+        await expect(verifyPasswordAsTyped({ hash, password: "edge cost" })).resolves.toBe(true);
+        await expect(verifyPasswordAsTyped({ hash, password: "another cost" })).resolves.toBe(false);
+      },
+    );
+
     it("returns false for a salt or a key of a length this hasher never writes", async () => {
       const key = "ab".repeat(64);
       const tooShortSalt = "ab".repeat(7);
