@@ -1,13 +1,25 @@
-// Prints line and branch coverage per entry of the criticality inventory (spec 005a, plan 2.2).
+// Prints line and branch coverage per entry of the criticality inventory and enforces its targets
+// (spec 005a, plan 2.2; thresholds turned on by spec 005b, plan 7.4).
 //
 // `pnpm test:coverage` runs the Vitest projects one at a time, each writing its own
 // `coverage/<test type>/coverage-final.json`, and then runs this script. It reads those reports and
-// the `Files` column of `docs/criticality-inventory.md`, and prints for every entry the lines and
-// branches covered by each test type and combined, the level, the target and the distance to it.
-// It also lists the production files that match no entry or more than one, and the patterns that
-// match no file. It never fails on a gap: coverage thresholds are not active until spec 005b.
+// the `Files`, `Level` and `Exceptions and floors` columns of `docs/criticality-inventory.md`, and
+// prints for every entry the lines and branches covered by each test type and combined, the level,
+// the required figure of each metric and the distance to it. The required figure is the override of
+// the entry, else its floor, else the target of its level (CORE 100 %, IMPORTANT 80 %, TIER 0 none);
+// it is compared with the combined figure as printed, with one decimal. It prints a notice for every
+// override and floor in use and for every figure above its floor or override (raise or remove the
+// record, spec 005b D-7). It prints everything first and then ends with a non-zero exit code when a
+// CORE or IMPORTANT entry is below its required figure, when an override or floor is not in its
+// written form, when a CORE entry records a floor (floors are for IMPORTANT entries only, spec 005b
+// D-I5), when a production entry has a level that is not CORE, IMPORTANT or TIER 0 (empty
+// included), when a production entry table lacks one of the columns `Id`, `Level`, `Files` and
+// `Exceptions and floors`, when a row of such a table has a different number of cells than its
+// header (an unescaped `|` shifts the columns; spec 005b D-I6), or when a production file matches
+// no entry or more than one. A pattern that matches no file is only a warning. `pnpm test` does not run this script and never fails on coverage.
 //
-// Tooling, not a production component: it carries no test (spec 005a, FR-14).
+// Tooling, not a production component: it carries no permanent test (spec 005a FR-14, spec 005b
+// decision P12); it is checked by the temporary checks of spec 005b plan 7.4.
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -17,9 +29,26 @@ import { fileURLToPath } from "node:url";
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const INVENTORY_PATH = path.join(REPOSITORY_ROOT, "docs", "criticality-inventory.md");
 const MEASURED_TEST_TYPES = ["unit", "database", "component"];
+const METRIC_NAMES = ["lines", "branches"];
 const TARGET_PERCENT_BY_LEVEL = { CORE: 100, IMPORTANT: 80, "TIER 0": null };
 const NOT_PRODUCTION_HEADING_PREFIX = "Not production";
 const GENERATED_SOURCE_PREFIX = "src/shared/infrastructure/generated/";
+const EXCEPTIONS_COLUMN_NAME = "Exceptions and floors";
+const REQUIRED_PRODUCTION_COLUMN_NAMES = ["Id", "Level", "Files", EXCEPTIONS_COLUMN_NAME];
+
+// Written forms of the `Exceptions and floors` cell (spec 005b, plan 7.4). A figure has one
+// decimal at most. An override names both metrics; a floor names at least one.
+const RECORD_FIGURE = String.raw`(\d+(?:\.\d)?)`;
+const OVERRIDE_FORM = new RegExp(
+  String.raw`^override: lines ${RECORD_FIGURE}, branches ${RECORD_FIGURE}, reason:(?: (.*))?$`,
+);
+const FLOOR_FORM = new RegExp(
+  String.raw`^floor: (?:lines ${RECORD_FIGURE}(?:, branches ${RECORD_FIGURE})?|branches ${RECORD_FIGURE}), plan:(?: (.*))?$`,
+);
+const OVERRIDE_TOKEN = /\boverride:/i;
+const FLOOR_TOKEN = /\bfloor:/i;
+const OVERRIDE_WRITTEN_FORM = "override: lines <n>, branches <n>, reason: <text>";
+const FLOOR_WRITTEN_FORM = "floor: lines <n>, branches <n>, plan: <text>";
 
 function toRepositoryPath(absoluteOrRelativePath) {
   const relativePath = path.isAbsolute(absoluteOrRelativePath)
@@ -72,21 +101,117 @@ function normalizeLevel(levelCell) {
   return levelCell.replace(/[`*]/g, "").trim().toUpperCase();
 }
 
-function readTargetOverride(exceptionsCell) {
-  const overrideMatch = /override:\s*lines\s*(\d+(?:\.\d+)?)\s*,\s*branches\s*(\d+(?:\.\d+)?)/i.exec(
-    exceptionsCell,
-  );
+function malformedRecord(problemText) {
+  return { kind: "malformed", problemText };
+}
+
+function figuresAboveOneHundred(recordFigures) {
+  return Object.entries(recordFigures).filter(([, recordFigure]) => recordFigure > 100);
+}
+
+// Builds a valid record, or a malformed one when a figure is above 100 % or the text is empty.
+function buildRecord(recordKind, recordFigures, recordText) {
+  const textLabel = recordKind === "override" ? "reason" : "plan";
+  if ((recordText ?? "").trim() === "") {
+    return malformedRecord(`the ${recordKind} has no ${textLabel}`);
+  }
+  const impossibleFigures = figuresAboveOneHundred(recordFigures);
+  if (impossibleFigures.length > 0) {
+    const impossibleText = impossibleFigures
+      .map(([metricName, recordFigure]) => `${metricName} ${recordFigure}`)
+      .join(", ");
+    return malformedRecord(`the ${recordKind} has a figure above 100 (${impossibleText})`);
+  }
+  return { kind: recordKind, figures: recordFigures };
+}
+
+function readOverrideRecord(exceptionsCell) {
+  const overrideMatch = OVERRIDE_FORM.exec(exceptionsCell);
   if (!overrideMatch) {
+    return malformedRecord(`the override is not written as "${OVERRIDE_WRITTEN_FORM}"`);
+  }
+  const [, linesFigure, branchesFigure, reasonText] = overrideMatch;
+  return buildRecord(
+    "override",
+    { lines: Number(linesFigure), branches: Number(branchesFigure) },
+    reasonText,
+  );
+}
+
+function readFloorRecord(exceptionsCell) {
+  const floorMatch = FLOOR_FORM.exec(exceptionsCell);
+  if (!floorMatch) {
+    return malformedRecord(
+      `the floor is not written as "${FLOOR_WRITTEN_FORM}" (at least one of the two metrics)`,
+    );
+  }
+  const [, linesFigure, branchesAfterLinesFigure, branchesOnlyFigure, planText] = floorMatch;
+  const branchesFigure = branchesAfterLinesFigure ?? branchesOnlyFigure;
+  const floorFigures = {};
+  if (linesFigure !== undefined) {
+    floorFigures.lines = Number(linesFigure);
+  }
+  if (branchesFigure !== undefined) {
+    floorFigures.branches = Number(branchesFigure);
+  }
+  return buildRecord("floor", floorFigures, planText);
+}
+
+// Reads the `Exceptions and floors` cell. Text with neither token (`-`, `Not measured: ...`) is no
+// record; a cell with a token that is not exactly in its written form is a malformed record.
+function readCoverageRecord(exceptionsCell) {
+  const hasOverrideToken = OVERRIDE_TOKEN.test(exceptionsCell);
+  const hasFloorToken = FLOOR_TOKEN.test(exceptionsCell);
+  if (hasOverrideToken && hasFloorToken) {
+    return malformedRecord("the cell holds both an override and a floor (at most one per entry)");
+  }
+  if (hasOverrideToken) {
+    return readOverrideRecord(exceptionsCell);
+  }
+  if (hasFloorToken) {
+    return readFloorRecord(exceptionsCell);
+  }
+  return { kind: "none" };
+}
+
+// A floor is allowed only on IMPORTANT entries: a CORE entry reaches its target or records an
+// override (spec 005b D-I5). A floor on a CORE entry is a malformed record and is not applied.
+function rejectFloorOnCoreEntry(entryLevel, coverageRecord) {
+  if (entryLevel === "CORE" && coverageRecord.kind === "floor") {
+    return malformedRecord(
+      "a CORE entry cannot record a floor (floors are for IMPORTANT entries only; reach the target or record an override)",
+    );
+  }
+  return coverageRecord;
+}
+
+// A production entry table must have every column the check reads (spec 005b D-I6); a missing or
+// misspelt header would leave every entry of the table unchecked.
+function findMissingColumnProblems(tableHeading, tableLineNumber, columnNames) {
+  return REQUIRED_PRODUCTION_COLUMN_NAMES.filter(
+    (requiredColumnName) => !columnNames.includes(requiredColumnName),
+  ).map(
+    (missingColumnName) =>
+      `table of "${tableHeading}" (inventory line ${tableLineNumber}): missing column "${missingColumnName}"`,
+  );
+}
+
+// A row with more or fewer cells than its header (an unescaped `|` in a cell) shifts the columns,
+// so its level and record cannot be trusted (spec 005b D-I6).
+function describeCellCountProblem(cells, columnNames, lineNumber) {
+  if (cells.length === columnNames.length) {
     return null;
   }
-  return { lines: Number(overrideMatch[1]), branches: Number(overrideMatch[2]) };
+  return `the row (inventory line ${lineNumber}) has ${cells.length} cells and its table header has ${columnNames.length} (an unescaped "|" in a cell shifts the columns)`;
 }
 
 // Reads every markdown table that has `Id` and `Files` columns. Rows under the "Not production"
-// heading are kept apart: they only take files out of the unmatched list.
+// heading are kept apart: they only take files out of the unmatched list. Problems in the shape of
+// a production table are returned apart, to fail the check.
 function readInventoryEntries(inventoryText) {
   const inventoryLines = inventoryText.split(/\r?\n/);
   const inventoryEntries = [];
+  const tableProblemTexts = [];
   let currentHeading = "";
   let currentColumnNames = null;
 
@@ -104,8 +229,14 @@ function readInventoryEntries(inventoryText) {
       return;
     }
     const nextLine = inventoryLines[lineIndex + 1] ?? "";
+    const isProductionTable = !currentHeading.startsWith(NOT_PRODUCTION_HEADING_PREFIX);
     if (currentColumnNames === null && isTableSeparatorLine(nextLine)) {
       currentColumnNames = splitTableRowIntoCells(inventoryLine);
+      if (isProductionTable && currentColumnNames.includes("Files")) {
+        tableProblemTexts.push(
+          ...findMissingColumnProblems(currentHeading, lineIndex + 1, currentColumnNames),
+        );
+      }
       return;
     }
     if (currentColumnNames === null || !currentColumnNames.includes("Files")) {
@@ -113,16 +244,23 @@ function readInventoryEntries(inventoryText) {
     }
     const cells = splitTableRowIntoCells(inventoryLine);
     const cellByColumnName = (columnName) => cells[currentColumnNames.indexOf(columnName)] ?? "";
+    const entryLevel = normalizeLevel(cellByColumnName("Level"));
     inventoryEntries.push({
-      entryId: cellByColumnName("Id").replaceAll("`", ""),
+      entryId: cellByColumnName("Id").replaceAll("`", "") || "(no id)",
       area: currentHeading,
-      isProduction: !currentHeading.startsWith(NOT_PRODUCTION_HEADING_PREFIX),
+      isProduction: isProductionTable,
       filePatterns: readFilePatternsFromCell(cellByColumnName("Files")),
-      level: normalizeLevel(cellByColumnName("Level")),
-      targetOverride: readTargetOverride(cellByColumnName("Exceptions and gaps")),
+      level: entryLevel,
+      rowProblemText: isProductionTable
+        ? describeCellCountProblem(cells, currentColumnNames, lineIndex + 1)
+        : null,
+      coverageRecord: rejectFloorOnCoreEntry(
+        entryLevel,
+        readCoverageRecord(cellByColumnName(EXCEPTIONS_COLUMN_NAME)),
+      ),
     });
   });
-  return inventoryEntries;
+  return { inventoryEntries, tableProblemTexts };
 }
 
 // Istanbul-format report as written by the V8 provider. A line counts as covered when any
@@ -186,25 +324,54 @@ function formatPercent({ coveredCount, totalCount }) {
   return `${((coveredCount / totalCount) * 100).toFixed(1)}% (${coveredCount}/${totalCount})`;
 }
 
-function percentOf({ coveredCount, totalCount }) {
-  return totalCount === 0 ? null : (coveredCount / totalCount) * 100;
+// The figure as printed, with one decimal (spec 005b FR-10): a record written as printed never
+// fails at once, and a drop of at least one decimal does.
+function printedPercentOf({ coveredCount, totalCount }) {
+  return totalCount === 0 ? null : Number(((coveredCount / totalCount) * 100).toFixed(1));
 }
 
-function formatDistance(metricName, targetPercent, measuredCounts) {
-  const measuredPercent = percentOf(measuredCounts);
-  if (measuredPercent === null) {
-    return `${metricName} nothing to measure`;
+function requiredFigureOf(metricName, levelTarget, coverageRecord) {
+  const recordFigure = coverageRecord.figures?.[metricName];
+  if (recordFigure !== undefined) {
+    return { requiredPercent: recordFigure, source: coverageRecord.kind };
   }
-  const missingPoints = targetPercent - measuredPercent;
-  return missingPoints <= 0
-    ? `${metricName} met`
-    : `${metricName} ${missingPoints.toFixed(1)} points below`;
+  return { requiredPercent: levelTarget, source: "level target" };
 }
 
-function describeEntryCoverage(inventoryEntry, entryFiles, coverageByTestType) {
+// Compares one metric of an entry with its required figure. A metric with nothing to measure is
+// not applicable and never fails.
+function checkMetric(inventoryEntry, metricName, requiredFigure, measuredCounts) {
+  const measuredPercent = printedPercentOf(measuredCounts);
+  const { requiredPercent, source } = requiredFigure;
+  if (measuredPercent === null) {
+    return { distanceText: `${metricName} nothing to measure` };
+  }
+  if (measuredPercent < requiredPercent) {
+    const missingPoints = (requiredPercent - measuredPercent).toFixed(1);
+    return {
+      distanceText: `${metricName} ${missingPoints} points below`,
+      failureText: `${inventoryEntry.entryId} [${inventoryEntry.level}] ${metricName}: measured ${measuredPercent}%, required ${requiredPercent}% (${source})`,
+    };
+  }
+  if (measuredPercent > requiredPercent && source !== "level target") {
+    return {
+      distanceText: `${metricName} met, above the ${source}`,
+      noticeText: `${inventoryEntry.entryId} ${metricName}: measured ${measuredPercent}%, above its ${source} of ${requiredPercent}%; raise the ${source} to the new figure, or remove it when the target is reached`,
+    };
+  }
+  return { distanceText: `${metricName} met` };
+}
+
+function describeCoverageRecord(coverageRecord) {
+  const figureTexts = METRIC_NAMES.filter(
+    (metricName) => coverageRecord.figures[metricName] !== undefined,
+  ).map((metricName) => `${metricName} ${coverageRecord.figures[metricName]}`);
+  return `${coverageRecord.kind}: ${figureTexts.join(", ")}`;
+}
+
+function measureEntryByTestType(entryFiles, coverageByTestType) {
   const typeNamesWithCombined = [...MEASURED_TEST_TYPES, "combined"];
-  const linesByType = {};
-  const branchesByType = {};
+  const countsByMetric = { lines: {}, branches: {} };
   for (const typeName of typeNamesWithCombined) {
     const fileCoverages = entryFiles.map((entryFile) => {
       if (typeName !== "combined") {
@@ -221,73 +388,123 @@ function describeEntryCoverage(inventoryEntry, entryFiles, coverageByTestType) {
           };
     });
     const measuredCoverages = fileCoverages.filter(Boolean);
-    linesByType[typeName] = countHits(measuredCoverages.map((coverage) => coverage.lineHitByNumber));
-    branchesByType[typeName] = countHits(measuredCoverages.map((coverage) => coverage.branchHitByKey));
+    countsByMetric.lines[typeName] = countHits(
+      measuredCoverages.map((coverage) => coverage.lineHitByNumber),
+    );
+    countsByMetric.branches[typeName] = countHits(
+      measuredCoverages.map((coverage) => coverage.branchHitByKey),
+    );
+  }
+  return countsByMetric;
+}
+
+function describeMeasuredFigures(countsByMetric, coverageByTestType) {
+  const typeNamesWithCombined = [...MEASURED_TEST_TYPES, "combined"];
+  return METRIC_NAMES.map((metricName) => {
+    const typeColumns = typeNamesWithCombined
+      .map((typeName) =>
+        coverageByTestType[typeName] === null
+          ? `${typeName} not run`
+          : `${typeName} ${formatPercent(countsByMetric[metricName][typeName])}`,
+      )
+      .join(" | ");
+    return `  ${metricName.padEnd(8)} ${typeColumns} | e2e not measured`;
+  });
+}
+
+// Returns the printed lines of an entry plus its failures, notices and the record it applies.
+function checkEntryCoverage(inventoryEntry, entryFiles, coverageByTestType) {
+  const entryResult = { outputLines: [], failureTexts: [], noticeTexts: [], recordInUseText: null };
+  const { coverageRecord } = inventoryEntry;
+  if (inventoryEntry.rowProblemText) {
+    entryResult.failureTexts.push(`${inventoryEntry.entryId}: ${inventoryEntry.rowProblemText}`);
+  }
+  if (coverageRecord.kind === "malformed") {
+    entryResult.failureTexts.push(
+      `${inventoryEntry.entryId}: malformed record in "${EXCEPTIONS_COLUMN_NAME}": ${coverageRecord.problemText}`,
+    );
   }
 
+  const countsByMetric = measureEntryByTestType(entryFiles, coverageByTestType);
   const measuredFileCount = entryFiles.filter((entryFile) =>
     MEASURED_TEST_TYPES.some((testType) => coverageByTestType[testType]?.has(entryFile)),
   ).length;
 
-  const outputLines = [];
   const levelLabel = inventoryEntry.level === "" ? "no level" : inventoryEntry.level;
-  outputLines.push(
-    `${inventoryEntry.entryId || "(no id)"}  [${levelLabel}]  ${entryFiles.length} file(s), ${measuredFileCount} with coverage data`,
+  entryResult.outputLines.push(
+    `${inventoryEntry.entryId}  [${levelLabel}]  ${entryFiles.length} file(s), ${measuredFileCount} with coverage data`,
   );
   if (measuredFileCount === 0) {
-    outputLines.push("  lines and branches: not measured (no file of this entry is in a coverage report)");
+    entryResult.outputLines.push(
+      "  lines and branches: not measured (no file of this entry is in a coverage report)",
+    );
   } else {
-    for (const [metricName, countsByType] of [
-      ["lines", linesByType],
-      ["branches", branchesByType],
-    ]) {
-      const typeColumns = typeNamesWithCombined
-        .map((typeName) =>
-          coverageByTestType[typeName] === null
-            ? `${typeName} not run`
-            : `${typeName} ${formatPercent(countsByType[typeName])}`,
-        )
-        .join(" | ");
-      outputLines.push(`  ${metricName.padEnd(8)} ${typeColumns} | e2e not measured`);
-    }
+    entryResult.outputLines.push(...describeMeasuredFigures(countsByMetric, coverageByTestType));
   }
 
-  if (!(inventoryEntry.level in TARGET_PERCENT_BY_LEVEL)) {
-    outputLines.push(`  target: unknown level "${inventoryEntry.level}", expected CORE, IMPORTANT or TIER 0`);
-    return outputLines;
+  if (!Object.hasOwn(TARGET_PERCENT_BY_LEVEL, inventoryEntry.level)) {
+    entryResult.outputLines.push(
+      `  target: unknown level "${inventoryEntry.level}", expected CORE, IMPORTANT or TIER 0`,
+    );
+    entryResult.failureTexts.push(
+      `${inventoryEntry.entryId} [${levelLabel}]: unknown level "${inventoryEntry.level}" in "Level", expected CORE, IMPORTANT or TIER 0`,
+    );
+    return entryResult;
   }
   const levelTarget = TARGET_PERCENT_BY_LEVEL[inventoryEntry.level];
   if (levelTarget === null) {
-    outputLines.push("  target: none (TIER 0)");
-    return outputLines;
+    entryResult.outputLines.push("  target: none (TIER 0)");
+    return entryResult;
   }
-  const linesTarget = inventoryEntry.targetOverride?.lines ?? levelTarget;
-  const branchesTarget = inventoryEntry.targetOverride?.branches ?? levelTarget;
-  const overrideNote = inventoryEntry.targetOverride ? " (override)" : "";
-  const distanceText =
-    measuredFileCount === 0
-      ? "distance not measured"
-      : `${formatDistance("lines", linesTarget, linesByType.combined)}, ${formatDistance("branches", branchesTarget, branchesByType.combined)}`;
-  outputLines.push(
-    `  target: lines ${linesTarget}%, branches ${branchesTarget}%${overrideNote}; ${distanceText}`,
+
+  const appliedRecord = coverageRecord.kind === "malformed" ? { kind: "none" } : coverageRecord;
+  if (appliedRecord.kind !== "none") {
+    entryResult.recordInUseText = `${inventoryEntry.entryId} ${describeCoverageRecord(appliedRecord)}`;
+  }
+  const requiredFigures = METRIC_NAMES.map((metricName) =>
+    requiredFigureOf(metricName, levelTarget, appliedRecord),
   );
-  return outputLines;
+  const requiredText = METRIC_NAMES.map((metricName, metricIndex) => {
+    const { requiredPercent, source } = requiredFigures[metricIndex];
+    const sourceNote = source === "level target" ? "" : ` (${source})`;
+    return `${metricName} ${requiredPercent}%${sourceNote}`;
+  }).join(", ");
+  const malformedNote =
+    coverageRecord.kind === "malformed" ? " [malformed record not applied]" : "";
+
+  if (measuredFileCount === 0) {
+    entryResult.outputLines.push(`  target: ${requiredText}${malformedNote}; not measured`);
+    return entryResult;
+  }
+  const metricChecks = METRIC_NAMES.map((metricName, metricIndex) =>
+    checkMetric(
+      inventoryEntry,
+      metricName,
+      requiredFigures[metricIndex],
+      countsByMetric[metricName].combined,
+    ),
+  );
+  for (const metricCheck of metricChecks) {
+    if (metricCheck.failureText) {
+      entryResult.failureTexts.push(metricCheck.failureText);
+    }
+    if (metricCheck.noticeText) {
+      entryResult.noticeTexts.push(metricCheck.noticeText);
+    }
+  }
+  const distanceText = metricChecks.map((metricCheck) => metricCheck.distanceText).join(", ");
+  entryResult.outputLines.push(`  target: ${requiredText}${malformedNote}; ${distanceText}`);
+  return entryResult;
 }
 
-function printFileList(listTitle, listedFiles) {
-  console.log(`\n${listTitle}: ${listedFiles.length}`);
-  for (const listedFile of listedFiles) {
-    console.log(`  ${listedFile}`);
+function printList(listTitle, listedItems) {
+  console.log(`\n${listTitle}: ${listedItems.length}`);
+  for (const listedItem of listedItems) {
+    console.log(`  ${listedItem}`);
   }
 }
 
-function reportCoverageByInventoryEntry() {
-  const inventoryEntries = readInventoryEntries(readFileSync(INVENTORY_PATH, "utf8"));
-  const candidateFiles = listProductionCandidateFiles();
-  const coverageByTestType = Object.fromEntries(
-    MEASURED_TEST_TYPES.map((testType) => [testType, readCoverageByFile(testType)]),
-  );
-
+function matchFilesToEntries(inventoryEntries, candidateFiles) {
   const matchingEntriesByFile = new Map(candidateFiles.map((candidateFile) => [candidateFile, []]));
   const patternsWithoutFiles = [];
   const filesByEntry = new Map();
@@ -298,18 +515,39 @@ function reportCoverageByInventoryEntry() {
         path.posix.matchesGlob(candidateFile, filePattern),
       );
       if (matchedFiles.length === 0) {
-        patternsWithoutFiles.push(`${inventoryEntry.entryId || "(no id)"}: ${filePattern}`);
+        patternsWithoutFiles.push(`${inventoryEntry.entryId}: ${filePattern}`);
       }
       matchedFiles.forEach((matchedFile) => entryFiles.add(matchedFile));
     }
     for (const entryFile of entryFiles) {
-      matchingEntriesByFile.get(entryFile).push(inventoryEntry.entryId || "(no id)");
+      matchingEntriesByFile.get(entryFile).push(inventoryEntry.entryId);
     }
     filesByEntry.set(inventoryEntry, [...entryFiles].sort());
   }
+  const unmatchedFiles = [...matchingEntriesByFile]
+    .filter(([, matchingEntryIds]) => matchingEntryIds.length === 0)
+    .map(([candidateFile]) => candidateFile);
+  const duplicatedFiles = [...matchingEntriesByFile]
+    .filter(([, matchingEntryIds]) => matchingEntryIds.length > 1)
+    .map(([candidateFile, matchingEntryIds]) => `${candidateFile}  (${matchingEntryIds.join(", ")})`);
+  return { filesByEntry, unmatchedFiles, duplicatedFiles, patternsWithoutFiles };
+}
+
+function reportCoverageByInventoryEntry() {
+  const { inventoryEntries, tableProblemTexts } = readInventoryEntries(
+    readFileSync(INVENTORY_PATH, "utf8"),
+  );
+  const candidateFiles = listProductionCandidateFiles();
+  const coverageByTestType = Object.fromEntries(
+    MEASURED_TEST_TYPES.map((testType) => [testType, readCoverageByFile(testType)]),
+  );
+  const { filesByEntry, unmatchedFiles, duplicatedFiles, patternsWithoutFiles } =
+    matchFilesToEntries(inventoryEntries, candidateFiles);
 
   console.log("\nCoverage by criticality inventory entry (docs/criticality-inventory.md)");
-  console.log("Lines and branches per test type and combined; thresholds are not active (spec 005b).");
+  console.log(
+    "Lines and branches per test type and combined. Thresholds are active: each CORE and IMPORTANT entry must reach, in combined coverage as printed, its override, else its floor, else the target of its level (CORE 100 %, IMPORTANT 80 %); TIER 0 has none.",
+  );
   console.log(
     "End-to-end (Playwright): not measured; the behaviors only browser tests protect are named in each entry.",
   );
@@ -319,33 +557,52 @@ function reportCoverageByInventoryEntry() {
     }
   }
 
+  const failureTexts = [];
+  const noticeTexts = [];
+  const recordsInUse = [];
   let currentArea = null;
   for (const inventoryEntry of inventoryEntries.filter((entry) => entry.isProduction)) {
     if (inventoryEntry.area !== currentArea) {
       currentArea = inventoryEntry.area;
       console.log(`\n## ${currentArea}`);
     }
-    const entryLines = describeEntryCoverage(
+    const entryResult = checkEntryCoverage(
       inventoryEntry,
       filesByEntry.get(inventoryEntry),
       coverageByTestType,
     );
-    console.log(entryLines.join("\n"));
+    console.log(entryResult.outputLines.join("\n"));
+    failureTexts.push(...entryResult.failureTexts);
+    noticeTexts.push(...entryResult.noticeTexts);
+    if (entryResult.recordInUseText) {
+      recordsInUse.push(entryResult.recordInUseText);
+    }
   }
   const productionEntryCount = inventoryEntries.filter((entry) => entry.isProduction).length;
   if (productionEntryCount === 0) {
     console.log("\nThe inventory has no production entries yet.");
   }
 
-  const unmatchedFiles = [...matchingEntriesByFile]
-    .filter(([, matchingEntryIds]) => matchingEntryIds.length === 0)
-    .map(([candidateFile]) => candidateFile);
-  const duplicatedFiles = [...matchingEntriesByFile]
-    .filter(([, matchingEntryIds]) => matchingEntryIds.length > 1)
-    .map(([candidateFile, matchingEntryIds]) => `${candidateFile}  (${matchingEntryIds.join(", ")})`);
-  printFileList("Files that match no inventory entry", unmatchedFiles);
-  printFileList("Files that match more than one inventory entry", duplicatedFiles);
-  printFileList("Inventory patterns that match no file", patternsWithoutFiles);
+  printList("Notice: overrides and floors in use", recordsInUse);
+  printList(
+    "Notice: figures above their floor or override (raise the record to the new figure, or remove it when the target is reached)",
+    noticeTexts,
+  );
+  printList("Files that match no inventory entry (failure)", unmatchedFiles);
+  printList("Files that match more than one inventory entry (failure)", duplicatedFiles);
+  printList("Inventory patterns that match no file (warning)", patternsWithoutFiles);
+
+  failureTexts.push(
+    ...tableProblemTexts,
+    ...unmatchedFiles.map((unmatchedFile) => `${unmatchedFile}: matches no inventory entry`),
+    ...duplicatedFiles.map((duplicatedFile) => `${duplicatedFile}: matches more than one inventory entry`),
+  );
+  if (failureTexts.length === 0) {
+    console.log("\nCoverage check passed.");
+    return;
+  }
+  printList("Coverage check failed", failureTexts);
+  process.exitCode = 1;
 }
 
 reportCoverageByInventoryEntry();

@@ -43,8 +43,9 @@ export default defineConfig({
     // Coverage is off unless `--coverage` is passed (`pnpm test:coverage`), so `pnpm test` is
     // unchanged. Every source file is included, so a file no test imports shows up at 0 %. The
     // script runs one project at a time and gives each its own `reportsDirectory`, so the report
-    // can tell which test type covered what (spec 005a, plan 2.2). No coverage gate is active
-    // yet (FR-8).
+    // can tell which test type covered what (spec 005a, plan 2.2). No `thresholds` key here: the
+    // coverage targets are enforced per inventory entry by that report script, which fails
+    // `pnpm test:coverage` only (spec 005b, plan 7.4); `pnpm test` never fails on coverage.
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],

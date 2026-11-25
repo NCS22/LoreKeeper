@@ -110,13 +110,6 @@ describe("the Better Auth session reader with real cookies", () => {
     });
   });
 
-  it("reads no session when the request carries no cookie (FR-26)", async () => {
-    await signUpThroughTheLibrary("ana@example.com");
-    const sessionReader = buildSessionReader(async () => new Headers());
-
-    expect(await sessionReader.readActiveSession()).toBeNull();
-  });
-
   it("makes the acting-user check fail with an authentication error, not an infrastructure one, when there is no session (FR-20)", async () => {
     const sessionReader = buildSessionReader(async () => new Headers());
 
@@ -257,23 +250,13 @@ describe("the Better Auth session reader with real cookies", () => {
       expect(Object.keys(activeSession ?? {}).sort()).toEqual(["displayName", "email", "userId"]);
     });
 
+    // The cookie absent, signed out, unused for more than 30 days or altered is covered by
+    // `account authenticator contract: Better Auth over PostgreSQL`, which runs this same reader.
     describe("a session that is not valid gives no session and no details", () => {
-      const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
-
-      async function readWithTheCookieAs(sessionCookieValue: string | null) {
-        if (sessionCookieValue === null) {
-          emulatedBrowser.clear();
-        } else {
-          emulatedBrowser.holdCookie(SESSION_COOKIE_NAME, sessionCookieValue);
-        }
+      async function readWithTheCookieAs(sessionCookieValue: string) {
+        emulatedBrowser.holdCookie(SESSION_COOKIE_NAME, sessionCookieValue);
         return buildSessionReader(async () => emulatedBrowser.buildRequestHeaders()).readActiveSession();
       }
-
-      it("when the request carries no cookie", async () => {
-        await signUpThroughTheAuthenticator({ displayName: "Ana Torres", email: "ana@example.com" });
-
-        expect(await readWithTheCookieAs(null)).toBeNull();
-      });
 
       it("when the session was deleted from the database", async () => {
         const sessionCookieValue = await signUpThroughTheAuthenticator({
@@ -283,37 +266,6 @@ describe("the Better Auth session reader with real cookies", () => {
         await prismaClient.session.deleteMany();
 
         expect(await readWithTheCookieAs(sessionCookieValue)).toBeNull();
-      });
-
-      it("when the session was signed out", async () => {
-        const sessionCookieValue = await signUpThroughTheAuthenticator({
-          displayName: "Ana Torres",
-          email: "ana@example.com",
-        });
-        await buildAccountAuthenticator().signOutCurrentSession();
-
-        expect(await readWithTheCookieAs(sessionCookieValue)).toBeNull();
-      });
-
-      it("when the session was unused for more than 30 days", async () => {
-        const sessionCookieValue = await signUpThroughTheAuthenticator({
-          displayName: "Ana Torres",
-          email: "ana@example.com",
-        });
-        vi.useFakeTimers({ toFake: ["Date"] });
-        vi.setSystemTime(new Date(Date.now() + THIRTY_DAYS_IN_MILLISECONDS + 60_000));
-
-        expect(await readWithTheCookieAs(sessionCookieValue)).toBeNull();
-      });
-
-      it("when the cookie was tampered with", async () => {
-        const sessionCookieValue = await signUpThroughTheAuthenticator({
-          displayName: "Ana Torres",
-          email: "ana@example.com",
-        });
-        const tamperedCookieValue = `${sessionCookieValue.startsWith("A") ? "B" : "A"}${sessionCookieValue.slice(1)}`;
-
-        expect(await readWithTheCookieAs(tamperedCookieValue)).toBeNull();
       });
     });
   });
@@ -404,7 +356,12 @@ describe("the Better Auth session reader with real cookies", () => {
       expect(failure).toBeInstanceOf(InfrastructureError);
       const infrastructureFailure = failure as InfrastructureError;
       expect(infrastructureFailure.message).not.toMatch(/unreachable-secret|127\.0\.0\.1|nowhere|nobody/);
-      expect(infrastructureFailure.cause).toBeDefined();
+      // The cause is the library's own failure: a 500 with FAILED_TO_GET_SESSION, not the 401 read as signed out.
+      expect(infrastructureFailure.cause).toBeInstanceOf(APIError);
+      expect(infrastructureFailure.cause).toMatchObject({
+        statusCode: 500,
+        body: { code: BASE_ERROR_CODES.FAILED_TO_GET_SESSION.code },
+      });
     });
 
     it("reaches the acting-user check as an infrastructure failure, not as an authentication error", async () => {

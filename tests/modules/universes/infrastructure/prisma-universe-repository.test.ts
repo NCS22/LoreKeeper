@@ -65,6 +65,24 @@ describe("PostgreSQL universe repository", () => {
       });
     }
 
+    // What PostgreSQL raises when a check constraint of the migration refuses a row (code 23514),
+    // as Prisma reports it (P2039). The driver gives the constraint only inside the PostgreSQL
+    // message, where its name is quoted, so the name is matched there.
+    function refusalByCheckConstraint(constraintName: string) {
+      return {
+        name: "PrismaClientKnownRequestError",
+        code: "P2039",
+        meta: {
+          driverAdapterError: {
+            cause: {
+              originalCode: "23514",
+              originalMessage: expect.stringContaining(`check constraint "${constraintName}"`),
+            },
+          },
+        },
+      };
+    }
+
     it("accepts names of 1 and 120 code points, counting an emoji as one", async () => {
       await insertUniverse("A", null);
       await insertUniverse("😀".repeat(120), null);
@@ -73,8 +91,12 @@ describe("PostgreSQL universe repository", () => {
     });
 
     it("refuses an empty name and a name of 121 code points", async () => {
-      await expect(insertUniverse("", null)).rejects.toThrow();
-      await expect(insertUniverse("😀".repeat(121), null)).rejects.toThrow();
+      await expect(insertUniverse("", null)).rejects.toMatchObject(
+        refusalByCheckConstraint("Universe_name_length_check"),
+      );
+      await expect(insertUniverse("😀".repeat(121), null)).rejects.toMatchObject(
+        refusalByCheckConstraint("Universe_name_length_check"),
+      );
       expect(await client.universe.count()).toBe(0);
     });
 
@@ -87,8 +109,12 @@ describe("PostgreSQL universe repository", () => {
     });
 
     it("refuses an empty description and one of 2001 code points", async () => {
-      await expect(insertUniverse("First", "")).rejects.toThrow();
-      await expect(insertUniverse("Second", "😀".repeat(2001))).rejects.toThrow();
+      await expect(insertUniverse("First", "")).rejects.toMatchObject(
+        refusalByCheckConstraint("Universe_description_length_check"),
+      );
+      await expect(insertUniverse("Second", "😀".repeat(2001))).rejects.toMatchObject(
+        refusalByCheckConstraint("Universe_description_length_check"),
+      );
       expect(await client.universe.count()).toBe(0);
     });
 
@@ -97,7 +123,19 @@ describe("PostgreSQL universe repository", () => {
         client.universe.create({
           data: { ownerId: "10000000-0000-4000-8000-0000000000ff", name: "Orphan" },
         }),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({
+        name: "PrismaClientKnownRequestError",
+        code: "P2003",
+        meta: {
+          driverAdapterError: {
+            cause: {
+              originalCode: "23503",
+              kind: "ForeignKeyConstraintViolation",
+              constraint: { index: "Universe_ownerId_fkey" },
+            },
+          },
+        },
+      });
     });
   });
 
@@ -109,7 +147,19 @@ describe("PostgreSQL universe repository", () => {
       const failure = await universeRepository.add(universe).catch((error: unknown) => error);
 
       expect(failure).toBeInstanceOf(InfrastructureError);
-      expect((failure as InfrastructureError).cause).toBeDefined();
+      expect((failure as InfrastructureError).cause).toMatchObject({
+        name: "PrismaClientKnownRequestError",
+        code: "P2002",
+        meta: {
+          driverAdapterError: {
+            cause: {
+              originalCode: "23505",
+              kind: "UniqueConstraintViolation",
+              constraint: { index: "Universe_pkey" },
+            },
+          },
+        },
+      });
     });
 
     it("turn a failed read into an InfrastructureError that keeps the cause", async () => {

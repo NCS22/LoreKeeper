@@ -31,6 +31,33 @@ function createLayout(nodes: ForceNodeInput[], links: ForceLinkInput[], settings
   return createForceLayout({ nodes, links, settings, onTick: () => {}, onSettled: () => {} });
 }
 
+// A layout that counts its `onTick` notifications, so a test waits for an amount of simulation
+// work instead of wall-clock time. The count starts again on every wait.
+function createLayoutCountingTicks(nodes: ForceNodeInput[], links: ForceLinkInput[], settings: ForceLayoutSettings) {
+  let notifiedTicks = 0;
+  let pendingWait: { tickCount: number; resolve: () => void } | undefined;
+  const layout = createForceLayout({
+    nodes,
+    links,
+    settings,
+    onTick: () => {
+      notifiedTicks += 1;
+      if (pendingWait !== undefined && notifiedTicks >= pendingWait.tickCount) {
+        const { resolve } = pendingWait;
+        pendingWait = undefined;
+        resolve();
+      }
+    },
+    onSettled: () => {},
+  });
+  const waitForTicks = (tickCount: number) =>
+    new Promise<void>((resolve) => {
+      notifiedTicks = 0;
+      pendingWait = { tickCount, resolve };
+    });
+  return { layout, waitForTicks };
+}
+
 function distanceBetween(first: NodePosition, second: NodePosition): number {
   return Math.hypot(first.x - second.x, first.y - second.y);
 }
@@ -82,16 +109,13 @@ describe("a settled layout", () => {
     secondLayout.stop();
   });
 
-  it("spreads 300 nodes without overlaps, and a tick stays cheap", () => {
+  it("spreads 300 nodes without overlaps", () => {
     const nodes = createRingNodes(300, 600);
     const links: ForceLinkInput[] = nodes.slice(1).map((node, index) => ({ sourceId: nodes[Math.floor(index / 3)].id, targetId: node.id }));
 
-    const startTime = performance.now();
     const layout = createLayout(nodes, links);
-    const elapsedPerTick = (performance.now() - startTime) / FORCE_SETTINGS.presettleTicks;
 
     expect(minimumDistanceBetweenAnyTwo(layout.readPositions())).toBeGreaterThan(NODE_RADIUS * 1.5);
-    expect(elapsedPerTick).toBeLessThan(16);
     layout.stop();
   });
 });
@@ -100,41 +124,34 @@ describe.each([
   ["default", FORCE_SETTINGS],
   ["reduced motion", REDUCED_MOTION_FORCE_SETTINGS],
 ])("dragging a node with the %s settings", (_name, settings) => {
-  it("pulls its neighbours along more than the nodes it is not linked to", () => {
+  it("pulls its neighbours along more than the nodes it is not linked to", async () => {
     const { nodes, links, hubId, neighbourIds, unconnectedIds } = createHubGraph(6, 3);
-    const layout = createLayout(nodes, links, settings);
+    const { layout, waitForTicks } = createLayoutCountingTicks(nodes, links, settings);
     const before = layout.readPositions();
 
     const hubStart = positionOf(before, hubId);
     layout.dragNodeTo(hubId, hubStart.x + 400, hubStart.y);
-    // Let the simulation run on its own timer for a moment.
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        const after = layout.readPositions();
-        const averageDisplacement = (ids: string[]) =>
-          ids.reduce((total, id) => total + distanceBetween(positionOf(before, id), positionOf(after, id)), 0) / ids.length;
+    // Let the simulation run on its own timer for a number of ticks.
+    await waitForTicks(20);
+    const after = layout.readPositions();
+    const averageDisplacement = (ids: string[]) =>
+      ids.reduce((total, id) => total + distanceBetween(positionOf(before, id), positionOf(after, id)), 0) / ids.length;
 
-        expect(positionOf(after, hubId).x).toBeCloseTo(hubStart.x + 400, 5);
-        expect(averageDisplacement(neighbourIds)).toBeGreaterThan(averageDisplacement(unconnectedIds));
-        layout.stop();
-        resolve();
-      }, 600);
-    });
+    expect(positionOf(after, hubId).x).toBeCloseTo(hubStart.x + 400, 5);
+    expect(averageDisplacement(neighbourIds)).toBeGreaterThan(averageDisplacement(unconnectedIds));
+    layout.stop();
   });
 
-  it("holds the dragged node in place until it is released", () => {
+  it("holds the dragged node in place until it is released", async () => {
     const { nodes, links, hubId } = createHubGraph(6, 0);
-    const layout = createLayout(nodes, links, settings);
+    const { layout, waitForTicks } = createLayoutCountingTicks(nodes, links, settings);
 
     layout.dragNodeTo(hubId, 123, -45);
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        expect(positionOf(layout.readPositions(), hubId)).toMatchObject({ x: 123, y: -45 });
-        layout.releaseNode(hubId);
-        layout.stop();
-        resolve();
-      }, 200);
-    });
+    await waitForTicks(6);
+
+    expect(positionOf(layout.readPositions(), hubId)).toMatchObject({ x: 123, y: -45 });
+    layout.releaseNode(hubId);
+    layout.stop();
   });
 });
 

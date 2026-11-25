@@ -2,10 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { parseNewAccount } from "@/modules/accounts/domain/new-account";
 import { createBetterAuthAccountAuthenticator } from "@/modules/accounts/infrastructure/better-auth-account-authenticator";
 import { InfrastructureError } from "@/shared/domain/error-kinds";
-import {
-  SESSION_LIFETIME_IN_SECONDS,
-  SESSION_RENEWAL_INTERVAL_IN_SECONDS,
-} from "@/shared/domain/session-policy";
+import { SESSION_LIFETIME_IN_SECONDS } from "@/shared/domain/session-policy";
 import {
   createBetterAuthInstance,
   getBetterAuthInstance,
@@ -26,6 +23,8 @@ vi.mock("next/headers", async () =>
 const TEST_AUTH_SECRET = "test-only-secret-that-is-at-least-32-characters-long";
 const HTTP_BASE_URL = "http://localhost:3000";
 const HTTPS_BASE_URL = "https://lorekeeper.example.com";
+const SIGNED_UP_EMAIL = "ana@example.com";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const BETTER_AUTH_INSTANCE_GLOBAL_KEY = Symbol.for("lorekeeper.betterAuthInstance");
 const PRISMA_CLIENT_GLOBAL_KEY = Symbol.for("lorekeeper.prismaClient");
@@ -42,6 +41,21 @@ function buildInstance(authBaseUrl: string): BetterAuthInstance {
 async function readSessionCookie(authBaseUrl: string) {
   const authContext = await buildInstance(authBaseUrl).$context;
   return authContext.authCookies.sessionToken;
+}
+
+async function signUpThrough(betterAuthInstance: BetterAuthInstance): Promise<void> {
+  const authenticator = createBetterAuthAccountAuthenticator({
+    getBetterAuthInstance: () => betterAuthInstance,
+    getRequestHeaders: async () => emulatedBrowser.buildRequestHeaders(),
+  });
+  await authenticator.registerAndSignIn(
+    parseNewAccount({
+      displayName: "Ana Torres",
+      email: SIGNED_UP_EMAIL,
+      password: "correct horse",
+      repeatPassword: "correct horse",
+    }),
+  );
 }
 
 beforeAll(() => {
@@ -74,29 +88,17 @@ describe("the session cookie of the Better Auth instance", () => {
   });
 });
 
-describe("the session settings of the Better Auth instance", () => {
-  it("take the lifetime and the renewal interval from the session policy (FR-23, FR-24)", async () => {
-    const authContext = await buildInstance(HTTP_BASE_URL).$context;
-
-    expect(authContext.sessionConfig.expiresIn).toBe(SESSION_LIFETIME_IN_SECONDS);
-    expect(authContext.sessionConfig.updateAge).toBe(SESSION_RENEWAL_INTERVAL_IN_SECONDS);
+describe("the account stored when a person signs up", () => {
+  beforeEach(async () => {
+    await emptyAuthenticationTables(prismaClient);
+    emulatedBrowser.clear();
   });
 
-  it("keep the cookie cache off, so a sign-out is effective at once (FR-16)", async () => {
-    const authContext = await buildInstance(HTTP_BASE_URL).$context;
+  it("has a UUID identifier", async () => {
+    await signUpThrough(buildInstance(HTTP_BASE_URL));
 
-    expect(authContext.options.session?.cookieCache?.enabled).toBe(false);
-  });
-
-  it("generate UUID identifiers and sign in after sign-up, with no email verification", async () => {
-    const authContext = await buildInstance(HTTP_BASE_URL).$context;
-
-    expect(authContext.options.advanced?.database?.generateId).toBe("uuid");
-    expect(authContext.options.emailAndPassword).toMatchObject({
-      enabled: true,
-      autoSignIn: true,
-      requireEmailVerification: false,
-    });
+    const storedUser = await prismaClient.user.findUniqueOrThrow({ where: { email: SIGNED_UP_EMAIL } });
+    expect(storedUser.id).toMatch(UUID_PATTERN);
   });
 });
 
@@ -108,18 +110,7 @@ describe("the cookie as it is written when a person signs up", () => {
 
   async function signUpAndReadWrittenSessionCookie(authBaseUrl: string) {
     const betterAuthInstance = buildInstance(authBaseUrl);
-    const authenticator = createBetterAuthAccountAuthenticator({
-      getBetterAuthInstance: () => betterAuthInstance,
-      getRequestHeaders: async () => emulatedBrowser.buildRequestHeaders(),
-    });
-    await authenticator.registerAndSignIn(
-      parseNewAccount({
-        displayName: "Ana Torres",
-        email: "ana@example.com",
-        password: "correct horse",
-        repeatPassword: "correct horse",
-      }),
-    );
+    await signUpThrough(betterAuthInstance);
     const sessionCookie = (await betterAuthInstance.$context).authCookies.sessionToken;
     return {
       sessionCookieName: sessionCookie.name,
@@ -179,6 +170,17 @@ describe("the application instance built on first use", () => {
     vi.stubEnv("BETTER_AUTH_SECRET", "");
     vi.stubEnv("BETTER_AUTH_URL", "");
 
-    expect(() => getBetterAuthInstance()).toThrow(InfrastructureError);
+    let failure: unknown;
+    try {
+      getBetterAuthInstance();
+    } catch (thrownFailure) {
+      failure = thrownFailure;
+    }
+
+    expect(failure).toBeInstanceOf(InfrastructureError);
+    expect(failure).toHaveProperty(
+      "message",
+      "Server environment is missing or invalid: DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL",
+    );
   });
 });

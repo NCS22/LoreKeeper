@@ -28,25 +28,14 @@ describe.each(universeStorageFactories)("isUniverseNameInUse: %s", (_name, creat
     expect(await isUniverseNameInUse(await setUp(), actor, "Second universe")).toBe(true);
   });
 
-  it("ignores letter case", async () => {
-    expect(await isUniverseNameInUse(await setUp(), actor, "SECOND UNIVERSE")).toBe(true);
-  });
+  // Each difference on its own is proved by `toComparableUniverseName` in
+  // tests/modules/universes/domain/universe-name.test.ts; this case proves the use case applies it.
+  it("finds a name that differs in case, accents, accent composition and whitespace", async () => {
+    // Stored: "Crónicas de Hielo" with a composed ó. Typed: other letter case, a decomposed ó
+    // (O + U+0301), an accent the stored name lacks (É), and surrounding and repeated spaces.
+    const typedName = "  cRO\u0301NICAS   DÉ  hielo ";
 
-  it("ignores accents in either direction", async () => {
-    const dependencies = await setUp();
-
-    expect(await isUniverseNameInUse(dependencies, actor, "Cronicas de Hielo")).toBe(true);
-    expect(await isUniverseNameInUse(dependencies, actor, "crÓnicas dé hielo")).toBe(true);
-  });
-
-  it("ignores whether an accent is written composed or decomposed", async () => {
-    const dependencies = await setUp();
-
-    expect(await isUniverseNameInUse(dependencies, actor, "Crónicas de Hielo")).toBe(true);
-  });
-
-  it("ignores surrounding and repeated whitespace", async () => {
-    expect(await isUniverseNameInUse(await setUp(), actor, "  Second    universe  ")).toBe(true);
+    expect(await isUniverseNameInUse(await setUp(), actor, typedName)).toBe(true);
   });
 
   it("finds no match for a different name", async () => {

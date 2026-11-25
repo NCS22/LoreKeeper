@@ -3,14 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import { signUpAction } from "@/app/sign-up/actions";
 import {
   ACCOUNT_DISPLAY_NAME_FIELD,
-  ACCOUNT_DISPLAY_NAME_INVALID_CHARACTERS_CODE,
-  ACCOUNT_DISPLAY_NAME_TOO_LONG_CODE,
   ACCOUNT_EMAIL_FIELD,
   ACCOUNT_EMAIL_INVALID_CODE,
   ACCOUNT_PASSWORD_FIELD,
   ACCOUNT_PASSWORD_LENGTH_CODE,
   REPEAT_PASSWORD_FIELD,
-  REPEAT_PASSWORD_MISMATCH_CODE,
 } from "@/modules/accounts";
 import {
   BUSINESS_RULE_VIOLATION_ERROR_CODE,
@@ -131,56 +128,18 @@ describe("signUpAction", () => {
     );
   });
 
+  // The rules themselves (display name length and characters, email validity, repeat password)
+  // are proved in tests/modules/accounts/domain; here only their mapping to fieldErrors is checked.
   describe("when a value is not valid (FR-2 to FR-7, FR-34)", () => {
-    it("reports a display name of 121 characters on that field and creates nothing", async () => {
-      const result = await signUpAction(buildTypedSignUp({ displayName: "a".repeat(121) }));
+    it("reports the email \"añ@example.com\" on the email field and creates nothing", async () => {
+      const result = await signUpAction(buildTypedSignUp({ email: "añ@example.com" }));
 
       expect(result).toMatchObject({
         ok: false,
-        error: {
-          code: VALIDATION_ERROR_CODE,
-          fieldErrors: { [ACCOUNT_DISPLAY_NAME_FIELD]: [{ code: ACCOUNT_DISPLAY_NAME_TOO_LONG_CODE }] },
-        },
+        error: { fieldErrors: { [ACCOUNT_EMAIL_FIELD]: [{ code: ACCOUNT_EMAIL_INVALID_CODE }] } },
       });
       await expectNothingWasCreated();
     });
-
-    it("reports a display name with a line break on that field and creates nothing", async () => {
-      const result = await signUpAction(buildTypedSignUp({ displayName: "Ana\nTorres" }));
-
-      expect(result).toMatchObject({
-        ok: false,
-        error: {
-          fieldErrors: {
-            [ACCOUNT_DISPLAY_NAME_FIELD]: [{ code: ACCOUNT_DISPLAY_NAME_INVALID_CHARACTERS_CODE }],
-          },
-        },
-      });
-      await expectNothingWasCreated();
-    });
-
-    it("reports a repeat password that differs on the repeat field and creates nothing", async () => {
-      const result = await signUpAction(buildTypedSignUp({ repeatPassword: "something else" }));
-
-      expect(result).toMatchObject({
-        ok: false,
-        error: { fieldErrors: { [REPEAT_PASSWORD_FIELD]: [{ code: REPEAT_PASSWORD_MISMATCH_CODE }] } },
-      });
-      await expectNothingWasCreated();
-    });
-
-    it.each(["añ@example.com", "a b@example.com", "a@@example.com", "Kana@example.com", ""])(
-      "reports the email %j on the email field and creates nothing",
-      async (invalidEmail) => {
-        const result = await signUpAction(buildTypedSignUp({ email: invalidEmail }));
-
-        expect(result).toMatchObject({
-          ok: false,
-          error: { fieldErrors: { [ACCOUNT_EMAIL_FIELD]: [{ code: ACCOUNT_EMAIL_INVALID_CODE }] } },
-        });
-        await expectNothingWasCreated();
-      },
-    );
 
     it("reports every failing field together, with both limits on the password", async () => {
       const result = await signUpAction({

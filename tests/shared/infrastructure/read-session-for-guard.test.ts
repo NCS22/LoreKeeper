@@ -8,8 +8,10 @@ import type { PrismaClient } from "@/shared/infrastructure/generated/prisma/clie
 import { createPrismaClient } from "@/shared/infrastructure/prisma-client";
 import {
   createGuardSessionReader,
+  readSessionForGuard,
   type GuardSessionReading,
 } from "@/shared/infrastructure/read-session-for-guard";
+import { prepareRealCompositionOverTestDatabase } from "../../support/database/real-composition-environment";
 import { createTestPrismaClient, emptyAuthenticationTables } from "../../support/database/test-database";
 import { emulatedBrowser } from "../../support/emulated-next-headers";
 
@@ -25,6 +27,8 @@ const SESSION_COOKIE_NAME = "better-auth.session_token";
 const ONE_DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 const ONE_MINUTE_IN_MILLISECONDS = 60 * 1000;
 const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
+// The key on which the exported reader keeps its own library instance, built on first use.
+const GUARD_BETTER_AUTH_INSTANCE_GLOBAL_KEY = Symbol.for("lorekeeper.guardBetterAuthInstance");
 
 let prismaClient: PrismaClient;
 let betterAuthInstance: BetterAuthInstance;
@@ -216,6 +220,35 @@ describe("the session reader of the page guard", () => {
       const reading = await readGuardSession("any");
 
       expect(reading).toEqual({ state: "check-failed", setCookieLines: [] });
+    });
+  });
+
+  describe("the reader the proxy uses, with its own library instance built from the environment", () => {
+    // Points the application's environment and Prisma client at the test database; the instance
+    // of the guard reads them when it is built, on the first reading.
+    prepareRealCompositionOverTestDatabase();
+
+    function forgetGuardBetterAuthInstance(): void {
+      delete (globalThis as Record<symbol, unknown>)[GUARD_BETTER_AUTH_INSTANCE_GLOBAL_KEY];
+    }
+
+    beforeAll(forgetGuardBetterAuthInstance);
+    afterAll(forgetGuardBetterAuthInstance);
+
+    it("is signed out when the request carries no cookie, with no cookie lines", async () => {
+      expect(await readSessionForGuard(buildRequestHeadersWithSessionCookie(null))).toEqual({
+        state: "signed-out",
+        setCookieLines: [],
+      });
+    });
+
+    it("is signed in with the session cookie of a real sign-up, with no cookie lines", async () => {
+      const sessionCookieValue = await signUpAndTakeSessionCookieValue();
+
+      expect(await readSessionForGuard(buildRequestHeadersWithSessionCookie(sessionCookieValue))).toEqual({
+        state: "signed-in",
+        setCookieLines: [],
+      });
     });
   });
 });
