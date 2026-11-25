@@ -1,7 +1,17 @@
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
-import { describe, expect, it } from "vitest";
+import { NextRequest } from "next/server";
+import { describe, expect, it, vi } from "vitest";
 import { PUBLIC_RESOURCE_PATHS, classifyAddress } from "@/modules/accounts";
 import { config, proxy } from "@/proxy";
+import type { GuardedSessionState } from "@/shared/presentation/page-access-guard";
+
+// Only the session reader is replaced (it needs the library instance and the database, which the
+// browser tests run); the guard and the access policy the proxy wires are the real ones.
+const sessionOfTheRequest = vi.hoisted(() => ({ state: "signed-out" as GuardedSessionState }));
+
+vi.mock("@/shared/infrastructure/read-session-for-guard", () => ({
+  readSessionForGuard: async () => ({ state: sessionOfTheRequest.state, setCookieLines: [] }),
+}));
 
 // The matcher of the page gate must be exactly the complement of the public resources of the
 // access policy (FR-21, plan D20), matched on a path-segment boundary (decision D-T2-2).
@@ -87,5 +97,32 @@ describe("the matcher of the page gate", () => {
 
   it("excludes exactly the three public resources of the policy", () => {
     expect([...PUBLIC_RESOURCE_PATHS]).toEqual(["/_next/static", "/_next/image", "/favicon.ico"]);
+  });
+});
+
+describe("the proxy with the real guard and access policy", () => {
+  const SERVER_ORIGIN = "http://localhost:3000";
+
+  function requestPage(address: string): NextRequest {
+    return new NextRequest(`${SERVER_ORIGIN}${address}`, { method: "GET" });
+  }
+
+  it("redirects a signed-out request for a page to sign-in, keeping the page as the destination", async () => {
+    sessionOfTheRequest.state = "signed-out";
+
+    const response = await proxy(requestPage("/?x=1"));
+
+    expect(response.status).toBe(303);
+    const location = new URL(response.headers.get("location") ?? "", SERVER_ORIGIN);
+    expect(`${location.pathname}${location.search}`).toBe("/sign-in?returnTo=%2F%3Fx%3D1");
+  });
+
+  it("lets a signed-in request for a page pass", async () => {
+    sessionOfTheRequest.state = "signed-in";
+
+    const response = await proxy(requestPage("/?x=1"));
+
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(response.headers.get("location")).toBeNull();
   });
 });
