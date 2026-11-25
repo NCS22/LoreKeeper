@@ -56,7 +56,7 @@ How to classify:
 
 Worked example: `page-access-guard.ts` only redirects; real authorization is enforced per operation by the acting-user check, so the guard is `IMPORTANT` while the acting-user check stays `CORE`.
 
-**Reclassification (FR-2).** If a `TIER 0` component turns out to hold relevant logic (found by whoever adds or modifies it, or by the reviewer at validation), reclassify it in the inventory **before** deciding anything about its tests. Reclassifying upward below the new target records a gap with its plan (section 3); it fails nothing.
+**Reclassification (FR-2).** If a `TIER 0` component turns out to hold relevant logic (found by whoever adds or modifies it, or by the reviewer at validation), reclassify it in the inventory **before** deciding anything about its tests. Reclassifying upward below the new target makes `pnpm test:coverage` fail until the entry reaches the target or records a floor with its plan (section 3).
 
 ## 3. Coverage targets and the thresholds policy
 
@@ -68,12 +68,12 @@ Targets are quality goals per inventory entry, not quotas, on **lines and branch
 | `IMPORTANT` | 80 % | 80 % |
 | `TIER 0` | none | none |
 
-- **Exception**: when the target needs redundant, fragile or low-value tests (for example an unreachable defensive branch), write in the entry's `Exceptions and floors` cell exactly `override: lines 100, branches 92, reason: <why>`. Never cover it with an artificial test.
-- **Gap**: a CORE or IMPORTANT entry below its target records `gap: <figure>; <plan to close it>`.
-- **Reading `pnpm test:coverage`**: it runs the `unit`, `database` and `component` Vitest projects one at a time and ends with a per-entry table: lines and branches per test type and combined, level, target, distance, and the unmatched, duplicated and stale patterns. End-to-end is "not measured": a behavior protected only by a browser test is written in the entry as `protected by browser test <name>`. It is not an unprotected behavior, so a behavior-keeping change needs no characterization tests (section 8); but if the measured coverage of the entry is below its target, the entry still records `gap: <figure>; <plan to close it>`, usually "component tests when touched".
+- **Exception**: when the target needs redundant, fragile or low-value tests (for example an unreachable defensive branch), write in the entry's `Exceptions and floors` cell exactly `override: lines 100, branches 92, reason: <why>`, with both metrics; the override replaces the target of the entry. Never cover it with an artificial test.
+- **Floor**: a CORE or IMPORTANT entry below its target that no small test of behavior brings to it records `floor: lines 74.4, branches 71.9, plan: <how it is raised>`, with the figure as printed of each metric below its target (a metric at its target, or with nothing to measure, is left out); the plan is usually "raise it when the component is next touched". Figures have one decimal at most, and an entry carries at most one record, an override or a floor.
+- **Reading `pnpm test:coverage`**: it runs the `unit`, `database` and `component` Vitest projects one at a time and ends with a per-entry table: lines and branches per test type and combined, level, required figure (the override, else the floor, else the target of the level) and the distance to it, the overrides and floors in use, and the unmatched, duplicated and stale patterns. After printing everything it fails when a CORE or IMPORTANT entry is below its required figure (the combined figure as printed, one decimal), when an override or floor is not in its written form, or when a production file matches no entry or more than one; a stale pattern is only a warning. A figure above its floor or override prints a notice and fails nothing, but the validation of a spec requires that no such notice remains: the record is raised to the new figure, or removed when the entry reaches its target. End-to-end is "not measured": a behavior protected only by a browser test is written in the entry as `protected by browser test <name>`. It is not an unprotected behavior, so a behavior-keeping change needs no characterization tests (section 8); but if the measured coverage of the entry is below its target, the entry still records a floor with its plan, usually "component tests when touched".
 - **Coverage is not quality.** A line is covered when it runs, not when its result is checked. 100 % with weak assertions protects nothing; judge tests by section 5.
 
-**Thresholds policy (FR-8), defined but NOT active.** The automatic thresholds will enforce the table above per entry: CORE 100, IMPORTANT 80, TIER 0 excluded, lines and branches, with the overrides written in the inventory applied. They are not configured: `vitest.config.mts` has no `thresholds` key and `pnpm test:coverage` never fails on a gap. They are turned on only by spec 005b, after its cleanup. Do not add them earlier.
+**Thresholds policy (FR-8), active since spec 005b.** `pnpm test:coverage` enforces the table above per entry: CORE 100, IMPORTANT 80, TIER 0 excluded, lines and branches, with the overrides and floors written in the inventory applied. The thresholds live in the report script `tests/support/coverage/report-coverage-by-inventory-entry.mjs`, not in Vitest: `vitest.config.mts` has no `thresholds` key and `pnpm test` never fails on coverage. The command is a required check at the validation of every spec, not at each task (`.claude/rules/sdd.md`, "Validation").
 
 ## 4. Behaviors to protect and the test type
 
@@ -169,7 +169,7 @@ A spec with no production component with behavior says so in its test design sec
 - New file: add it to the entry that shares its level and strategy, or a new entry with the next id of its area. Ids are never reused.
 - Moved, renamed or deleted file: fix the `Files` patterns; `pnpm test:coverage` lists stale patterns and unmatched files.
 - Changed behavior: re-check the level (section 2) and the `Strategy`.
-- Coverage changed in a CORE or IMPORTANT entry: refresh the dated `Protection` snapshot and the gaps or overrides.
+- Coverage changed in a CORE or IMPORTANT entry: refresh the dated `Protection` snapshot and the floors or overrides.
 - The plan's test design section shows the level that decided the tests.
 - Done when the report shows the file in exactly one entry and no unmatched or duplicated file.
 
