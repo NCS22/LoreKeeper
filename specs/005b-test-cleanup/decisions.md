@@ -15,3 +15,10 @@ Decisions taken after the plan was approved. Design decisions of the plan stay i
 - **Why:** the address of another site is already sent in the browser by `sign-in.spec.ts` (T19) and `sign-up.spec.ts` (T20); the malformed encoding is the only one of the six that no other browser file sends, and it goes through the framework's own reading of the query before `resolveReturnDestination`, which the unit tests do not cover.
 - **Discarded:** keeping the address of another site here too (a third browser copy of the same case, losing the only browser check of a malformed encoding).
 - **Approved by:** the user, 2026-11-25, after T21.
+
+## D-I3. Component tests are type-checked; the T22 file is `workspace-state-provider.test.tsx`
+
+- **Decided:** `tests/**/*.tsx` is added to the `include` of `tsconfig.json`, so `pnpm typecheck` checks component tests. The test of T22 is named `tests/components/workspace/workspace-state-provider.test.tsx` instead of `workspace-state.test.tsx` (the name in plan 7.3, 7.6 and T22).
+- **Why:** the `include` only had `tests/**/*.ts`, so no `.test.tsx` was type-checked. Even with the pattern, TypeScript leaves out a `.tsx` file whose base name matches a `.ts` file in the same folder, and `workspace-state.test.ts` (the reducer unit test of the same source file) already exists. The new name says what the file proves: the provider and its hook.
+- **Discarded:** leaving `tsconfig.json` as it was (component tests never type-checked); keeping the planned name (that file still left out); `workspace-state.component.test.tsx` (keeps the source name but adds a word the repository uses nowhere else).
+- **Approved by:** the user, 2026-11-25, after T22.
