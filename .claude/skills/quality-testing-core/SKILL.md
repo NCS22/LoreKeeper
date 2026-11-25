@@ -68,7 +68,7 @@ Targets are quality goals per inventory entry, not quotas, on **lines and branch
 | `IMPORTANT` | 80 % | 80 % |
 | `TIER 0` | none | none |
 
-- **Exception**: when the target needs redundant, fragile or low-value tests (for example an unreachable defensive branch), write in the entry's `Exceptions and gaps` cell exactly `override: lines 100, branches 92, reason: <why>`. Never cover it with an artificial test.
+- **Exception**: when the target needs redundant, fragile or low-value tests (for example an unreachable defensive branch), write in the entry's `Exceptions and floors` cell exactly `override: lines 100, branches 92, reason: <why>`. Never cover it with an artificial test.
 - **Gap**: a CORE or IMPORTANT entry below its target records `gap: <figure>; <plan to close it>`.
 - **Reading `pnpm test:coverage`**: it runs the `unit`, `database` and `component` Vitest projects one at a time and ends with a per-entry table: lines and branches per test type and combined, level, target, distance, and the unmatched, duplicated and stale patterns. End-to-end is "not measured": a behavior protected only by a browser test is written in the entry as `protected by browser test <name>`. It is not an unprotected behavior, so a behavior-keeping change needs no characterization tests (section 8); but if the measured coverage of the entry is below its target, the entry still records `gap: <figure>; <plan to close it>`, usually "component tests when touched".
 - **Coverage is not quality.** A line is covered when it runs, not when its result is checked. 100 % with weak assertions protects nothing; judge tests by section 5.

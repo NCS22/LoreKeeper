@@ -119,7 +119,7 @@ function readInventoryEntries(inventoryText) {
       isProduction: !currentHeading.startsWith(NOT_PRODUCTION_HEADING_PREFIX),
       filePatterns: readFilePatternsFromCell(cellByColumnName("Files")),
       level: normalizeLevel(cellByColumnName("Level")),
-      targetOverride: readTargetOverride(cellByColumnName("Exceptions and gaps")),
+      targetOverride: readTargetOverride(cellByColumnName("Exceptions and floors")),
     });
   });
   return inventoryEntries;
