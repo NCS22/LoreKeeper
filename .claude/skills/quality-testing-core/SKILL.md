@@ -18,7 +18,7 @@ Answer the eight questions in order; each points to its section.
 | # | Question | How to answer | Section |
 |---|---|---|---|
 | 1 | What criticality has the component? | Find its entry in `docs/criticality-inventory.md` by its path; check the file still fits the level | 2 |
-| 2 | What coverage is expected? | Target of the level on lines and branches, minus any override in the entry | 3 |
+| 2 | What coverage is expected? | Target of the level on lines and branches, minus any override or floor in the entry | 3 |
 | 3 | Which behaviors deserve protection? | The `Strategy` column, plus the behavior the task changes | 4 |
 | 4 | Which test type fits? | Decision table of section 4, by level and layer | 4 |
 | 5 | Is the test useful or only raising coverage? | Would it fail if the result were wrong? | 5 |
@@ -56,7 +56,7 @@ How to classify:
 
 Worked example: `page-access-guard.ts` only redirects; real authorization is enforced per operation by the acting-user check, so the guard is `IMPORTANT` while the acting-user check stays `CORE`.
 
-**Reclassification (FR-2).** If a `TIER 0` component turns out to hold relevant logic (found by whoever adds or modifies it, or by the reviewer at validation), reclassify it in the inventory **before** deciding anything about its tests. Reclassifying upward below the new target makes `pnpm test:coverage` fail until the entry reaches the target or records a floor with its plan (section 3).
+**Reclassification (FR-2).** If a `TIER 0` component turns out to hold relevant logic (found by whoever adds or modifies it, or by the reviewer at validation), reclassify it in the inventory **before** deciding anything about its tests. Reclassifying upward below the new target makes `pnpm test:coverage` fail until the entry reaches the target or records a floor with its plan (IMPORTANT) or an override with its reason (CORE, which never records a floor; section 3).
 
 ## 3. Coverage targets and the thresholds policy
 
@@ -69,7 +69,7 @@ Targets are quality goals per inventory entry, not quotas, on **lines and branch
 | `TIER 0` | none | none |
 
 - **Exception**: when the target needs redundant, fragile or low-value tests (for example an unreachable defensive branch), write in the entry's `Exceptions and floors` cell exactly `override: lines 100, branches 92, reason: <why>`, with both metrics; the override replaces the target of the entry. Never cover it with an artificial test.
-- **Floor**: a CORE or IMPORTANT entry below its target that no small test of behavior brings to it records `floor: lines 74.4, branches 71.9, plan: <how it is raised>`, with the figure as printed of each metric below its target (a metric at its target, or with nothing to measure, is left out); the plan is usually "raise it when the component is next touched". Figures have one decimal at most, and an entry carries at most one record, an override or a floor.
+- **Floor**: an IMPORTANT entry below its target that no small test of behavior brings to it records `floor: lines 74.4, branches 71.9, plan: <how it is raised>`, with the figure as printed of each metric below its target (a metric at its target, or with nothing to measure, is left out); the plan is usually "raise it when the component is next touched". Figures have one decimal at most, and an entry carries at most one record, an override or a floor. A CORE entry never records a floor: it reaches 100 % or records an override with its reason.
 - **Reading `pnpm test:coverage`**: it runs the `unit`, `database` and `component` Vitest projects one at a time and ends with a per-entry table: lines and branches per test type and combined, level, required figure (the override, else the floor, else the target of the level) and the distance to it, the overrides and floors in use, and the unmatched, duplicated and stale patterns. After printing everything it fails when a CORE or IMPORTANT entry is below its required figure (the combined figure as printed, one decimal), when an override or floor is not in its written form, or when a production file matches no entry or more than one; a stale pattern is only a warning. A figure above its floor or override prints a notice and fails nothing, but the validation of a spec requires that no such notice remains: the record is raised to the new figure, or removed when the entry reaches its target. End-to-end is "not measured": a behavior protected only by a browser test is written in the entry as `protected by browser test <name>`. It is not an unprotected behavior, so a behavior-keeping change needs no characterization tests (section 8); but if the measured coverage of the entry is below its target, the entry still records a floor with its plan, usually "component tests when touched".
 - **Coverage is not quality.** A line is covered when it runs, not when its result is checked. 100 % with weak assertions protects nothing; judge tests by section 5.
 

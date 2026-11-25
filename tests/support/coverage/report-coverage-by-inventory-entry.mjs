@@ -11,7 +11,8 @@
 // override and floor in use and for every figure above its floor or override (raise or remove the
 // record, spec 005b D-7). It prints everything first and then ends with a non-zero exit code when a
 // CORE or IMPORTANT entry is below its required figure, when an override or floor is not in its
-// written form, or when a production file matches no entry or more than one. A pattern that matches
+// written form, when a CORE entry records a floor (floors are for IMPORTANT entries only, spec 005b
+// D-I5), or when a production file matches no entry or more than one. A pattern that matches
 // no file is only a warning. `pnpm test` does not run this script and never fails on coverage.
 //
 // Tooling, not a production component: it carries no permanent test (spec 005a FR-14, spec 005b
@@ -169,6 +170,17 @@ function readCoverageRecord(exceptionsCell) {
   return { kind: "none" };
 }
 
+// A floor is allowed only on IMPORTANT entries: a CORE entry reaches its target or records an
+// override (spec 005b D-I5). A floor on a CORE entry is a malformed record and is not applied.
+function rejectFloorOnCoreEntry(entryLevel, coverageRecord) {
+  if (entryLevel === "CORE" && coverageRecord.kind === "floor") {
+    return malformedRecord(
+      "a CORE entry cannot record a floor (floors are for IMPORTANT entries only; reach the target or record an override)",
+    );
+  }
+  return coverageRecord;
+}
+
 // Reads every markdown table that has `Id` and `Files` columns. Rows under the "Not production"
 // heading are kept apart: they only take files out of the unmatched list.
 function readInventoryEntries(inventoryText) {
@@ -200,13 +212,17 @@ function readInventoryEntries(inventoryText) {
     }
     const cells = splitTableRowIntoCells(inventoryLine);
     const cellByColumnName = (columnName) => cells[currentColumnNames.indexOf(columnName)] ?? "";
+    const entryLevel = normalizeLevel(cellByColumnName("Level"));
     inventoryEntries.push({
       entryId: cellByColumnName("Id").replaceAll("`", "") || "(no id)",
       area: currentHeading,
       isProduction: !currentHeading.startsWith(NOT_PRODUCTION_HEADING_PREFIX),
       filePatterns: readFilePatternsFromCell(cellByColumnName("Files")),
-      level: normalizeLevel(cellByColumnName("Level")),
-      coverageRecord: readCoverageRecord(cellByColumnName(EXCEPTIONS_COLUMN_NAME)),
+      level: entryLevel,
+      coverageRecord: rejectFloorOnCoreEntry(
+        entryLevel,
+        readCoverageRecord(cellByColumnName(EXCEPTIONS_COLUMN_NAME)),
+      ),
     });
   });
   return inventoryEntries;

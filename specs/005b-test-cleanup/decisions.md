@@ -22,3 +22,17 @@ Decisions taken after the plan was approved. Design decisions of the plan stay i
 - **Why:** the `include` only had `tests/**/*.ts`, so no `.test.tsx` was type-checked. Even with the pattern, TypeScript leaves out a `.tsx` file whose base name matches a `.ts` file in the same folder, and `workspace-state.test.ts` (the reducer unit test of the same source file) already exists. The new name says what the file proves: the provider and its hook.
 - **Discarded:** leaving `tsconfig.json` as it was (component tests never type-checked); keeping the planned name (that file still left out); `workspace-state.component.test.tsx` (keeps the source name but adds a word the repository uses nowhere else).
 - **Approved by:** the user, 2026-11-25, after T22.
+
+## D-I4. The skill names floors in the coverage question of section 1
+
+- **Decided:** row 2 of the table in section 1 of `.claude/skills/quality-testing-core/SKILL.md` reads "Target of the level on lines and branches, minus any override or floor in the entry". Nothing else in that table changes.
+- **Why:** T33 introduced floors as the second record of the `Exceptions and floors` cell, and the report script lowers the required figure for both; the row only named overrides, so it no longer described what `pnpm test:coverage` requires.
+- **Discarded:** leaving the row as it was (it would describe only one of the two records the script applies).
+- **Approved by:** the user, 2026-11-25, at the implementation gate after T34.
+
+## D-I5. Floors only on IMPORTANT entries, never on CORE
+
+- **Decided:** a coverage floor is allowed only on IMPORTANT entries; overrides stay allowed on CORE and IMPORTANT. A CORE entry below 100 % reaches it or records an override with its reason. The rule is written in the `Floor` bullet of section 3 of the skill and in the "Exceptions" bullet of "How to read it" of `docs/criticality-inventory.md`. `tests/support/coverage/report-coverage-by-inventory-entry.mjs` treats a floor on a CORE entry as a malformed record: it names the entry (`<id>: malformed record in "Exceptions and floors": a CORE entry cannot record a floor ...`), does not apply the floor, and ends with a non-zero exit code after printing everything.
+- **Why:** plan 7.4 put no level limit on floors and T33 wrote "a CORE or IMPORTANT entry" into the skill and the inventory, which let a CORE component (the rules that protect ownership, accounts and spoilers) sit below 100 % with only a plan to raise it some day. An override must say why a figure cannot be reached; a floor only says it has not been reached yet, which is acceptable for IMPORTANT but not for CORE. Today no CORE entry records a floor (the nine floors are all IMPORTANT), so nothing in the inventory changes.
+- **Discarded:** floors on CORE and IMPORTANT, as plan 7.4 and T33 left them (CORE could stay below its target without a reason); writing the rule only in the documents (a CORE floor would still be applied by the script and pass).
+- **Approved by:** the user, 2026-11-25, at the implementation gate after T34.
