@@ -1,6 +1,6 @@
 # Tasks 005b — Test cleanup and coverage thresholds
 
-Status: draft
+Status: approved
 
 Spec: `specs/005b-test-cleanup/spec.md`. Plan: `specs/005b-test-cleanup/plan.md` (sections cited per task). Checkboxes are marked when the task is done and verified; the outcome of every group (applied or skipped, and why) is written under its task.
 
