@@ -1,0 +1,63 @@
+Status: approved
+
+Notes (read before implementing):
+- Source: `specs/006-knowledge-items/plan.md` (approved), sections 1 to 9, D1 to D17 and "Expected task split". Seven tasks: the six of the plan, with its screens task split in two as the plan allowed (T5 and T6 below).
+- Spoiler suite: not required by any task. The reads of this spec are under the dated temporary exception of 2026-11-25 in the project rules (not filtered by reading position); the cross-account isolation tests (NFR-2) protect them instead, so no task carries the `Spoiler suite: required` line. Each task that touches a query says in `Tests:` that it runs with two accounts.
+- `Evidence:` lines are not written now: each task that changes a CORE or IMPORTANT component gets its line when it is done (skill `quality-testing-core`). TIER 0 changes carry none.
+- Inventory: every new production file goes into exactly one entry of `docs/criticality-inventory.md` in the task that creates it (ids proposed in plan section 7), otherwise `pnpm test:coverage` fails on an unmatched file.
+- Closing edits (plan "Closing checklist": roadmap, `CLAUDE.md`, rules, `open-decisions.md`, `hardening.md`, the note in spec 004) are not tasks.
+- Every task ends with the verification gate: `pnpm typecheck`, `pnpm lint`, `pnpm test` (local PostgreSQL running, `pnpm prisma generate` after a schema change) and, when the task changes a user flow, `pnpm test:e2e`. Each changed or deleted existing test is reported to the user, never relaxed.
+
+## Test design
+
+Levels from `docs/criticality-inventory.md` and plan section 7; tests mirror `src/` in `tests/`.
+
+| Component | Level | Behaviors to protect | Test type |
+|---|---|---|---|
+| UNI-3 (changed): `find-own-universe`, `list-relationship-types` | CORE | Own universe found; foreign, deleted and nonexistent look the same; types listed only for an own universe | Unit with fakes plus database scenarios with two accounts |
+| UNI-4 (changed): `prisma-universe-repository` (seed), new `prisma-relationship-type-repository` | CORE | A created universe has exactly the eight types with their labels and flags; a failed type store stores no universe; no second copy; backfill of old universes; types read only for the owner | Integration against the test database through the repository contract (fake and PostgreSQL) |
+| UNI-1 / UNI-3 (changed): `universe-text.ts`, `universe-name.ts` delegate to shared | IMPORTANT / CORE | No behavior change | Existing tests green before and after |
+| SHR-8 (new): `text-rules.ts`, `comparable-text.ts` | IMPORTANT | Null character, lone surrogate, code-point counting; case, accent, spacing and composition equivalences | Unit |
+| SHR-7 (changed): `viewer-context.ts`, `spoiler-boundary.ts` | TIER 0 | Types only | None |
+| KNO-1 (new): domain validators | IMPORTANT | Every limit and format rule (1/200/201, 120/121, 5000/5001, N 1 to 5000, signs, decimals, exponents, spaces, leading zeros), trimming, unknown enums, wording per medium, comparable name | Unit per rule and limit |
+| KNO-2 (new): `relationship-reading.ts`, `knowledge-errors.ts` | CORE | Source reading uses the label, target reading the inverse label, symmetric reads the same; one fixed not found message; the business-rule error | Unit, exhaustive |
+| KNO-3 (new): use cases, `resolve-viewer-context`, DTO mapping | CORE | Owner isolation of every use case (same not found as nonexistent, nothing stored); one `ValidationError`; atomic work with units and entity with fragment; empty fragment ignores status and boundary; duplicate notice by type and comparable name; source equals target refused first; extra fields never stored; ordering | Unit with fakes that pass the contracts, owner isolation also against the database |
+| KNO-4 (new): Prisma repositories, mappers, storage operation | CORE | Persistence and creation order; composite keys and `CHECK`s refuse cross-universe references, a unit of another work and source equals target by direct insert; all-or-nothing writes; 5000 units in one operation; failures become infrastructure errors | Integration through repository contracts, fake and PostgreSQL |
+| KNO-5 (new): `composition.ts`, `index.ts` | CORE | The real wiring | Integration test of the real composition |
+| KNO-6 (new): item types and ports | TIER 0 | Type declarations | None |
+| APP-8 (new): `src/app/knowledge/actions.ts` and the five input schemas | CORE | Actor read before input; same-site check; unknown keys stripped; forged owner and foreign universe same as nonexistent; one not found for every bad reference; empty fragment dropped before its shape is parsed; mapped errors with no internals | Integration through the actions with a real session and database |
+| CMP-14 (new): `resolve-typed-unit-number`, `interpret-knowledge-action-result`, `knowledge-issue-messages`, `build-knowledge-form-vocabulary`, `knowledge-load-state` | IMPORTANT | Each outcome and message; stale answer for another universe discarded; typed number rules | Unit |
+| CMP-15 (new): `unit-number-picker.tsx`, `point-field.tsx` | IMPORTANT | Typing, First and Last, resolved point, error linked to the field, last unit proposed in `AUTHOR` only, unit cleared on work change in `READER` | Component tests (jsdom) |
+| CMP-16 (new): `knowledge-provider.tsx`, `works-area.tsx`, `entity-list.tsx`, `entity-details-panel.tsx`, the three forms | IMPORTANT | The journeys of the spec | Protected by browser tests; entry records floor 0/0 as the other interactive entries (spec 005b D-4) |
+| CMP-7 (changed): `workspace-state.tsx` | IMPORTANT | New form and selection actions; selecting or creating a universe clears form and selected entity | Existing unit tests extended (red then green) |
+| CMP-8 (changed): `workspace.tsx`, `central-area.tsx`, `sidebar.tsx`, `inspector-panel.tsx`; CMP-5 (changed): `universe-empty-state.tsx` | IMPORTANT | Browser-protected; their floors stay | Browser tests (existing specs updated, new `knowledge.spec.ts`) |
+| CMP-13 / MSG-1: empty-state texts and `en.ts` | TIER 0 | None | None |
+| CFG-3 (changed): `schema.prisma` and the migration | CORE | Applies on an empty database; the constraints | Protected by the database tests of KNO-4 and UNI-4; migration applied on an empty database in T1 |
+
+- [ ] **T1. Schema, migration, relationship type seed and universes changes.** FR-3, NFR-1, NFR-2
+  - Tests: contract scenarios for the seed (eight types and labels, no copy, failed store stores no universe, backfill of an old universe) on fake and PostgreSQL; `find-own-universe` and `list-relationship-types` with two accounts; shared text rules unit tests; existing universe text and name tests green before and after.
+  - Done when: the migration applies on an empty database; `pnpm typecheck`, `pnpm lint` and `pnpm test` are green; a created universe and a backfilled one have exactly the eight types; `pnpm test:e2e` still passes.
+
+- [ ] **T2. Module `knowledge` and works with their units.** FR-1, FR-2, FR-11
+  - Tests: work title, medium, unit count and wording rules (limits and formats); `create-work` and `list-works` with fakes and PostgreSQL (all-or-nothing with 5000 units, creation order, extra fields ignored); two accounts: foreign and nonexistent universe give the same not found; `createWorkAction` and `loadUniverseKnowledgeAction` with a real session; real composition.
+  - Done when: `pnpm typecheck`, `pnpm lint` and `pnpm test` are green; a work of N units is stored and listed only through its own universe's actions; no screen calls them yet.
+
+- [ ] **T3. Entities with an optional first fragment and the duplicate-name notice.** FR-4, FR-5, FR-6
+  - Tests: entity name, type and fragment rules; `create-entity` (boundary lookups, empty fragment ignoring status and boundary, atomic entity with fragment, notice by type and comparable name naming the oldest, other type none) and `list-entities` on fakes and PostgreSQL, with two accounts; the database refuses a cross-universe or other-work boundary; `createEntityAction` with a real session.
+  - Done when: `pnpm typecheck`, `pnpm lint` and `pnpm test` are green; entities with and without a fragment are stored and listed in creation order; every bad reference gives the same not found.
+
+- [ ] **T4. Relationships and entity details.** FR-7, FR-8, FR-10
+  - Tests: reading of a relationship from both entities (symmetric same text); `create-relationship` (source equals target refused before any lookup, same not found for any bad reference, independent points, repeated pairs, extra fields ignored) and `get-entity-details` (oldest fragment, relationship order) on fakes and PostgreSQL, with two accounts; the database refuses source equals target and cross-universe references by direct insert; `createRelationshipAction` and `loadEntityDetailsAction` with a real session.
+  - Done when: `pnpm typecheck`, `pnpm lint` and `pnpm test` are green; a relationship is stored once and read from both entities with the right label.
+
+- [ ] **T5. Data layer, works area, work form, entity list and cleared selection.** FR-1, FR-2, FR-9, FR-12
+  - Tests: `workspace-state` extended (red then green: selecting or creating a universe clears form and selected entity), `knowledge-load-state` (stale answer discarded), the action-result interpreter and issue messages; updated existing browser specs that assert the removed texts; a browser test that creates a work and sees it after a reload.
+  - Done when: `pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm test:e2e` are green; works are created and listed, the entity list shows its states and selection, and no text says that works or entities are unavailable.
+
+- [ ] **T6. Entity form with the unit picker, optional first fragment and duplicate notice.** FR-4, FR-5, FR-6
+  - Tests: `resolve-typed-unit-number` unit tests; component tests of the picker and point field (typing, First and Last, error linked to the field, last unit proposed in `AUTHOR` only, cleared on work change in `READER`); a browser test that creates an entity with and without a fragment and sees the duplicate notice.
+  - Done when: `pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm test:e2e` are green; an entity is created from the form, selected, and its fragment point follows the entity point until changed.
+
+- [ ] **T7. Details panel, relationship form, inspector text and the main browser journey.** FR-7, FR-10, NFR-3, NFR-4
+  - Tests: `tests/e2e/knowledge.spec.ts`: the plan's six scenarios (main journey with reload and both readings, second account sees nothing, duplicate notice, universe switch clears forms and selection, 5000-unit work at 320 px by keyboard, lost connection keeps values).
+  - Done when: `pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm test:e2e` are green; a relationship appears in the panel from both entities and after a reload; the graph view and timeline entry are unchanged; the keyboard and screen-reader items of NFR-3 are left to the user's manual check.
