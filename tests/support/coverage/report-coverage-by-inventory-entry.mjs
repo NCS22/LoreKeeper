@@ -12,8 +12,11 @@
 // record, spec 005b D-7). It prints everything first and then ends with a non-zero exit code when a
 // CORE or IMPORTANT entry is below its required figure, when an override or floor is not in its
 // written form, when a CORE entry records a floor (floors are for IMPORTANT entries only, spec 005b
-// D-I5), or when a production file matches no entry or more than one. A pattern that matches
-// no file is only a warning. `pnpm test` does not run this script and never fails on coverage.
+// D-I5), when a production entry has a level that is not CORE, IMPORTANT or TIER 0 (empty
+// included), when a production entry table lacks one of the columns `Id`, `Level`, `Files` and
+// `Exceptions and floors`, when a row of such a table has a different number of cells than its
+// header (an unescaped `|` shifts the columns; spec 005b D-I6), or when a production file matches
+// no entry or more than one. A pattern that matches no file is only a warning. `pnpm test` does not run this script and never fails on coverage.
 //
 // Tooling, not a production component: it carries no permanent test (spec 005a FR-14, spec 005b
 // decision P12); it is checked by the temporary checks of spec 005b plan 7.4.
@@ -31,6 +34,7 @@ const TARGET_PERCENT_BY_LEVEL = { CORE: 100, IMPORTANT: 80, "TIER 0": null };
 const NOT_PRODUCTION_HEADING_PREFIX = "Not production";
 const GENERATED_SOURCE_PREFIX = "src/shared/infrastructure/generated/";
 const EXCEPTIONS_COLUMN_NAME = "Exceptions and floors";
+const REQUIRED_PRODUCTION_COLUMN_NAMES = ["Id", "Level", "Files", EXCEPTIONS_COLUMN_NAME];
 
 // Written forms of the `Exceptions and floors` cell (spec 005b, plan 7.4). A figure has one
 // decimal at most. An override names both metrics; a floor names at least one.
@@ -181,11 +185,33 @@ function rejectFloorOnCoreEntry(entryLevel, coverageRecord) {
   return coverageRecord;
 }
 
+// A production entry table must have every column the check reads (spec 005b D-I6); a missing or
+// misspelt header would leave every entry of the table unchecked.
+function findMissingColumnProblems(tableHeading, tableLineNumber, columnNames) {
+  return REQUIRED_PRODUCTION_COLUMN_NAMES.filter(
+    (requiredColumnName) => !columnNames.includes(requiredColumnName),
+  ).map(
+    (missingColumnName) =>
+      `table of "${tableHeading}" (inventory line ${tableLineNumber}): missing column "${missingColumnName}"`,
+  );
+}
+
+// A row with more or fewer cells than its header (an unescaped `|` in a cell) shifts the columns,
+// so its level and record cannot be trusted (spec 005b D-I6).
+function describeCellCountProblem(cells, columnNames, lineNumber) {
+  if (cells.length === columnNames.length) {
+    return null;
+  }
+  return `the row (inventory line ${lineNumber}) has ${cells.length} cells and its table header has ${columnNames.length} (an unescaped "|" in a cell shifts the columns)`;
+}
+
 // Reads every markdown table that has `Id` and `Files` columns. Rows under the "Not production"
-// heading are kept apart: they only take files out of the unmatched list.
+// heading are kept apart: they only take files out of the unmatched list. Problems in the shape of
+// a production table are returned apart, to fail the check.
 function readInventoryEntries(inventoryText) {
   const inventoryLines = inventoryText.split(/\r?\n/);
   const inventoryEntries = [];
+  const tableProblemTexts = [];
   let currentHeading = "";
   let currentColumnNames = null;
 
@@ -203,8 +229,14 @@ function readInventoryEntries(inventoryText) {
       return;
     }
     const nextLine = inventoryLines[lineIndex + 1] ?? "";
+    const isProductionTable = !currentHeading.startsWith(NOT_PRODUCTION_HEADING_PREFIX);
     if (currentColumnNames === null && isTableSeparatorLine(nextLine)) {
       currentColumnNames = splitTableRowIntoCells(inventoryLine);
+      if (isProductionTable && currentColumnNames.includes("Files")) {
+        tableProblemTexts.push(
+          ...findMissingColumnProblems(currentHeading, lineIndex + 1, currentColumnNames),
+        );
+      }
       return;
     }
     if (currentColumnNames === null || !currentColumnNames.includes("Files")) {
@@ -216,16 +248,19 @@ function readInventoryEntries(inventoryText) {
     inventoryEntries.push({
       entryId: cellByColumnName("Id").replaceAll("`", "") || "(no id)",
       area: currentHeading,
-      isProduction: !currentHeading.startsWith(NOT_PRODUCTION_HEADING_PREFIX),
+      isProduction: isProductionTable,
       filePatterns: readFilePatternsFromCell(cellByColumnName("Files")),
       level: entryLevel,
+      rowProblemText: isProductionTable
+        ? describeCellCountProblem(cells, currentColumnNames, lineIndex + 1)
+        : null,
       coverageRecord: rejectFloorOnCoreEntry(
         entryLevel,
         readCoverageRecord(cellByColumnName(EXCEPTIONS_COLUMN_NAME)),
       ),
     });
   });
-  return inventoryEntries;
+  return { inventoryEntries, tableProblemTexts };
 }
 
 // Istanbul-format report as written by the V8 provider. A line counts as covered when any
@@ -381,6 +416,9 @@ function describeMeasuredFigures(countsByMetric, coverageByTestType) {
 function checkEntryCoverage(inventoryEntry, entryFiles, coverageByTestType) {
   const entryResult = { outputLines: [], failureTexts: [], noticeTexts: [], recordInUseText: null };
   const { coverageRecord } = inventoryEntry;
+  if (inventoryEntry.rowProblemText) {
+    entryResult.failureTexts.push(`${inventoryEntry.entryId}: ${inventoryEntry.rowProblemText}`);
+  }
   if (coverageRecord.kind === "malformed") {
     entryResult.failureTexts.push(
       `${inventoryEntry.entryId}: malformed record in "${EXCEPTIONS_COLUMN_NAME}": ${coverageRecord.problemText}`,
@@ -404,9 +442,12 @@ function checkEntryCoverage(inventoryEntry, entryFiles, coverageByTestType) {
     entryResult.outputLines.push(...describeMeasuredFigures(countsByMetric, coverageByTestType));
   }
 
-  if (!(inventoryEntry.level in TARGET_PERCENT_BY_LEVEL)) {
+  if (!Object.hasOwn(TARGET_PERCENT_BY_LEVEL, inventoryEntry.level)) {
     entryResult.outputLines.push(
       `  target: unknown level "${inventoryEntry.level}", expected CORE, IMPORTANT or TIER 0`,
+    );
+    entryResult.failureTexts.push(
+      `${inventoryEntry.entryId} [${levelLabel}]: unknown level "${inventoryEntry.level}" in "Level", expected CORE, IMPORTANT or TIER 0`,
     );
     return entryResult;
   }
@@ -493,7 +534,9 @@ function matchFilesToEntries(inventoryEntries, candidateFiles) {
 }
 
 function reportCoverageByInventoryEntry() {
-  const inventoryEntries = readInventoryEntries(readFileSync(INVENTORY_PATH, "utf8"));
+  const { inventoryEntries, tableProblemTexts } = readInventoryEntries(
+    readFileSync(INVENTORY_PATH, "utf8"),
+  );
   const candidateFiles = listProductionCandidateFiles();
   const coverageByTestType = Object.fromEntries(
     MEASURED_TEST_TYPES.map((testType) => [testType, readCoverageByFile(testType)]),
@@ -550,6 +593,7 @@ function reportCoverageByInventoryEntry() {
   printList("Inventory patterns that match no file (warning)", patternsWithoutFiles);
 
   failureTexts.push(
+    ...tableProblemTexts,
     ...unmatchedFiles.map((unmatchedFile) => `${unmatchedFile}: matches no inventory entry`),
     ...duplicatedFiles.map((duplicatedFile) => `${duplicatedFile}: matches more than one inventory entry`),
   );
