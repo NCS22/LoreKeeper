@@ -219,51 +219,9 @@ describe.each(universeStorageFactories)("createUniverse: %s", (_name, createStor
     expect(await universeRepository.findAllOwnedBy(FIRST_OWNER_ID)).toEqual([existingUniverse]);
   });
 
+  // The name, description and mode rules (required, limits, accepted modes) are proved in
+  // tests/modules/universes/domain; this block keeps what only the use case shows.
   describe("validation", () => {
-    it.each(["", "    ", "\n\t"])("rejects the name %j as required", async (rawName) => {
-      const { dependencies } = await setUp();
-
-      const error = await captureValidationError(
-        createUniverse(dependencies, actor, { ...validCommand, name: rawName }),
-      );
-
-      expect(error.issues).toEqual([{ field: "name", code: "NAME_REQUIRED" }]);
-    });
-
-    it("rejects a name over the limit and reports the limit", async () => {
-      const { dependencies } = await setUp();
-
-      const error = await captureValidationError(
-        createUniverse(dependencies, actor, {
-          ...validCommand,
-          name: "n".repeat(MAXIMUM_UNIVERSE_NAME_LENGTH + 1),
-        }),
-      );
-
-      expect(error.issues).toEqual([
-        { field: "name", code: "NAME_TOO_LONG", maximumLength: MAXIMUM_UNIVERSE_NAME_LENGTH },
-      ]);
-    });
-
-    it("rejects a description over the limit and reports the limit", async () => {
-      const { dependencies } = await setUp();
-
-      const error = await captureValidationError(
-        createUniverse(dependencies, actor, {
-          ...validCommand,
-          description: "d".repeat(MAXIMUM_UNIVERSE_DESCRIPTION_LENGTH + 1),
-        }),
-      );
-
-      expect(error.issues).toEqual([
-        {
-          field: "description",
-          code: "DESCRIPTION_TOO_LONG",
-          maximumLength: MAXIMUM_UNIVERSE_DESCRIPTION_LENGTH,
-        },
-      ]);
-    });
-
     it.each([
       ["the null character", "Ember\u0000", "name", "NAME_INVALID_CHARACTERS"],
       ["a lone surrogate", "Ember\uD800", "name", "NAME_INVALID_CHARACTERS"],
@@ -288,16 +246,6 @@ describe.each(universeStorageFactories)("createUniverse: %s", (_name, createStor
       expect(error.issues).toEqual([
         { field: "description", code: "DESCRIPTION_INVALID_CHARACTERS" },
       ]);
-    });
-
-    it.each(["", "reader", "OWNER", " READER"])("rejects the mode %j", async (rawMode) => {
-      const { dependencies } = await setUp();
-
-      const error = await captureValidationError(
-        createUniverse(dependencies, actor, { ...validCommand, mode: rawMode }),
-      );
-
-      expect(error.issues).toEqual([{ field: "mode", code: "MODE_INVALID" }]);
     });
 
     it("reports every failing field together in one error", async () => {
