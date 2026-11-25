@@ -19,6 +19,7 @@ Nothing listed in `docs/open-decisions.md` may be implemented until it is resolv
 - Timestamps are `timestamptz`, stored in UTC and serialized as ISO 8601.
 - Every user-content table has `createdAt`, `updatedAt` and `deletedAt` (nullable, soft delete). The only exceptions are tables of user state, not content: `ReadingProgress`, `RememberedUniverse` and `UserPreferences` have only `updatedAt` and are hard-deleted (with their work or user when it is purged).
 - `status` (`CONFIRMED | USER_NOTE | SPECULATION`) lives on `KnowledgeEntry`, `EntityAlias`, `Relationship` and `Event`; `Entity` has none because its knowledge already carries one per entry. `CONFIRMED` does not require a `Citation`; the interface flags confirmed items that have none as "without source".
+  - Temporary exception (2026-11-25, spec 006): the items of spec 006 do not show the "without source" flag, because no source exists yet. It expires, and is removed, when the Phase 3 spec for sources is implemented.
 - Closed categories are enums. User-extensible categories are catalog tables (e.g. `RelationshipType`).
 - Foreign keys are always declared. Writes touching several records run in one transaction.
 - Every universe belongs to one user. Tables that hang directly from a universe carry `universeId`, so every query can be scoped by owner.
@@ -275,6 +276,8 @@ Visibility is computed in the backend (`SpoilerService` in the domain, applied b
 6. The same rules apply to every read path: pages, API, search, graph, timeline and AI retrieval.
 
 Spoiler visibility rules have mandatory unit tests covering: boundary equal to progress, one unit before and after, no progress, `AUTHOR` mode, and every dependent case above.
+
+Temporary exception (2026-11-25, spec 006): the reads of spec 006 (the works, units, entities, knowledge fragments, relationship types and relationships of a universe, including what its creation forms read) are not filtered by reading position, so changes to them run no spoiler suite; the cross-account isolation tests protect them instead. It expires, and is removed, when the Phase 4 spec that filters these reads is implemented; that spec must filter them and add the spoiler suite. The rules of this section do not apply to those reads until then.
 
 ## 5. Integrity and lifecycle
 

@@ -106,6 +106,7 @@ Full domain model in `.claude/rules/data-model.md`.
 - Narrative information is created together with its spoiler boundary. How to handle information without a boundary is an open decision.
 - Information is classified as confirmed, user note or speculation.
 - In `READER` universes, filtering happens in the backend before data reaches the frontend or an AI provider. Hiding it visually is not enough.
+  - Temporary exception (2026-11-25, spec 006): the reads of spec 006 (the works, units, entities, knowledge fragments, relationship types and relationships of a universe, including what its creation forms read) are not filtered by reading position in `READER` universes. It expires, and is removed, when the Phase 4 spec that filters these reads is implemented; that spec must filter them and add the spoiler suite.
 
 **Integrity and lifecycle**
 - Relationships across universes are not allowed.
@@ -159,6 +160,7 @@ Invariants of the system. They are never broken, whatever the task.
 - Route Handlers and Server Actions only validate input, call a use case and map the response.
 - Visualization libraries stay in the presentation layer; the graph is built from domain entities and relationships.
 - Spoiler filtering is enforced in the backend for every read path: pages, API, search, graph, timeline and AI.
+  - Temporary exception (2026-11-25, spec 006): the reads of spec 006 (the works, units, entities, knowledge fragments, relationship types and relationships of a universe, including what its creation forms read) are not filtered by reading position in `READER` universes. It expires, and is removed, when the Phase 4 spec that filters these reads is implemented; that spec must filter them and add the spoiler suite.
 - AI never depends on a single provider in business logic and never writes canonical data; suggestions require user approval.
 - Every query is scoped to the authenticated user; authorization is checked in the backend.
 - API credentials live in environment variables and never reach the frontend.
@@ -199,6 +201,7 @@ Before declaring a task finished:
 2. `pnpm test` passes, including the tests the change needs by its criticality (CORE and IMPORTANT carry tests, TIER 0 none).
 3. `pnpm test:e2e` for changes that affect user flows.
 4. Any change to queries, visibility or reading progress runs the spoiler protection tests. They are mandatory.
+   - Temporary exception (2026-11-25, spec 006): the reads of spec 006 (the works, units, entities, knowledge fragments, relationship types and relationships of a universe, including what its creation forms read) are not filtered by reading position, so changes to them run no spoiler suite; the cross-account isolation tests protect them instead. It expires, and is removed, when the Phase 4 spec that filters these reads is implemented; that spec must filter them and add the spoiler suite.
 5. Schema changes: the migration applies cleanly on an empty database.
 6. The diff contains no secrets and no changes outside the task scope.
 7. Final summary to the user: what changed, why, how it was verified, what is still pending.

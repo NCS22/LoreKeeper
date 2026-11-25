@@ -194,6 +194,7 @@ The test type depends on the layer and on the level of the component in `docs/cr
 
 - Fakes implement the same repository interfaces as Prisma repositories and live in `tests/support/fakes/`.
 - Spoiler visibility tests are mandatory for every read use case.
+  - Temporary exception (2026-11-25, spec 006): the reads of spec 006 (the works, units, entities, knowledge fragments, relationship types and relationships of a universe, including what its creation forms read) are not filtered by reading position, so changes to them run no spoiler suite; the cross-account isolation tests protect them instead. It expires, and is removed, when the Phase 4 spec that filters these reads is implemented; that spec must filter them and add the spoiler suite.
 
 ## 13. Anti-patterns
 
