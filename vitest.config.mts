@@ -10,6 +10,8 @@ const DATABASE_BACKED_TEST_FILES = [
   "tests/modules/*/infrastructure/**/*.test.ts",
   // The use case scenarios of the universes also run against PostgreSQL (spec 004, NFR-1).
   "tests/modules/universes/application/**/*.test.ts",
+  // The use case scenarios of the knowledge module also run against PostgreSQL (spec 006, NFR-1).
+  "tests/modules/knowledge/application/**/*.test.ts",
   "tests/app/**/*.test.ts",
   // The page loader of the workspace reads the session and the stored universes.
   "tests/components/workspace/load-workspace-universes-for-page.test.ts",

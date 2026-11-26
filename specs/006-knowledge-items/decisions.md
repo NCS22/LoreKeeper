@@ -57,3 +57,45 @@ Decisions taken after the plan was approved. Design decisions of the plan stay i
 - **Why:** the contract scenarios must run the same on the fake and on PostgreSQL, including the all-or-nothing case.
 - **Discarded:** inserting the types by hand in the storage (it would not exercise `add`).
 - **Approved by:** the user, 2026-11-26, after T1.
+
+## D-T2-1. The work repository does not read the `Universe` table
+
+- **Decided:** the work repository filters only by the `universeId` of the `ViewerContext`, which exists only after the ownership check of `resolve-viewer-context` (built on `findOwnUniverse`).
+- **Why:** a module does not read the tables of another module; the cross-account protection sits in that check, tested with two accounts in the use cases, the actions and the contract.
+- **Discarded:** joining `Universe` and `ownerId` in every work query (the `knowledge` module reading the tables of `universes`).
+- **Approved by:** the user, 2026-11-26, at the implementation gate after T2.
+
+## D-T2-2. `create-work` checks the universe before the fields
+
+- **Decided:** ownership is resolved first (plan section 3); a foreign universe with invalid fields answers not found, and a malformed universe identifier gives only the `universeId` validation issue.
+- **Why:** an answer that lists field problems for a foreign universe would confirm that it exists.
+- **Discarded:** validating the fields first.
+- **Approved by:** the user, 2026-11-26, after T2.
+
+## D-T2-3. One `loadUniverseKnowledge(actor, universeId)` operation
+
+- **Decided:** the module exposes one load operation that checks ownership once and lists with the `ViewerContext`; today it returns `{ works }`, and T3 and T4 extend it.
+- **Why:** the load action calls a single operation and the ownership check is not repeated per list.
+- **Discarded:** one action per list.
+- **Approved by:** the user, 2026-11-26, after T2.
+
+## D-T2-4. Files the plan did not name
+
+- **Decided:** `domain/numbered-units.ts` (labels and ordinals of the units) in KNO-1, and `domain/work.ts` (`NewWork`, `Work`, `NewNarrativeUnit` types) in KNO-6; `unit-number.ts` waits for T3.
+- **Why:** small single-purpose files in the existing inventory entries.
+- **Discarded:** placing those rules inside `create-work.ts`.
+- **Approved by:** the user, 2026-11-26, after T2.
+
+## D-T2-5. No "unknown value" branch when mapping the stored medium
+
+- **Decided:** the mapper from the Prisma enum to the domain medium has no fallback branch.
+- **Why:** the Prisma enum matches the domain type and the type checker guarantees it; the database cannot store another value, so the branch would be unreachable and need a coverage override.
+- **Discarded:** a defensive branch with an override, as in UNI-4.
+- **Approved by:** the user, 2026-11-26, after T2.
+
+## D-T2-6. Error codes of the unit count
+
+- **Decided:** `UNIT_COUNT_REQUIRED`, `UNIT_COUNT_INVALID` and `UNIT_COUNT_OUT_OF_RANGE`; the issue carries no limits (a `ValidationIssue` only has length fields), and the module exports `MAXIMUM_UNIT_COUNT`.
+- **Why:** the screen can say which rule failed and show the maximum from the constant.
+- **Discarded:** extending `ValidationIssue` with numeric limits (a shared change outside the task).
+- **Approved by:** the user, 2026-11-26, after T2.
