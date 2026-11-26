@@ -16,6 +16,15 @@ export type EntityFormFieldName =
   | "fragmentBoundaryWorkId"
   | "fragmentBoundaryUnitNumber";
 
+/** The fields of the relationship creation form. */
+export type RelationshipFormFieldName =
+  | "sourceEntityId"
+  | "targetEntityId"
+  | "relationshipTypeId"
+  | "status"
+  | "boundaryWorkId"
+  | "boundaryUnitNumber";
+
 export type KnowledgeFormVocabulary = {
   readonly work: {
     /** The name each form field has in the issues the actions return. */
@@ -56,6 +65,22 @@ export type KnowledgeFormVocabulary = {
     readonly statuses: readonly string[];
     readonly maximumNameLength: number;
     readonly maximumFragmentContentLength: number;
+  };
+  readonly relationship: {
+    /** The input path each form field has in the issues the relationship action returns (D17). */
+    readonly fieldNames: Readonly<Record<RelationshipFormFieldName, string>>;
+    /** The stable code of each issue the relationship rules report. */
+    readonly issueCodes: {
+      /** An entity, relationship type or work identifier that is not well formed. */
+      readonly itemIdInvalid: string;
+      readonly unitNumberRequired: string;
+      readonly unitNumberInvalid: string;
+      readonly statusInvalid: string;
+    };
+    /** The code of the refusal of a relationship from an entity to itself, the one business rule of the form (FR-8). */
+    readonly relatedToItselfCode: string;
+    /** The statuses of a relationship, in the order the form offers them. */
+    readonly statuses: readonly string[];
   };
   /** The types an entity can have, in the order the forms offer them. */
   readonly entityTypes: readonly string[];

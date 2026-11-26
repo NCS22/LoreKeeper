@@ -1,5 +1,8 @@
 import { en } from "@/messages/en";
-import type { KnowledgeFormVocabulary } from "@/components/knowledge/knowledge-form-vocabulary";
+import type {
+  KnowledgeFormVocabulary,
+  RelationshipFormFieldName,
+} from "@/components/knowledge/knowledge-form-vocabulary";
 import type { ActionFieldIssue } from "@/shared/presentation/action-result";
 
 /**
@@ -59,6 +62,41 @@ export function getEntityIssueMessage(issue: ActionFieldIssue, vocabulary: Knowl
       return messages.CONTENT_TOO_LONG(issue.maximumLength ?? vocabulary.entity.maximumFragmentContentLength);
     case codes.contentInvalidCharacters:
       return messages.CONTENT_INVALID_CHARACTERS;
+    case codes.statusInvalid:
+      return messages.STATUS_INVALID;
+    default:
+      return messages.UNKNOWN;
+  }
+}
+
+/** What a malformed identifier asks for, by the field of the relationship form it was reported on. */
+const RELATIONSHIP_ITEM_ID_MESSAGES: Readonly<Partial<Record<RelationshipFormFieldName, string>>> = {
+  sourceEntityId: en.relationshipCreation.issues.SOURCE_INVALID,
+  targetEntityId: en.relationshipCreation.issues.TARGET_INVALID,
+  relationshipTypeId: en.relationshipCreation.issues.TYPE_INVALID,
+  boundaryWorkId: en.relationshipCreation.issues.WORK_INVALID,
+};
+
+/**
+ * Turns a validation issue of the relationship creation into the text shown under its field, by the
+ * stable issue code. One code reports every malformed identifier (an entity, the type or the work of
+ * the point), so its message depends on the field it was reported on.
+ */
+export function getRelationshipIssueMessage(
+  issue: ActionFieldIssue,
+  formField: RelationshipFormFieldName,
+  vocabulary: KnowledgeFormVocabulary,
+): string {
+  const messages = en.relationshipCreation.issues;
+  const codes = vocabulary.relationship.issueCodes;
+
+  switch (issue.code) {
+    case codes.itemIdInvalid:
+      return RELATIONSHIP_ITEM_ID_MESSAGES[formField] ?? messages.UNKNOWN;
+    case codes.unitNumberRequired:
+      return messages.UNIT_NUMBER_REQUIRED;
+    case codes.unitNumberInvalid:
+      return messages.UNIT_NUMBER_INVALID;
     case codes.statusInvalid:
       return messages.STATUS_INVALID;
     default:

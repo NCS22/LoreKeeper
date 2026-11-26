@@ -11,14 +11,29 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { createEntityAction, createWorkAction, loadUniverseKnowledgeAction } from "@/app/knowledge/actions";
+import {
+  createEntityAction,
+  createRelationshipAction,
+  createWorkAction,
+  loadEntityDetailsAction,
+  loadUniverseKnowledgeAction,
+} from "@/app/knowledge/actions";
 import { leaveAccountPage } from "@/components/accounts/leave-account-page";
 import { runWithTimeLimit, type TimeLimitedOutcome } from "@/components/accounts/run-with-time-limit";
 import {
+  INITIAL_ENTITY_DETAILS_LOAD_STATE,
+  readEntityDetailsLoadOf,
+  reduceEntityDetailsLoadState,
+  type EntityDetailsLoad,
+} from "@/components/knowledge/entity-details-load-state";
+import {
   interpretCreateEntityResult,
+  interpretCreateRelationshipResult,
   interpretCreateWorkResult,
+  interpretLoadEntityDetailsResult,
   interpretLoadUniverseKnowledgeResult,
   type EntityCreationOutcome,
+  type RelationshipCreationOutcome,
   type WorkCreationOutcome,
 } from "@/components/knowledge/interpret-knowledge-action-result";
 import type { KnowledgeFormVocabulary } from "@/components/knowledge/knowledge-form-vocabulary";
@@ -67,10 +82,19 @@ export type EntityFormValues = {
   };
 };
 
-/** The kind of item of the last creation, so its messages name it. */
-export type KnowledgeCreationKind = "work" | "entity";
+/** What the relationship form sends; the universe is always the selected one (FR-7). */
+export type RelationshipFormValues = {
+  readonly sourceEntityId: string;
+  readonly targetEntityId: string;
+  readonly relationshipTypeId: string;
+  readonly status: string;
+  readonly boundary: PointFormValues;
+};
 
-type KnowledgeCreationOutcome = WorkCreationOutcome | EntityCreationOutcome;
+/** The kind of item of the last creation, so its messages name it. */
+export type KnowledgeCreationKind = "work" | "entity" | "relationship";
+
+type KnowledgeCreationOutcome = WorkCreationOutcome | EntityCreationOutcome | RelationshipCreationOutcome;
 
 /** A creation that was submitted: its request, its universe and the timer of its block cap. */
 type PendingCreation = {
@@ -107,6 +131,10 @@ type KnowledgeContextValue = {
   knowledgeLoad: KnowledgeLoad | null;
   /** Loads the selected universe again, after a failed load. */
   retryKnowledgeLoad: () => void;
+  /** What the details panel shows of the selected entity, or null when no entity is selected (FR-10). */
+  entityDetailsLoad: EntityDetailsLoad | null;
+  /** Loads the details of the selected entity again, after a failed load. */
+  retryEntityDetailsLoad: () => void;
   /** True while a creation of the selected universe keeps the knowledge forms from sending another. */
   isCreationBlocked: boolean;
   creationNoticeCode: CreationNoticeCode | null;
@@ -122,6 +150,8 @@ type KnowledgeContextValue = {
   createWork: (values: WorkFormValues) => Promise<WorkCreationOutcome | null>;
   /** Creates an entity, with its optional first fragment, in the selected universe; resolves as `createWork`. */
   createEntity: (values: EntityFormValues) => Promise<EntityCreationOutcome | null>;
+  /** Creates a relationship between two entities of the selected universe; resolves as `createWork`. */
+  createRelationship: (values: RelationshipFormValues) => Promise<RelationshipCreationOutcome | null>;
   dismissCreationNotice: () => void;
 };
 
@@ -140,10 +170,14 @@ export function KnowledgeProvider({ children, vocabulary }: KnowledgeProviderPro
   const { state: workspaceState } = useWorkspaceState();
   const { confirmAccountBeforeSending, signInAddress } = useUniverses();
   const selectedUniverseId = workspaceState.selectedUniverseId;
+  const selectedEntityId = workspaceState.selectedEntityId;
   const [loadState, dispatchLoadEvent] = useReducer(reduceKnowledgeLoadState, INITIAL_KNOWLEDGE_LOAD_STATE);
   const lastLoadRequestIdRef = useRef(0);
-  // Read when an answer arrives, to know whether its universe is still the selected one.
+  const [detailsState, dispatchDetailsEvent] = useReducer(reduceEntityDetailsLoadState, INITIAL_ENTITY_DETAILS_LOAD_STATE);
+  const lastDetailsRequestIdRef = useRef(0);
+  // Read when an answer arrives, to know whether its universe and entity are still the selected ones.
   const selectedUniverseIdRef = useRef(selectedUniverseId);
+  const selectedEntityIdRef = useRef(selectedEntityId);
   const [creationState, setCreationState] = useState<UniverseCreationState>(INITIAL_UNIVERSE_CREATION_STATE);
   // As in the universes provider, the reducer runs in the callbacks so a second submission sees the
   // blocked state at once.
@@ -169,7 +203,8 @@ export function KnowledgeProvider({ children, vocabulary }: KnowledgeProviderPro
 
   useEffect(() => {
     selectedUniverseIdRef.current = selectedUniverseId;
-  }, [selectedUniverseId]);
+    selectedEntityIdRef.current = selectedEntityId;
+  }, [selectedUniverseId, selectedEntityId]);
 
   const loadKnowledge = useCallback(
     async (universeId: string) => {
@@ -202,6 +237,40 @@ export function KnowledgeProvider({ children, vocabulary }: KnowledgeProviderPro
   const retryKnowledgeLoad = useCallback(() => {
     if (selectedUniverseIdRef.current !== null) void loadKnowledge(selectedUniverseIdRef.current);
   }, [loadKnowledge]);
+
+  const loadEntityDetails = useCallback(
+    async (universeId: string, entityId: string) => {
+      lastDetailsRequestIdRef.current += 1;
+      const requestId = lastDetailsRequestIdRef.current;
+      dispatchDetailsEvent({ type: "detailsRequested", universeId, entityId, requestId });
+
+      const outcome = interpretLoadEntityDetailsResult(
+        await runWithTimeLimit(() => loadEntityDetailsAction({ universeId, entityId })),
+        vocabulary,
+      );
+      if (outcome.status === "signed-out") {
+        leaveAccountPage(signInAddress);
+        return;
+      }
+      dispatchDetailsEvent(
+        outcome.status === "loaded"
+          ? { type: "detailsSucceeded", universeId, entityId, requestId, details: outcome.details }
+          : { type: "detailsFailed", universeId, entityId, requestId },
+      );
+    },
+    [vocabulary, signInAddress],
+  );
+
+  // The details are loaded every time an entity is selected (D16); nothing is selected after a reload.
+  useEffect(() => {
+    if (selectedUniverseId !== null && selectedEntityId !== null) void loadEntityDetails(selectedUniverseId, selectedEntityId);
+  }, [selectedUniverseId, selectedEntityId, loadEntityDetails]);
+
+  const retryEntityDetailsLoad = useCallback(() => {
+    const universeId = selectedUniverseIdRef.current;
+    const entityId = selectedEntityIdRef.current;
+    if (universeId !== null && entityId !== null) void loadEntityDetails(universeId, entityId);
+  }, [loadEntityDetails]);
 
   const applyCreationEvent = useCallback((event: UniverseCreationEvent) => {
     creationStateRef.current = reduceUniverseCreationState(creationStateRef.current, event);
@@ -346,6 +415,38 @@ export function KnowledgeProvider({ children, vocabulary }: KnowledgeProviderPro
     [beginCreation, finishCreation, sendCreation, vocabulary],
   );
 
+  const createRelationship = useCallback(
+    async (values: RelationshipFormValues): Promise<RelationshipCreationOutcome | null> => {
+      const creation = beginCreation("relationship");
+      if (creation === null) return null;
+      try {
+        const sendingEnd = await sendCreation(creation, () =>
+          createRelationshipAction({ universeId: creation.universeId, ...values }),
+        );
+        if (sendingEnd.kind === "not-sent") return null;
+        const outcome = finishCreation<RelationshipCreationOutcome>(
+          creation,
+          sendingEnd.kind === "signed-out"
+            ? { status: "sign-in-again" }
+            : interpretCreateRelationshipResult(sendingEnd.end, vocabulary),
+        );
+        // The panel shows the new relationship when the selected entity is one of its two (FR-10).
+        const entityIdShown = selectedEntityIdRef.current;
+        if (
+          outcome?.status === "created" &&
+          entityIdShown !== null &&
+          (entityIdShown === outcome.relationship.sourceEntityId || entityIdShown === outcome.relationship.targetEntityId)
+        ) {
+          void loadEntityDetails(creation.universeId, entityIdShown);
+        }
+        return outcome;
+      } finally {
+        clearTimeout(creation.blockCapTimerId);
+      }
+    },
+    [beginCreation, finishCreation, sendCreation, vocabulary, loadEntityDetails],
+  );
+
   const dismissCreationNotice = useCallback(() => applyCreationEvent({ type: "noticeDismissed" }), [applyCreationEvent]);
 
   // The creation state belongs to the universe of its last submission: in another universe nothing of
@@ -357,6 +458,11 @@ export function KnowledgeProvider({ children, vocabulary }: KnowledgeProviderPro
       vocabulary,
       knowledgeLoad: selectedUniverseId === null ? null : readKnowledgeLoadOf(loadState, selectedUniverseId),
       retryKnowledgeLoad,
+      entityDetailsLoad:
+        selectedUniverseId === null || selectedEntityId === null
+          ? null
+          : readEntityDetailsLoadOf(detailsState, selectedUniverseId, selectedEntityId),
+      retryEntityDetailsLoad,
       isCreationBlocked: creationBelongsToSelectedUniverse && isCreationBlocked(creationState),
       creationNoticeCode: creationBelongsToSelectedUniverse ? creationState.noticeCode : null,
       creationKind: creationBelongsToSelectedUniverse ? creationKind : null,
@@ -366,19 +472,24 @@ export function KnowledgeProvider({ children, vocabulary }: KnowledgeProviderPro
           : null,
       createWork,
       createEntity,
+      createRelationship,
       dismissCreationNotice,
     }),
     [
       vocabulary,
       selectedUniverseId,
+      selectedEntityId,
       loadState,
       retryKnowledgeLoad,
+      detailsState,
+      retryEntityDetailsLoad,
       creationBelongsToSelectedUniverse,
       creationState,
       creationKind,
       similarEntityNotice,
       createWork,
       createEntity,
+      createRelationship,
       dismissCreationNotice,
     ],
   );

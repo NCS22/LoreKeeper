@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildKnowledgeFormVocabulary } from "@/components/knowledge/build-knowledge-form-vocabulary";
-import { getEntityIssueMessage, getWorkIssueMessage } from "@/components/knowledge/knowledge-issue-messages";
+import {
+  getEntityIssueMessage,
+  getRelationshipIssueMessage,
+  getWorkIssueMessage,
+} from "@/components/knowledge/knowledge-issue-messages";
 import { en } from "@/messages/en";
 
 const vocabulary = buildKnowledgeFormVocabulary();
@@ -93,5 +97,48 @@ describe("getEntityIssueMessage", () => {
 
   it("gives an issue code it does not know the generic message", () => {
     expect(getEntityIssueMessage({ code: "SOMETHING_ELSE" }, vocabulary)).toBe(entityMessages.UNKNOWN);
+  });
+});
+
+describe("getRelationshipIssueMessage", () => {
+  const relationshipCodes = vocabulary.relationship.issueCodes;
+  const relationshipMessages = en.relationshipCreation.issues;
+
+  it.each([
+    ["the source", "sourceEntityId", relationshipMessages.SOURCE_INVALID],
+    ["the target", "targetEntityId", relationshipMessages.TARGET_INVALID],
+    ["the type", "relationshipTypeId", relationshipMessages.TYPE_INVALID],
+    ["the work of the point", "boundaryWorkId", relationshipMessages.WORK_INVALID],
+  ] as const)("asks for %s when its identifier is malformed", (_description, formField, expectedMessage) => {
+    expect(getRelationshipIssueMessage({ code: relationshipCodes.itemIdInvalid }, formField, vocabulary)).toBe(expectedMessage);
+  });
+
+  it.each([
+    ["a missing unit number", relationshipCodes.unitNumberRequired, relationshipMessages.UNIT_NUMBER_REQUIRED],
+    ["a unit number that is not only digits", relationshipCodes.unitNumberInvalid, relationshipMessages.UNIT_NUMBER_INVALID],
+    ["a missing or unknown status", relationshipCodes.statusInvalid, relationshipMessages.STATUS_INVALID],
+  ])("maps %s to its own message", (_description, code, expectedMessage) => {
+    expect(getRelationshipIssueMessage({ code }, "status", vocabulary)).toBe(expectedMessage);
+  });
+
+  it("gives every field and issue a different message, none of them the generic one", () => {
+    const shownMessages = [
+      ...(["sourceEntityId", "targetEntityId", "relationshipTypeId", "boundaryWorkId"] as const).map((formField) =>
+        getRelationshipIssueMessage({ code: relationshipCodes.itemIdInvalid }, formField, vocabulary),
+      ),
+      ...[relationshipCodes.unitNumberRequired, relationshipCodes.unitNumberInvalid, relationshipCodes.statusInvalid].map(
+        (code) => getRelationshipIssueMessage({ code }, "boundaryUnitNumber", vocabulary),
+      ),
+    ];
+
+    expect(new Set(shownMessages).size).toBe(7);
+    expect(shownMessages).not.toContain(relationshipMessages.UNKNOWN);
+  });
+
+  it.each([
+    ["an issue code it does not know", "SOMETHING_ELSE", "sourceEntityId"],
+    ["a malformed identifier on a field that holds no identifier", relationshipCodes.itemIdInvalid, "status"],
+  ] as const)("gives %s the generic message", (_description, code, formField) => {
+    expect(getRelationshipIssueMessage({ code }, formField, vocabulary)).toBe(relationshipMessages.UNKNOWN);
   });
 });

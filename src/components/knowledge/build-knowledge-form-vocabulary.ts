@@ -21,6 +21,12 @@ import {
   MAXIMUM_FRAGMENT_CONTENT_LENGTH,
   MAXIMUM_UNIT_COUNT,
   MAXIMUM_WORK_TITLE_LENGTH,
+  RELATIONSHIP_BOUNDARY_UNIT_NUMBER_FIELD,
+  RELATIONSHIP_BOUNDARY_WORK_ID_FIELD,
+  RELATIONSHIP_SOURCE_ENTITY_ID_FIELD,
+  RELATIONSHIP_STATUS_FIELD,
+  RELATIONSHIP_TARGET_ENTITY_ID_FIELD,
+  RELATIONSHIP_TYPE_ID_FIELD,
   UNIT_COUNT_FIELD,
   UNIT_COUNT_INVALID_CODE,
   UNIT_COUNT_OUT_OF_RANGE_CODE,
@@ -36,6 +42,7 @@ import {
   WORK_TITLE_TOO_LONG_CODE,
 } from "@/modules/knowledge";
 import type { KnowledgeFormVocabulary } from "@/components/knowledge/knowledge-form-vocabulary";
+import { BUSINESS_RULE_VIOLATION_ERROR_CODE } from "@/shared/domain/error-kinds";
 
 /**
  * SERVER ONLY. Reads the field names, issue codes, media, entity types, statuses and limits of the knowledge
@@ -90,6 +97,25 @@ export function buildKnowledgeFormVocabulary(): KnowledgeFormVocabulary {
       statuses: KNOWLEDGE_STATUSES,
       maximumNameLength: MAXIMUM_ENTITY_NAME_LENGTH,
       maximumFragmentContentLength: MAXIMUM_FRAGMENT_CONTENT_LENGTH,
+    },
+    relationship: {
+      fieldNames: {
+        sourceEntityId: RELATIONSHIP_SOURCE_ENTITY_ID_FIELD,
+        targetEntityId: RELATIONSHIP_TARGET_ENTITY_ID_FIELD,
+        relationshipTypeId: RELATIONSHIP_TYPE_ID_FIELD,
+        status: RELATIONSHIP_STATUS_FIELD,
+        boundaryWorkId: RELATIONSHIP_BOUNDARY_WORK_ID_FIELD,
+        boundaryUnitNumber: RELATIONSHIP_BOUNDARY_UNIT_NUMBER_FIELD,
+      },
+      issueCodes: {
+        itemIdInvalid: KNOWLEDGE_ITEM_ID_INVALID_CODE,
+        unitNumberRequired: UNIT_NUMBER_REQUIRED_CODE,
+        unitNumberInvalid: UNIT_NUMBER_INVALID_CODE,
+        statusInvalid: KNOWLEDGE_STATUS_INVALID_CODE,
+      },
+      // The relationship to itself is the only business rule the relationship creation checks.
+      relatedToItselfCode: BUSINESS_RULE_VIOLATION_ERROR_CODE,
+      statuses: KNOWLEDGE_STATUSES,
     },
     entityTypes: ENTITY_TYPES,
   };

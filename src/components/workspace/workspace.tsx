@@ -2,10 +2,10 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { en } from "@/messages/en";
 import { PreferencesSync } from "@/components/accessibility/preferences-sync";
-import { InspectorEmptyState } from "@/components/inspector/inspector-empty-state";
 import { InspectorPanel } from "@/components/inspector/inspector-panel";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { buildKnowledgeFormVocabulary } from "@/components/knowledge/build-knowledge-form-vocabulary";
+import { EntityDetailsPanel } from "@/components/knowledge/entity-details-panel";
 import { KnowledgeProvider } from "@/components/knowledge/knowledge-provider";
 import { Topbar } from "@/components/topbar/topbar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -54,7 +54,7 @@ async function WorkspaceWithUniverses() {
               sidebar={<Sidebar />}
               inspector={
                 <InspectorPanel>
-                  <InspectorEmptyState />
+                  <EntityDetailsPanel />
                 </InspectorPanel>
               }
             >

@@ -145,3 +145,75 @@ export async function submitEntityFormAndExpectSelected(page: Page, expectedEnti
   await expect(entityButtons.last()).toHaveAttribute("aria-pressed", "true");
   await expect(findEntityList(page).locator('[aria-pressed="true"]')).toHaveCount(1);
 }
+
+/** Selects an entity of the list by its row, whose text starts with the name of the entity. */
+export async function selectListedEntity(page: Page, entityName: string): Promise<void> {
+  const entityButton = findListedEntityButtons(page).filter({ hasText: entityName });
+  await waitForElementHydration(entityButton);
+  await entityButton.click();
+  await expect(entityButton).toHaveAttribute("aria-pressed", "true");
+}
+
+/** The details panel as a desktop column; on a narrow screen it is a drawer opened from the top bar. */
+export function findDetailsPanel(page: Page): Locator {
+  return page.getByRole("complementary", { name: en.workspace.inspectorLabel });
+}
+
+/** The details of the selected entity in the panel, named by the entity. */
+export function findEntityDetails(panel: Locator, entityName: string): Locator {
+  return panel.getByRole("article", { name: entityName });
+}
+
+/** The relationships of the entity of the panel, each as read from that entity. */
+export function findDetailsRelationshipItems(panel: Locator): Locator {
+  return panel.getByRole("list", { name: en.entityDetails.relationshipsHeading }).getByRole("listitem");
+}
+
+/** A point as the panel writes it: "Chapter 3 of The Fellowship". */
+export function describePoint(wordingLabel: string, unitLabel: string, workTitle: string): string {
+  return `${en.entityDetails.pointUnitOf(wordingLabel, unitLabel)} ${workTitle}`;
+}
+
+/** The text of a relationship item of the panel: its reading, then its status and its point. */
+export function describeRelationshipItem(reading: {
+  readonly subjectName: string;
+  readonly label: string;
+  readonly otherName: string;
+  readonly statusLabel: string;
+  readonly point: string;
+}): string {
+  const { afterSubject, afterLabel } = en.entityDetails.readingConnectors;
+  return `${reading.subjectName}${afterSubject}${reading.label}${afterLabel}${reading.otherName}${reading.statusLabel} · ${reading.point}`;
+}
+
+export function findRelationshipFormHeading(page: Page): Locator {
+  return page.getByRole("heading", { level: 2, name: en.relationshipCreation.title });
+}
+
+export function findRelationshipSourceField(page: Page): Locator {
+  return page.getByRole("combobox", { name: en.relationshipCreation.sourceLabel, exact: true });
+}
+
+export function findRelationshipTypeField(page: Page): Locator {
+  return page.getByRole("combobox", { name: en.relationshipCreation.typeLabel, exact: true });
+}
+
+export function findRelationshipTargetField(page: Page): Locator {
+  return page.getByRole("combobox", { name: en.relationshipCreation.targetLabel, exact: true });
+}
+
+export function findRelationshipPointGroup(page: Page): Locator {
+  return page.getByRole("group", { name: en.relationshipCreation.pointLegend });
+}
+
+export function findCreateRelationshipButton(page: Page): Locator {
+  return page.getByRole("button", { name: en.relationshipCreation.create, exact: true });
+}
+
+/** Opens the relationship form from the "New relationship" button of the details panel. */
+export async function openRelationshipFormFromThePanel(page: Page): Promise<void> {
+  const newRelationshipButton = findDetailsPanel(page).getByRole("button", { name: en.entityDetails.newRelationship });
+  await waitForElementHydration(newRelationshipButton);
+  await newRelationshipButton.click();
+  await expect(findRelationshipFormHeading(page)).toBeVisible();
+}

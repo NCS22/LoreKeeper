@@ -60,3 +60,14 @@ export async function readEntitiesOfUniverseInDatabase(universeId: string): Prom
     }));
   });
 }
+
+/** How many relationships the universe holds, read outside the application (spec 006, FR-7). */
+export async function countRelationshipsOfUniverseInDatabase(universeId: string): Promise<number> {
+  return withTestDatabaseClient(async (client) => {
+    const countRows = await client.query<{ relationshipCount: string }>(
+      `SELECT COUNT(*) AS "relationshipCount" FROM "Relationship" WHERE "universeId" = $1`,
+      [universeId],
+    );
+    return Number(countRows.rows[0]?.relationshipCount ?? 0);
+  });
+}

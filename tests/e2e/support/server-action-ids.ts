@@ -17,7 +17,9 @@ export type ServerActionName =
   | "isUniverseNameInUseAction"
   | "rememberUniverseAction"
   | "loadUniverseKnowledgeAction"
-  | "createWorkAction";
+  | "createWorkAction"
+  | "createEntityAction"
+  | "createRelationshipAction";
 
 type ServerReferenceManifest = {
   readonly node: Readonly<Record<string, { readonly exportedName?: string }>>;

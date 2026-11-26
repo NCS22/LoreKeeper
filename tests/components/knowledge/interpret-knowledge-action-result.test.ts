@@ -3,7 +3,9 @@ import type { TimeLimitedOutcome } from "@/components/accounts/run-with-time-lim
 import { buildKnowledgeFormVocabulary } from "@/components/knowledge/build-knowledge-form-vocabulary";
 import {
   interpretCreateEntityResult,
+  interpretCreateRelationshipResult,
   interpretCreateWorkResult,
+  interpretLoadEntityDetailsResult,
   interpretLoadUniverseKnowledgeResult,
 } from "@/components/knowledge/interpret-knowledge-action-result";
 import { en } from "@/messages/en";
@@ -270,5 +272,166 @@ describe("interpretCreateEntityResult", () => {
     ["a lost connection", rejected(new TypeError("Failed to fetch"))],
   ])("reads %s as an unknown result: the entity may exist", (_description, end) => {
     expect(interpretCreateEntityResult(end, vocabulary)).toEqual({ status: "result-unknown" });
+  });
+});
+
+describe("interpretCreateRelationshipResult", () => {
+  const relationshipFieldNames = vocabulary.relationship.fieldNames;
+  const relationshipIssueCodes = vocabulary.relationship.issueCodes;
+  const relationshipMessages = en.relationshipCreation.issues;
+  const CREATED_RELATIONSHIP = {
+    id: "9f4b1d3c-5e6a-4f8b-8c1d-4e5f6a7b8c93",
+    sourceEntityId: STORED_ENTITY.id,
+    targetEntityId: "0a5c2e4d-6f7b-4a9c-9d2e-5f6a7b8c9da4",
+  };
+
+  it("reads a stored relationship as created", () => {
+    expect(
+      interpretCreateRelationshipResult(answered({ ok: true, value: { relationship: CREATED_RELATIONSHIP } }), vocabulary),
+    ).toEqual({ status: "created", relationship: CREATED_RELATIONSHIP });
+  });
+
+  it.each([
+    ["no relationship in the value", { ok: true, value: {} }],
+    ["a relationship without an identifier", { ok: true, value: { relationship: { ...CREATED_RELATIONSHIP, id: null } } }],
+    ["a relationship without its source", { ok: true, value: { relationship: { ...CREATED_RELATIONSHIP, sourceEntityId: 4 } } }],
+    ["a relationship without its target", { ok: true, value: { relationship: { ...CREATED_RELATIONSHIP, targetEntityId: 4 } } }],
+    ["a body that is not an object", "ok"],
+  ])("reads %s as a generic failure", (_description, body) => {
+    expect(interpretCreateRelationshipResult(answered(body), vocabulary)).toEqual({ status: "generic-failure" });
+  });
+
+  it("gives each rejected field of the form its own message, by its input path, and ignores fields it does not know", () => {
+    const outcome = interpretCreateRelationshipResult(
+      failure("VALIDATION_ERROR", {
+        [relationshipFieldNames.sourceEntityId]: [{ code: relationshipIssueCodes.itemIdInvalid }],
+        [relationshipFieldNames.targetEntityId]: [{ code: relationshipIssueCodes.itemIdInvalid }],
+        [relationshipFieldNames.relationshipTypeId]: [{ code: relationshipIssueCodes.itemIdInvalid }],
+        [relationshipFieldNames.status]: [{ code: relationshipIssueCodes.statusInvalid }],
+        [relationshipFieldNames.boundaryWorkId]: [{ code: relationshipIssueCodes.itemIdInvalid }],
+        [relationshipFieldNames.boundaryUnitNumber]: [{ code: relationshipIssueCodes.unitNumberInvalid }],
+        description: [{ code: "SOMETHING" }],
+      }),
+      vocabulary,
+    );
+
+    expect(outcome).toEqual({
+      status: "field-errors",
+      messagesByField: {
+        sourceEntityId: relationshipMessages.SOURCE_INVALID,
+        targetEntityId: relationshipMessages.TARGET_INVALID,
+        relationshipTypeId: relationshipMessages.TYPE_INVALID,
+        status: relationshipMessages.STATUS_INVALID,
+        boundaryWorkId: relationshipMessages.WORK_INVALID,
+        boundaryUnitNumber: relationshipMessages.UNIT_NUMBER_INVALID,
+      },
+    });
+  });
+
+  it("shows the refusal of an entity related to itself on the target field (FR-8)", () => {
+    expect(interpretCreateRelationshipResult(failure(vocabulary.relationship.relatedToItselfCode), vocabulary)).toEqual({
+      status: "field-errors",
+      messagesByField: { targetEntityId: relationshipMessages.RELATED_TO_ITSELF },
+    });
+  });
+
+  it("reads a validation failure with only issues of fields that are not in the form as a generic failure", () => {
+    expect(
+      interpretCreateRelationshipResult(failure("VALIDATION_ERROR", { universeId: [{ code: "ID_INVALID" }] }), vocabulary),
+    ).toEqual({ status: "generic-failure" });
+  });
+
+  it.each([
+    ["a reference that is not found, such as an entity of another universe", failure("NOT_FOUND")],
+    ["a storage failure", failure("INFRASTRUCTURE_ERROR")],
+    ["an unverifiable session", rejected(new Error(SESSION_CHECK_FAILED_ACTION_REFUSAL.text))],
+  ])("reads %s as a generic failure, with nothing stored", (_description, end) => {
+    expect(interpretCreateRelationshipResult(end, vocabulary)).toEqual({ status: "generic-failure" });
+  });
+
+  it.each([
+    ["the authentication error", failure("AUTHENTICATION_ERROR")],
+    ["the signed-out refusal of the guard", rejected(new Error(SIGNED_OUT_ACTION_REFUSAL.text))],
+  ])("asks the person to sign in again on %s", (_description, end) => {
+    expect(interpretCreateRelationshipResult(end, vocabulary)).toEqual({ status: "sign-in-again" });
+  });
+
+  it.each([
+    ["no answer in time", TIMED_OUT],
+    ["a lost connection", rejected(new TypeError("Failed to fetch"))],
+  ])("reads %s as an unknown result: the relationship may exist", (_description, end) => {
+    expect(interpretCreateRelationshipResult(end, vocabulary)).toEqual({ status: "result-unknown" });
+  });
+});
+
+describe("interpretLoadEntityDetailsResult", () => {
+  const POINT = { workId: STORED_WORK.id, workTitle: STORED_WORK.title, unitWording: "chapter", unitLabel: "3" };
+  const FIRST_FRAGMENT = { content: "Carries the ring.\nLives in the Shire.", status: "CONFIRMED", point: POINT };
+  const RELATIONSHIP_READING = {
+    id: "1b6d3f5e-7a8c-4b0d-8e3f-6a7b8c9d0eb5",
+    status: "USER_NOTE",
+    point: POINT,
+    subjectName: "Frodo",
+    label: "member of",
+    otherName: "Fellowship",
+  };
+  const ENTITY_DETAILS = {
+    id: STORED_ENTITY.id,
+    name: STORED_ENTITY.name,
+    type: STORED_ENTITY.type,
+    introducedAt: POINT,
+    firstFragment: FIRST_FRAGMENT,
+    relationships: [RELATIONSHIP_READING],
+  };
+
+  it("reads the details of the entity, its first fragment and its relationships", () => {
+    expect(interpretLoadEntityDetailsResult(answered({ ok: true, value: { entity: ENTITY_DETAILS } }), vocabulary)).toEqual({
+      status: "loaded",
+      details: ENTITY_DETAILS,
+    });
+  });
+
+  it("reads an entity with no fragment and no relationships as loaded", () => {
+    const bareDetails = { ...ENTITY_DETAILS, firstFragment: null, relationships: [] };
+
+    expect(interpretLoadEntityDetailsResult(answered({ ok: true, value: { entity: bareDetails } }), vocabulary)).toEqual({
+      status: "loaded",
+      details: bareDetails,
+    });
+  });
+
+  it.each([
+    ["no entity in the value", {}],
+    ["an entity without an identifier", { entity: { ...ENTITY_DETAILS, id: 9 } }],
+    ["an entity with an unknown type", { entity: { ...ENTITY_DETAILS, type: "DRAGON" } }],
+    ["an entity without a name", { entity: { ...ENTITY_DETAILS, name: undefined } }],
+    ["an introduction point without its work title", { entity: { ...ENTITY_DETAILS, introducedAt: { ...POINT, workTitle: 1 } } }],
+    ["an introduction point without its unit label", { entity: { ...ENTITY_DETAILS, introducedAt: { ...POINT, unitLabel: null } } }],
+    ["a first fragment without its content", { entity: { ...ENTITY_DETAILS, firstFragment: { ...FIRST_FRAGMENT, content: 5 } } }],
+    ["a first fragment with an unknown status", { entity: { ...ENTITY_DETAILS, firstFragment: { ...FIRST_FRAGMENT, status: "RUMOUR" } } }],
+    ["a first fragment without its point", { entity: { ...ENTITY_DETAILS, firstFragment: { ...FIRST_FRAGMENT, point: null } } }],
+    ["no list of relationships", { entity: { ...ENTITY_DETAILS, relationships: undefined } }],
+    ["a relationship without its label", { entity: { ...ENTITY_DETAILS, relationships: [{ ...RELATIONSHIP_READING, label: undefined }] } }],
+    ["a relationship with an unknown status", { entity: { ...ENTITY_DETAILS, relationships: [{ ...RELATIONSHIP_READING, status: "RUMOUR" }] } }],
+    ["a relationship without its point", { entity: { ...ENTITY_DETAILS, relationships: [{ ...RELATIONSHIP_READING, point: "3" }] } }],
+  ])("reads an answer with %s as failed", (_description, value) => {
+    expect(interpretLoadEntityDetailsResult(answered({ ok: true, value }), vocabulary)).toEqual({ status: "failed" });
+  });
+
+  it.each([
+    ["an entity that is not found", failure("NOT_FOUND")],
+    ["a malformed entity", failure("VALIDATION_ERROR", { entityId: [{ code: "ID_INVALID" }] })],
+    ["a storage failure", failure("INFRASTRUCTURE_ERROR")],
+    ["no answer in time", TIMED_OUT],
+    ["a lost connection", rejected(new TypeError("Failed to fetch"))],
+  ])("reads %s as failed", (_description, end) => {
+    expect(interpretLoadEntityDetailsResult(end, vocabulary)).toEqual({ status: "failed" });
+  });
+
+  it.each([
+    ["the authentication error", failure("AUTHENTICATION_ERROR")],
+    ["the signed-out refusal of the guard", rejected(new Error(SIGNED_OUT_ACTION_REFUSAL.text))],
+  ])("reads %s as signed out", (_description, end) => {
+    expect(interpretLoadEntityDetailsResult(end, vocabulary)).toEqual({ status: "signed-out" });
   });
 });

@@ -7,6 +7,7 @@ import { GraphEmptyState } from "@/components/graph/graph-empty-state";
 import { EntityCreationForm } from "@/components/knowledge/entity-creation-form";
 import { EntityList } from "@/components/knowledge/entity-list";
 import { LateKnowledgeCreationConfirmation } from "@/components/knowledge/late-knowledge-creation-confirmation";
+import { RelationshipCreationForm } from "@/components/knowledge/relationship-creation-form";
 import { SimilarEntityNotice } from "@/components/knowledge/similar-entity-notice";
 import { WorkCreationForm } from "@/components/knowledge/work-creation-form";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -95,6 +96,23 @@ export function CentralArea() {
     focusUniverseHeadingAfterRender();
   }
 
+  // The selected entity stays selected; the provider loads the universe and, when the selected entity is
+  // one of the two, its details again, so the relationship appears in the details panel (FR-10).
+  function finishRelationshipCreation(createdReading: { sourceName: string; label: string; targetName: string }) {
+    dispatch({ type: "knowledgeFormClosed" });
+    if (state.selectedUniverseId !== null) {
+      setKnowledgeAnnouncement({
+        universeId: state.selectedUniverseId,
+        text: en.relationshipCreation.createdAnnouncement(
+          createdReading.sourceName,
+          createdReading.label,
+          createdReading.targetName,
+        ),
+      });
+    }
+    focusUniverseHeadingAfterRender();
+  }
+
   // No universe is selected (the account has none yet): no views to switch, only the way to create one.
   if (universe === undefined) {
     return (
@@ -144,6 +162,13 @@ export function CentralArea() {
           <EntityCreationForm
             universeMode={universe.mode}
             onCreated={finishEntityCreation}
+            onCancel={cancelKnowledgeForm}
+          />
+        ) : state.knowledgeForm === "relationship" ? (
+          <RelationshipCreationForm
+            universeMode={universe.mode}
+            proposedSourceEntityId={state.selectedEntityId}
+            onCreated={finishRelationshipCreation}
             onCancel={cancelKnowledgeForm}
           />
         ) : (

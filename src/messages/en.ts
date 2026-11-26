@@ -237,7 +237,67 @@ export const en = {
   },
   inspector: {
     emptyTitle: "Nothing to show yet",
-    emptyText: "Knowledge, relationships, events, sources and reading positions arrive in future versions.",
+    // Shown under every state of the details panel: what the panel does not show yet (spec 006).
+    emptyText: "Events, sources and reading positions arrive in future versions.",
+  },
+  // The details panel of the selected entity (spec 006, FR-10).
+  entityDetails: {
+    loadingUniverse: "Loading the details",
+    noEntitiesTitle: "No entities yet",
+    noEntitiesText: "The details of an entity are shown here once it exists. Create one in the list view.",
+    selectEntityTitle: "Select an entity",
+    selectEntityText: "Choose an entity in the list view to see what you know about it.",
+    loading: "Loading the entity",
+    loadFailed: "The details of this entity could not be loaded.",
+    typeLabel: "Type",
+    introducedAtLabel: "Introduced at",
+    // A point of a work as the panel shows it, "Chapter 3 of The Fellowship": the title follows as isolated text.
+    pointUnitOf: (wordingLabel: string, unitLabel: string) => `${wordingLabel} ${unitLabel} of`,
+    firstFragmentHeading: "First fragment",
+    noFragment: "No fragment yet.",
+    statusLabel: "Status",
+    revealedAtLabel: "Revealed at",
+    relationshipsHeading: "Relationships",
+    noRelationships: "No relationships yet.",
+    newRelationship: "New relationship",
+    // The reading of a relationship from the entity of the panel: "<subject> — <label> → <other>".
+    readingConnectors: { afterSubject: " — ", afterLabel: " → " },
+  },
+  relationshipCreation: {
+    title: "New relationship",
+    // Shown instead of the form while the universe has fewer than two entities (FR-7).
+    twoEntitiesNeeded: "A relationship connects two entities: create at least two entities first.",
+    sourceLabel: "From",
+    typeLabel: "Relationship",
+    targetLabel: "To",
+    entityOption: (entityName: string, typeLabel: string) => `${entityName} (${typeLabel})`,
+    statusLegend: "Status",
+    pointLegend: "Known at",
+    cancel: "Cancel",
+    create: "Create relationship",
+    createdAnnouncement: (sourceName: string, label: string, targetName: string) =>
+      `Relationship created: ${sourceName} — ${label} → ${targetName}`,
+    notices: {
+      failed: "The relationship could not be created. Your entries are kept; you can try again.",
+      resultUnknown:
+        "We could not confirm whether the relationship was created. It may exist already: check the details of its entities before trying again.",
+      confirmedAfterDelay: "The relationship was created after all and is now in the details of its entities.",
+      signInAgain: "Your session has ended, so nothing was created. Your entries are kept: sign in again to continue.",
+      signInLink: "Sign in",
+      dismiss: "Dismiss",
+    },
+    // Validation messages, keyed by the stable issue code and, for a malformed identifier, by its field.
+    issues: {
+      SOURCE_INVALID: "Choose the entity the relationship starts from.",
+      TARGET_INVALID: "Choose the entity the relationship points to.",
+      TYPE_INVALID: "Choose the type of the relationship.",
+      WORK_INVALID: "Choose a work of this universe.",
+      UNIT_NUMBER_REQUIRED: "Choose the chapter or episode: type its number, or use First or Last.",
+      UNIT_NUMBER_INVALID: "Write the number with digits only, without signs, decimals, spaces or separators.",
+      STATUS_INVALID: "Choose the status of the relationship.",
+      RELATED_TO_ITSELF: "Choose another entity: a relationship cannot connect an entity with itself.",
+      UNKNOWN: "This value is not valid.",
+    },
   },
   menus: {
     label: "Application menu",

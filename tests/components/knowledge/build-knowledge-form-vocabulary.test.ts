@@ -4,7 +4,8 @@ import { validateEntityName } from "@/modules/knowledge/domain/entity-name";
 import { parseEntityType } from "@/modules/knowledge/domain/entity-type";
 import { readFragmentContent } from "@/modules/knowledge/domain/fragment-content";
 import { parseKnowledgeItemId } from "@/modules/knowledge/domain/knowledge-item-id";
-import { KNOWLEDGE_STATUSES } from "@/modules/knowledge/domain/knowledge-status";
+import { RelationshipToItselfError } from "@/modules/knowledge/domain/knowledge-errors";
+import { KNOWLEDGE_STATUS_INVALID_CODE, KNOWLEDGE_STATUSES } from "@/modules/knowledge/domain/knowledge-status";
 import { parseUnitNumber } from "@/modules/knowledge/domain/unit-number";
 import { parseUnitCount } from "@/modules/knowledge/domain/unit-count";
 import { parseWorkMedium } from "@/modules/knowledge/domain/work-medium";
@@ -139,5 +140,58 @@ describe("buildKnowledgeFormVocabulary: the entity form", () => {
 
   it("lists the three statuses the domain accepts, in its order", () => {
     expect(entity.statuses).toEqual([...KNOWLEDGE_STATUSES]);
+  });
+});
+
+describe("buildKnowledgeFormVocabulary: the relationship form", () => {
+  const { relationship } = buildKnowledgeFormVocabulary();
+
+  it("carries the codes the domain reports for a malformed entity, type or work and for a malformed unit number", () => {
+    for (const field of [
+      relationship.fieldNames.sourceEntityId,
+      relationship.fieldNames.targetEntityId,
+      relationship.fieldNames.relationshipTypeId,
+      relationship.fieldNames.boundaryWorkId,
+    ]) {
+      expect(readIssue(parseKnowledgeItemId("not-an-id", field))).toEqual({ field, code: relationship.issueCodes.itemIdInvalid });
+    }
+    expect(readIssue(parseUnitNumber(" ", relationship.fieldNames.boundaryUnitNumber))).toEqual({
+      field: relationship.fieldNames.boundaryUnitNumber,
+      code: relationship.issueCodes.unitNumberRequired,
+    });
+    expect(readIssue(parseUnitNumber("+3", relationship.fieldNames.boundaryUnitNumber))).toEqual({
+      field: relationship.fieldNames.boundaryUnitNumber,
+      code: relationship.issueCodes.unitNumberInvalid,
+    });
+  });
+
+  it("carries the code of a status the domain does not accept", () => {
+    expect(relationship.issueCodes.statusInvalid).toBe(KNOWLEDGE_STATUS_INVALID_CODE);
+  });
+
+  it("carries the code of the refusal of an entity related to itself (FR-8)", () => {
+    expect(new RelationshipToItselfError().code).toBe(relationship.relatedToItselfCode);
+  });
+
+  it("names the fields with the input paths the relationship action reports (D17)", () => {
+    expect(relationship.fieldNames).toEqual({
+      sourceEntityId: "sourceEntityId",
+      targetEntityId: "targetEntityId",
+      relationshipTypeId: "relationshipTypeId",
+      status: "status",
+      boundaryWorkId: "boundary.workId",
+      boundaryUnitNumber: "boundary.unitNumber",
+    });
+  });
+
+  it("has the codes of the four issues, all different", () => {
+    const codes = Object.values(relationship.issueCodes);
+
+    expect(codes).toHaveLength(4);
+    expect(new Set(codes).size).toBe(4);
+  });
+
+  it("lists the three statuses the domain accepts, in its order", () => {
+    expect(relationship.statuses).toEqual([...KNOWLEDGE_STATUSES]);
   });
 });

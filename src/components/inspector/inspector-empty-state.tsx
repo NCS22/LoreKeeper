@@ -1,7 +1,7 @@
 import { en } from "@/messages/en";
 
-// The details panel while there is nothing to detail: knowledge, relationships, events, sources and
-// reading positions arrive in future versions (FR-15). Text only.
+// The details panel while no universe is selected: events, sources and reading positions arrive in
+// future versions (004 FR-15, changed by spec 006 FR-10). Text only.
 export function InspectorEmptyState() {
   return (
     <div className="flex h-full flex-col gap-2 overflow-y-auto p-4">
