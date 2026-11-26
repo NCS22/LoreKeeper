@@ -259,32 +259,32 @@ Decisions taken after the plan was approved. Design decisions of the plan stay i
 - **Decided:** the entity form sends each unit number exactly as typed (plan section 4) and never holds a submission back because of a point. While the person types, the picker shows the point it picked or, for a number that matches no unit of the chosen work, its error linked to the field (`resolve-typed-unit-number.ts`). Once sent, the server decides: an empty or malformed number comes back as a field error under the picker; a well-formed number with no unit is the single not found (D-T3-1), shown as the generic failure of the form, with the picker's error still visible.
 - **Why:** FR-5 says that a fragment whose content is empty ignores its point, whatever was typed; holding back the submission for the fragment point would need the blank-content rule in the browser, and the business rules are not duplicated between frontend and backend.
 - **Discarded:** blocking the submission while a point picks no unit (better guidance for the out-of-range case, at the price of a second copy of the fragment rule).
-- **Approved by:** pending, to be asked at the implementation gate after T6.
+- **Approved by:** the user, 2026-11-26, at the implementation gate after T6.
 
 ## D-T6-2. The similar-entity notice lives in the knowledge provider
 
 - **Decided:** the provider keeps the notice of FR-6 with the universe and the entity whose creation answered it, also for a late answer, and the central area shows it above the view as a `role="status"` region that is always in the page. It ends when a knowledge form opens, an entity other than the created one is selected or the selected universe changes; closing the entity form and selecting the created entity, which the creation itself does, keep it.
 - **Why:** the success closes the form, and a late answer may arrive after the form was closed (FR-6, 004 FR-8); only the provider sees every answer.
 - **Discarded:** keeping it in the form (gone with the form) or in the central area (it does not see a late answer).
-- **Approved by:** pending, to be asked at the implementation gate after T6.
+- **Approved by:** the user, 2026-11-26, at the implementation gate after T6.
 
 ## D-T6-3. The first fragment section is always shown
 
 - **Decided:** the first fragment (content, status with "My note" proposed, "Same point as the entity") is a section of the form that is always visible, with no button to open it; an empty content means no fragment (FR-5). While the checkbox is checked the fragment sends no point, so the server gives it the entity point at the moment of submission; unchecking it shows a second point that starts at the current entity point and then stays as the person leaves it. The status labels are "Confirmed", "My note" and "Speculation", each with a short explanation.
 - **Why:** fewer steps by keyboard, and "follows the entity point until changed" holds by construction.
 - **Discarded:** an "Add a first fragment" disclosure (one more control, and nothing gained because an empty content is already no fragment).
-- **Approved by:** pending, to be asked at the implementation gate after T6.
+- **Approved by:** the user, 2026-11-26, at the implementation gate after T6.
 
 ## D-T6-4. The "New entity" entry and what follows a creation
 
 - **Decided:** the entity list shows a "New entity" button whenever the universe has a work, above the empty text or the rows. The entity form opens in the central area in place of the view, as the work form (D-T5-6). After a creation the form closes, the created entity is selected, the list view is shown, the creation is announced ("Entity created: name") and focus goes to the heading of the universe, as after a work.
 - **Why:** plan section 5 (form closes, entity selected, list view) with the same placement and focus as the work form.
 - **Discarded:** focusing the row of the created entity (it appears only after the reload of the universe, so focus would have to wait for it).
-- **Approved by:** pending, to be asked at the implementation gate after T6.
+- **Approved by:** the user, 2026-11-26, at the implementation gate after T6.
 
 ## D-T6-5. Files the plan did not name, and the shared creation path
 
 - **Decided:** `src/components/knowledge/similar-entity-notice.tsx` (CMP-16) and the test support `tests/e2e/support/read-knowledge-in-database.ts`, which reads the stored points so the browser test proves where the entity and its fragment were stored before the details panel exists (T7). In the provider the work and entity creations share one path (start, account guard and send, finish), with no change for the work; the late-creation confirmation names the kind of the item of the last creation.
 - **Why:** one copy of the creation lifecycle; the details panel that would show the points belongs to T7.
 - **Discarded:** a second copy of the creation lifecycle for entities.
-- **Approved by:** pending, to be asked at the implementation gate after T6.
+- **Approved by:** the user, 2026-11-26, at the implementation gate after T6.
