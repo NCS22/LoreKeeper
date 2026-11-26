@@ -148,3 +148,59 @@ Decisions taken after the plan was approved. Design decisions of the plan stay i
 - **Why:** the use-case tests on fakes then see the same answers as production.
 - **Discarded:** testing those refusals only on PostgreSQL.
 - **Approved by:** the user, 2026-11-26, after T3.
+
+## D-T4-1. The relationship type catalog port receives the `ViewerContext`
+
+- **Decided:** `RelationshipTypeCatalog.listRelationshipTypes(viewerContext)`; the composition binds the port to the acting user of each operation and calls `listRelationshipTypes(actor, universeId)` of the universes module. The test storages read the relationship type repository of the universes module scoped by the viewer as owner.
+- **Why:** `get-entity-details` is a read use case and receives only the `ViewerContext` (plan section 3), while the universes module reads the catalog for an acting user (D-T1-6).
+- **Discarded:** a port with the acting user (the read use case would need the actor besides its context), or building an acting user from the context (it has no name or email).
+- **Approved by:** pending, to be asked at the implementation gate after T4.
+
+## D-T4-2. The point reading and lookup are shared by the entity and relationship use cases
+
+- **Decided:** `readBoundary`, `resolveBoundary` and the `BoundaryCommand` type moved from `create-entity.ts` to `application/boundary-reference.ts` (KNO-3), and the Zod point schema from `create-entity-input-schema.ts` to `src/app/knowledge/boundary-input-schema.ts` (APP-8); `create-relationship` and its schema reuse them. `BoundaryCommand` is still exported by the module index.
+- **Why:** the same point rules (format, then one not found) apply to the three forms (FR-4, FR-7); a copy could drift.
+- **Discarded:** a second copy in `create-relationship.ts`.
+- **Approved by:** pending, to be asked at the implementation gate after T4.
+
+## D-T4-3. References of a relationship are looked up before the write
+
+- **Decided:** after the fields and the "same entity" rule, `create-relationship` looks up the source and the target (new `EntityRepository.findInUniverse`), the type (in the catalog of the universe) and the point (`findBoundaryOfUnitNumber`), in that order, each giving the single not found. The database constraints stay as a second barrier.
+- **Why:** a refusal by a foreign key would reach the person as an infrastructure error, not as the not found of FR-8.
+- **Discarded:** relying on the constraints and translating their failures (it would read the meaning of database errors).
+- **Approved by:** pending, to be asked at the implementation gate after T4.
+
+## D-T4-4. Details are read with their points described in the same query
+
+- **Decided:** `EntityRepository.findDetailsInUniverse` returns the entity with its introduction point and its oldest fragment that is not deleted (ties by identifier), and `RelationshipRepository.findAllOfEntity` returns the relationships where the entity is source or target with the names of both entities; each point carries the title and medium of its work and the label of its unit (`domain/narrative-point.ts`). Both join only tables of the knowledge module; the labels of the types come from the catalog port.
+- **Why:** the panel shows names, titles, unit wording and labels (FR-10); one query per read instead of one lookup per item.
+- **Discarded:** separate lookups of names and points per relationship.
+- **Approved by:** pending, to be asked at the implementation gate after T4.
+
+## D-T4-5. A relationship with a deleted end is not listed
+
+- **Decided:** `findAllOfEntity` leaves out a deleted relationship and one whose source or target is deleted.
+- **Why:** a deleted entity is not found anywhere else (`findInUniverse`, lists), so a relationship to it would name an entity that cannot be opened; the trash of spec 007 restores both together.
+- **Discarded:** listing it while only the relationship row is not deleted.
+- **Approved by:** pending, to be asked at the implementation gate after T4.
+
+## D-T4-6. A relationship whose type is not in the catalog fails with the infrastructure error
+
+- **Decided:** when the catalog of the universe does not hold the type of a stored relationship, `get-entity-details` throws the `InfrastructureError` (generic answer, logged).
+- **Why:** the composite foreign key keeps the type in the universe, so it only happens when the storage disagrees with itself; a reading without a label would be wrong data.
+- **Discarded:** leaving the relationship out silently (data hidden without notice) or showing it without a label.
+- **Approved by:** pending, to be asked at the implementation gate after T4.
+
+## D-T4-7. Shape of the relationship and details input
+
+- **Decided:** the relationship status accepts `null` or absence in shape and the domain answers `STATUS_INVALID` for both, as the fragment status (D-T3-4); a malformed entity identifier of the details action is a validation error on `entityId`, checked after the universe (as D-T2-2); field names are the exported `RELATIONSHIP_*_FIELD` constants and `ENTITY_ID_FIELD`.
+- **Why:** one message per rule, the same through the form and through a direct call.
+- **Discarded:** a required status in the Zod schema (a missing status would be a shape failure with another code).
+- **Approved by:** pending, to be asked at the implementation gate after T4.
+
+## D-T4-8. The universe load returns the relationship types through the catalog port
+
+- **Decided:** `loadUniverseKnowledge` now also returns `relationshipTypes` (plan section 4), read in the composition through the same catalog port, with no use case of its own in the knowledge module.
+- **Why:** the catalog is listed by the universes use case; a knowledge use case would only forward it.
+- **Discarded:** a `list-relationship-types` use case in the knowledge module.
+- **Approved by:** pending, to be asked at the implementation gate after T4.

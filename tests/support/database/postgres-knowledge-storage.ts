@@ -2,9 +2,11 @@ import { afterAll } from "vitest";
 import { findOwnUniverse } from "@/modules/universes/application/find-own-universe";
 import type { Universe } from "@/modules/universes/domain/universe";
 import { createPrismaEntityRepository } from "@/modules/knowledge/infrastructure/prisma-entity-repository";
+import { createPrismaRelationshipRepository } from "@/modules/knowledge/infrastructure/prisma-relationship-repository";
 import { createPrismaWorkRepository } from "@/modules/knowledge/infrastructure/prisma-work-repository";
 import type { PrismaClient } from "@/shared/infrastructure/generated/prisma/client";
 import type { KnowledgeStorage } from "../contracts/work-repository-contract";
+import { createRelationshipTypeCatalogOverRepository } from "../relationship-type-catalog-over-repository";
 import { createPostgresUniverseStorage } from "./postgres-universe-storage";
 import { createTestPrismaClient } from "./test-database";
 
@@ -100,5 +102,8 @@ export async function createPostgresKnowledgeStorage(
     countStoredFragments: () => getSharedClient().knowledgeEntry.count(),
     makeFragmentWritesFail,
     restoreFragmentWrites,
+    relationshipRepository: createPrismaRelationshipRepository(getSharedClient),
+    countStoredRelationships: () => getSharedClient().relationship.count(),
+    relationshipTypeCatalog: createRelationshipTypeCatalogOverRepository(universeStorage.relationshipTypeRepository),
   };
 }

@@ -4,6 +4,7 @@ import { InfrastructureError } from "@/shared/domain/error-kinds";
 
 const PRISMA_CLIENT_GLOBAL_KEY = Symbol.for("lorekeeper.prismaClient");
 const UNIVERSE_ID = "2f6c1c0e-5f0a-4c3e-8d1b-9a7e6b5c4d3a";
+const ENTITY_ID = "5a1d7c3e-2b4f-4a6e-9c8d-1e2f3a4b5c6d";
 
 const actingUser: ActingUser = {
   userId: "7b1f6f1e-0f44-4d6f-9d47-0c8a3d2f2a11",
@@ -43,12 +44,14 @@ describe("the composition of the knowledge module without environment", () => {
     expect(globalScope[PRISMA_CLIENT_GLOBAL_KEY]).toBeUndefined();
   });
 
-  it("offers the three operations", async () => {
+  it("offers the five operations", async () => {
     const { createKnowledgeModule } = await importComposition();
 
     expect(Object.keys(createKnowledgeModule()).sort()).toEqual([
       "createEntity",
+      "createRelationship",
       "createWork",
+      "loadEntityDetails",
       "loadUniverseKnowledge",
     ]);
   });
@@ -74,10 +77,21 @@ describe("the composition of the knowledge module without environment", () => {
           boundary: { workId: UNIVERSE_ID, unitNumber: "1" },
         }),
       ),
+      readFailure(
+        knowledgeModule.createRelationship(actingUser, {
+          universeId: UNIVERSE_ID,
+          sourceEntityId: UNIVERSE_ID,
+          targetEntityId: ENTITY_ID,
+          relationshipTypeId: UNIVERSE_ID,
+          status: "USER_NOTE",
+          boundary: { workId: UNIVERSE_ID, unitNumber: "1" },
+        }),
+      ),
       readFailure(knowledgeModule.loadUniverseKnowledge(actingUser, UNIVERSE_ID)),
+      readFailure(knowledgeModule.loadEntityDetails(actingUser, UNIVERSE_ID, ENTITY_ID)),
     ]);
 
-    expect(failures).toHaveLength(3);
+    expect(failures).toHaveLength(5);
     for (const failure of failures) {
       expect(failure).toBeInstanceOf(InfrastructureError);
     }

@@ -1,6 +1,7 @@
 import type { SpoilerBoundary } from "@/shared/domain/spoiler-boundary";
 import type { EntityType } from "./entity-type";
 import type { KnowledgeStatus } from "./knowledge-status";
+import type { NarrativePoint } from "./narrative-point";
 
 /** The first fragment of a new entity, before it is stored, with the point where it is revealed. */
 export type NewKnowledgeEntry = {
@@ -36,4 +37,23 @@ export type Entity = {
   readonly introducedAt: SpoilerBoundary;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+};
+
+/** A stored fragment as the details panel shows it, with its point described. */
+export type KnowledgeEntryDetails = {
+  readonly content: string;
+  readonly status: KnowledgeStatus;
+  readonly revealedAt: NarrativePoint;
+};
+
+/**
+ * A stored entity that is not deleted as the details panel shows it: its introduction point
+ * described and its oldest fragment that is not deleted, or `null` when it has none (FR-10, D15).
+ */
+export type EntityDetails = {
+  readonly id: string;
+  readonly type: EntityType;
+  readonly name: string;
+  readonly introducedAt: NarrativePoint;
+  readonly firstFragment: KnowledgeEntryDetails | null;
 };

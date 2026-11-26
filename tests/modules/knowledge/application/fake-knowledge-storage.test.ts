@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { describeEntityStorageContract } from "../../../support/contracts/entity-repository-contract";
+import { describeRelationshipStorageContract } from "../../../support/contracts/relationship-repository-contract";
 import {
   buildViewerContext,
   describeWorkStorageContract,
@@ -13,6 +14,7 @@ import { buildUniverse } from "../../../support/universe-repository-factories";
 describe("fake storage of works and entities", () => {
   describeWorkStorageContract("fake storage", createFakeKnowledgeStorage);
   describeEntityStorageContract("fake storage", createFakeKnowledgeStorage);
+  describeRelationshipStorageContract("fake storage", createFakeKnowledgeStorage);
 
   // Not part of the shared contract: PostgreSQL is one shared database, so two storages over it
   // are never independent.

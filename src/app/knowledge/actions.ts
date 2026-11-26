@@ -7,7 +7,9 @@ import { getActingUser } from "@/shared/presentation/get-acting-user";
 import { parseActionInput } from "@/shared/presentation/parse-action-input";
 import { runAction } from "@/shared/presentation/run-action";
 import { createEntityInputSchema } from "./create-entity-input-schema";
+import { createRelationshipInputSchema } from "./create-relationship-input-schema";
 import { createWorkInputSchema } from "./create-work-input-schema";
+import { loadEntityDetailsInputSchema } from "./load-entity-details-input-schema";
 import { loadUniverseKnowledgeInputSchema } from "./load-universe-knowledge-input-schema";
 
 // Every action reads the acting user before it parses the input: a person without a session gets
@@ -37,12 +39,38 @@ export async function createEntityAction(input: unknown) {
   });
 }
 
-/** Reads what the workspace shows of an own universe of the acting account: its works and entities. */
+/**
+ * Creates one directed relationship between two entities of an own universe of the acting account
+ * (FR-7, FR-8). Input arrives untyped.
+ */
+export async function createRelationshipAction(input: unknown) {
+  return runAction(async () => {
+    assertSameSiteRequest(await headers());
+    const actor = await getActingUser();
+    const createRelationshipCommand = parseActionInput(createRelationshipInputSchema, input);
+    return { relationship: await createKnowledgeModule().createRelationship(actor, createRelationshipCommand) };
+  });
+}
+
+/**
+ * Reads what the workspace shows of an own universe of the acting account: its works, its entities
+ * and the relationship types its forms offer.
+ */
 export async function loadUniverseKnowledgeAction(input: unknown) {
   return runAction(async () => {
     assertSameSiteRequest(await headers());
     const actor = await getActingUser();
     const { universeId } = parseActionInput(loadUniverseKnowledgeInputSchema, input);
     return createKnowledgeModule().loadUniverseKnowledge(actor, universeId);
+  });
+}
+
+/** Reads the details of one entity of an own universe of the acting account (FR-10). */
+export async function loadEntityDetailsAction(input: unknown) {
+  return runAction(async () => {
+    assertSameSiteRequest(await headers());
+    const actor = await getActingUser();
+    const { universeId, entityId } = parseActionInput(loadEntityDetailsInputSchema, input);
+    return { entity: await createKnowledgeModule().loadEntityDetails(actor, universeId, entityId) };
   });
 }

@@ -1,4 +1,4 @@
-import { NotFoundError } from "@/shared/domain/error-kinds";
+import { BusinessRuleViolationError, NotFoundError } from "@/shared/domain/error-kinds";
 
 /**
  * A universe, work, unit, entity or relationship type that does not exist, is deleted, belongs to
@@ -8,5 +8,15 @@ import { NotFoundError } from "@/shared/domain/error-kinds";
 export class KnowledgeItemNotFoundError extends NotFoundError {
   constructor() {
     super("The item was not found.");
+  }
+}
+
+/**
+ * A relationship whose source and target are the same entity (FR-8). It is checked before any
+ * lookup, so it never tells whether that entity exists; the message names no entity.
+ */
+export class RelationshipToItselfError extends BusinessRuleViolationError {
+  constructor() {
+    super("A relationship cannot connect an entity with itself.");
   }
 }

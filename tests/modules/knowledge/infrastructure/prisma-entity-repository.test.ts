@@ -119,6 +119,52 @@ describe("PostgreSQL entity repository", () => {
     ).toBeNull();
   });
 
+  it("neither finds nor describes a deleted entity", async () => {
+    const newEntity = buildNewEntity({ introducedAt: boundaries.firstUnit });
+    await entityRepository.add(newEntity);
+    await client.entity.update({ where: { id: newEntity.id }, data: { deletedAt: new Date() } });
+
+    expect(await entityRepository.findInUniverse(buildViewerContext(), newEntity.id)).toBeNull();
+    expect(await entityRepository.findDetailsInUniverse(buildViewerContext(), newEntity.id)).toBeNull();
+  });
+
+  it("describes the oldest fragment that is not deleted, and of fragments created at the same instant the lowest identifier", async () => {
+    const newEntity = buildNewEntity({ introducedAt: boundaries.firstUnit });
+    await entityRepository.add(newEntity);
+    const sameInstant = new Date("2026-05-01T10:00:00.000Z");
+    for (const [fragmentId, content, createdAt] of [
+      ["00000000-0000-4000-8000-0000000000f1", "Deleted, oldest.", new Date("2026-04-01T10:00:00.000Z")],
+      ["00000000-0000-4000-8000-0000000000f3", "Tied, higher identifier.", sameInstant],
+      ["00000000-0000-4000-8000-0000000000f2", "Tied, lower identifier.", sameInstant],
+      ["00000000-0000-4000-8000-0000000000f4", "Newest.", new Date("2026-06-01T10:00:00.000Z")],
+    ] as const) {
+      await client.knowledgeEntry.create({
+        data: {
+          id: fragmentId,
+          universeId: FIRST_UNIVERSE.id,
+          entityId: newEntity.id,
+          content,
+          status: "USER_NOTE",
+          boundaryWorkId: boundaries.secondUnit.workId,
+          boundaryUnitId: boundaries.secondUnit.unitId,
+          createdAt,
+        },
+      });
+    }
+    await client.knowledgeEntry.update({
+      where: { id: "00000000-0000-4000-8000-0000000000f1" },
+      data: { deletedAt: new Date() },
+    });
+
+    const entityDetails = await entityRepository.findDetailsInUniverse(buildViewerContext(), newEntity.id);
+
+    expect(entityDetails?.firstFragment).toEqual({
+      content: "Tied, lower identifier.",
+      status: "USER_NOTE",
+      revealedAt: { workId: boundaries.secondUnit.workId, workTitle: "My Novel", workMedium: "NOVEL", unitLabel: "2" },
+    });
+  });
+
   it.each([
     ["a work of another account's universe", "foreignUnit"],
     ["a work of another universe of the same account", "otherUniverseUnit"],
@@ -241,5 +287,19 @@ describe("PostgreSQL entity repository", () => {
     await expect(
       failingRepository.findOldestNameOfSimilarEntity(buildViewerContext(), "CHARACTER", "frodo"),
     ).rejects.toBeInstanceOf(InfrastructureError);
+  });
+
+  it("turns a failure to read one entity or its details into the infrastructure error", async () => {
+    const failingRepository = createPrismaEntityRepository(() => {
+      throw new Error("connection to db-host-7 refused");
+    });
+    const entityId = "00000000-0000-4000-8000-0000000000d0";
+
+    await expect(failingRepository.findInUniverse(buildViewerContext(), entityId)).rejects.toMatchObject({
+      message: "The knowledge storage failed while trying to find an entity.",
+    });
+    await expect(failingRepository.findDetailsInUniverse(buildViewerContext(), entityId)).rejects.toBeInstanceOf(
+      InfrastructureError,
+    );
   });
 });

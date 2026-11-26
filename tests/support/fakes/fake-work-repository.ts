@@ -1,3 +1,4 @@
+import type { NarrativePoint } from "@/modules/knowledge/domain/narrative-point";
 import type { NewNarrativeUnit, Work } from "@/modules/knowledge/domain/work";
 import { parseWorkMedium } from "@/modules/knowledge/domain/work-medium";
 import type { WorkRepository } from "@/modules/knowledge/domain/work-repository";
@@ -32,6 +33,8 @@ export type FakeWorkRepository = WorkRepository & {
   holdsBoundaryInUniverse(universeId: string, boundary: SpoilerBoundary): boolean;
   /** The label of a stored unit, or `null` when no unit has that identifier. */
   readLabelOfStoredUnit(unitId: string): string | null;
+  /** The stored boundary described with the title and medium of its work and its unit label. */
+  describeStoredPoint(boundary: SpoilerBoundary): NarrativePoint;
   /** Makes every following write of a unit fail, until `restoreUnitWrites`. */
   makeUnitWritesFail(): void;
   restoreUnitWrites(): void;
@@ -139,6 +142,15 @@ export function createFakeWorkRepository(): FakeWorkRepository {
         }
       }
       return null;
+    },
+    describeStoredPoint(boundary) {
+      const row = rowsByWorkId.get(boundary.workId);
+      const unit = row === undefined ? undefined : readUnits(row).find((storedUnit) => storedUnit.id === boundary.unitId);
+      if (row === undefined || unit === undefined) {
+        throw new Error("The fake repository holds an item whose point is not a stored unit of its work.");
+      }
+      const work = readWorkOfRow(row);
+      return { workId: work.id, workTitle: work.title, workMedium: work.medium, unitLabel: unit.label };
     },
     countStoredWorks() {
       return rowsByWorkId.size;

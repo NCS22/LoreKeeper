@@ -341,5 +341,118 @@ export function describeEntityStorageContract(
         await storage.entityRepository.findOldestNameOfSimilarEntity(viewerContext, "CHARACTER", "sam"),
       ).toBeNull();
     });
+
+    it("finds an entity of the universe of the context, and none of another universe or that does not exist", async () => {
+      const { storage, firstUnit } = await setUp();
+      const [foreignUnit] = await storeWorkWithBoundaries(
+        storage,
+        buildNewWork({ id: "00000000-0000-4000-8000-0000000000a9", universeId: SECOND_OWNER_UNIVERSE.id }),
+      );
+      const [otherUniverseUnit] = await storeWorkWithBoundaries(
+        storage,
+        buildNewWork({ id: "00000000-0000-4000-8000-0000000000a8", universeId: SECOND_UNIVERSE_OF_FIRST_OWNER.id }),
+      );
+      const ownEntity = buildNewEntity({ introducedAt: firstUnit });
+      const foreignEntity = buildNewEntity({
+        id: "00000000-0000-4000-8000-0000000000d9",
+        universeId: SECOND_OWNER_UNIVERSE.id,
+        introducedAt: foreignUnit as SpoilerBoundary,
+      });
+      const otherUniverseEntity = buildNewEntity({
+        id: "00000000-0000-4000-8000-0000000000d8",
+        universeId: SECOND_UNIVERSE_OF_FIRST_OWNER.id,
+        introducedAt: otherUniverseUnit as SpoilerBoundary,
+      });
+      for (const newEntity of [ownEntity, foreignEntity, otherUniverseEntity]) {
+        await storage.entityRepository.add(newEntity);
+      }
+      const viewerContext = buildViewerContext();
+
+      expect(await storage.entityRepository.findInUniverse(viewerContext, ownEntity.id)).toEqual(
+        asListedEntity(ownEntity),
+      );
+      expect(await storage.entityRepository.findInUniverse(viewerContext, foreignEntity.id)).toBeNull();
+      expect(await storage.entityRepository.findInUniverse(viewerContext, otherUniverseEntity.id)).toBeNull();
+      expect(
+        await storage.entityRepository.findInUniverse(viewerContext, "00000000-0000-4000-8000-0000000000ff"),
+      ).toBeNull();
+      expect(
+        await storage.entityRepository.findInUniverse(buildViewerContext(SECOND_OWNER_UNIVERSE), foreignEntity.id),
+      ).toEqual(asListedEntity(foreignEntity));
+    });
+
+    it("describes an entity with its introduction point and its first fragment at its own point", async () => {
+      const { storage, firstUnit, thirdUnit } = await setUp();
+      const newEntity = buildNewEntity({
+        introducedAt: firstUnit,
+        firstFragment: {
+          id: "00000000-0000-4000-8000-0000000000f1",
+          content: "Carries the ring.\nAnd a sword.",
+          status: "SPECULATION",
+          revealedAt: thirdUnit,
+        },
+      });
+      await storage.entityRepository.add(newEntity);
+
+      expect(await storage.entityRepository.findDetailsInUniverse(buildViewerContext(), newEntity.id)).toEqual({
+        id: newEntity.id,
+        type: "CHARACTER",
+        name: "Frodo",
+        introducedAt: { workId: firstUnit.workId, workTitle: "My Novel", workMedium: "NOVEL", unitLabel: "1" },
+        firstFragment: {
+          content: "Carries the ring.\nAnd a sword.",
+          status: "SPECULATION",
+          revealedAt: { workId: thirdUnit.workId, workTitle: "My Novel", workMedium: "NOVEL", unitLabel: "3" },
+        },
+      });
+    });
+
+    it("describes an entity without a fragment with no first fragment", async () => {
+      const { storage, secondUnit } = await setUp();
+      const newEntity = buildNewEntity({ introducedAt: secondUnit });
+      await storage.entityRepository.add(newEntity);
+
+      const entityDetails = await storage.entityRepository.findDetailsInUniverse(buildViewerContext(), newEntity.id);
+
+      expect(entityDetails?.firstFragment).toBeNull();
+      expect(entityDetails?.introducedAt.unitLabel).toBe("2");
+    });
+
+    it("gives no details of an entity of another account's universe, of another universe of the same account or that does not exist", async () => {
+      const { storage } = await setUp();
+      const [foreignUnit] = await storeWorkWithBoundaries(
+        storage,
+        buildNewWork({ id: "00000000-0000-4000-8000-0000000000a9", universeId: SECOND_OWNER_UNIVERSE.id }),
+      );
+      const [otherUniverseUnit] = await storeWorkWithBoundaries(
+        storage,
+        buildNewWork({ id: "00000000-0000-4000-8000-0000000000a8", universeId: SECOND_UNIVERSE_OF_FIRST_OWNER.id }),
+      );
+      const foreignEntity = buildNewEntity({
+        id: "00000000-0000-4000-8000-0000000000d9",
+        universeId: SECOND_OWNER_UNIVERSE.id,
+        introducedAt: foreignUnit as SpoilerBoundary,
+        firstFragment: {
+          id: "00000000-0000-4000-8000-0000000000f9",
+          content: "Secret of the other account.",
+          status: "CONFIRMED",
+          revealedAt: foreignUnit as SpoilerBoundary,
+        },
+      });
+      const otherUniverseEntity = buildNewEntity({
+        id: "00000000-0000-4000-8000-0000000000d8",
+        universeId: SECOND_UNIVERSE_OF_FIRST_OWNER.id,
+        introducedAt: otherUniverseUnit as SpoilerBoundary,
+      });
+      await storage.entityRepository.add(foreignEntity);
+      await storage.entityRepository.add(otherUniverseEntity);
+      const viewerContext = buildViewerContext();
+
+      expect(await storage.entityRepository.findDetailsInUniverse(viewerContext, foreignEntity.id)).toBeNull();
+      expect(await storage.entityRepository.findDetailsInUniverse(viewerContext, otherUniverseEntity.id)).toBeNull();
+      expect(
+        await storage.entityRepository.findDetailsInUniverse(viewerContext, "00000000-0000-4000-8000-0000000000ff"),
+      ).toBeNull();
+    });
   });
 }

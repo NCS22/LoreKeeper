@@ -1,11 +1,6 @@
 import { z } from "zod";
 import { isBlankFragmentContent } from "@/modules/knowledge";
-
-/** A point: a work and the number of one of its units, as text so the domain rule reads it (D6). */
-const boundaryInputSchema = z.object({
-  workId: z.string(),
-  unitNumber: z.string(),
-});
+import { boundaryInputSchema } from "./boundary-input-schema";
 
 const firstFragmentInputSchema = z.object({
   content: z.string(),

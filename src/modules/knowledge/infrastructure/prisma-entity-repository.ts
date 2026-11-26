@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/shared/infrastructure/generated/prisma/client";
 import type { EntityRepository } from "../domain/entity-repository";
-import { toDomainEntity } from "./entity-prisma-mapper";
+import { toDomainEntity, toEntityDetails } from "./entity-prisma-mapper";
+import { BOUNDARY_DESCRIPTION_INCLUDE } from "./narrative-point-prisma-mapper";
 import { runKnowledgeStorageOperation } from "./run-knowledge-storage-operation";
 
 /**
@@ -69,6 +70,35 @@ export function createPrismaEntityRepository(getPrismaClient: () => PrismaClient
           select: { name: true },
         });
         return similarEntity?.name ?? null;
+      });
+    },
+    // Read to check a reference of a creation (FR-8): the entity must be of the universe.
+    findInUniverse(viewerContext, entityId) {
+      return runKnowledgeStorageOperation("find an entity", async () => {
+        const storedEntity = await getPrismaClient().entity.findFirst({
+          where: { id: entityId, universeId: viewerContext.universeId, deletedAt: null },
+        });
+        return storedEntity === null ? null : toDomainEntity(storedEntity);
+      });
+    },
+    // Temporary exception of spec 006 (2026-11-25): no visibility rule, the entity and its oldest
+    // fragment are returned in READER and AUTHOR universes alike; it ends with the Phase 4 spec that
+    // filters the reads of spec 006, which filters this method by the reading position.
+    findDetailsInUniverse(viewerContext, entityId) {
+      return runKnowledgeStorageOperation("read the details of an entity", async () => {
+        const storedEntity = await getPrismaClient().entity.findFirst({
+          where: { id: entityId, universeId: viewerContext.universeId, deletedAt: null },
+          include: {
+            ...BOUNDARY_DESCRIPTION_INCLUDE,
+            knowledgeEntries: {
+              where: { deletedAt: null },
+              orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+              take: 1,
+              include: BOUNDARY_DESCRIPTION_INCLUDE,
+            },
+          },
+        });
+        return storedEntity === null ? null : toEntityDetails(storedEntity);
       });
     },
   };

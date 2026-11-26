@@ -1,9 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
-import { createEntityAction, createWorkAction, loadUniverseKnowledgeAction } from "@/app/knowledge/actions";
+import {
+  createEntityAction,
+  createRelationshipAction,
+  createWorkAction,
+  loadEntityDetailsAction,
+  loadUniverseKnowledgeAction,
+} from "@/app/knowledge/actions";
 import { createUniverseAction } from "@/app/universes/actions";
 import { createAccountsModule } from "@/modules/accounts";
 import {
   AUTHENTICATION_ERROR_CODE,
+  BUSINESS_RULE_VIOLATION_ERROR_CODE,
   INFRASTRUCTURE_ERROR_CODE,
   NOT_FOUND_ERROR_CODE,
 } from "@/shared/domain/error-kinds";
@@ -28,6 +35,7 @@ const PASSWORD = "unique-typed-password-4f9c1a";
 const ANA_EMAIL = "ana@example.com";
 const BETO_EMAIL = "beto@example.com";
 const NONEXISTENT_UNIVERSE_ID = "2f6c1c0e-5f0a-4c3e-8d1b-9a7e6b5c4d3a";
+const NONEXISTENT_ENTITY_ID = "5a1d7c3e-2b4f-4a6e-9c8d-1e2f3a4b5c6d";
 const NOT_FOUND_RESULT = {
   ok: false,
   error: { code: NOT_FOUND_ERROR_CODE, message: ERROR_MESSAGE_BY_CODE[NOT_FOUND_ERROR_CODE] },
@@ -93,6 +101,24 @@ function buildEntityInput(universeId: string, workId: string) {
   return { universeId, name: "Frodo", type: "CHARACTER", boundary: { workId, unitNumber: "2" } };
 }
 
+type RelationshipReferences = {
+  readonly sourceEntityId: string;
+  readonly targetEntityId: string;
+  readonly relationshipTypeId: string;
+  readonly workId: string;
+};
+
+function buildRelationshipInput(universeId: string, references: RelationshipReferences) {
+  return {
+    universeId,
+    sourceEntityId: references.sourceEntityId,
+    targetEntityId: references.targetEntityId,
+    relationshipTypeId: references.relationshipTypeId,
+    status: "CONFIRMED",
+    boundary: { workId: references.workId, unitNumber: "2" },
+  };
+}
+
 /** Creates a work of three units in a universe of the current session and returns its identifier. */
 async function createOwnWork(universeId: string, title = "The Long Road"): Promise<string> {
   const creation = await createWorkAction({ ...buildWorkInput(universeId), title });
@@ -130,6 +156,22 @@ const EVERY_ACTION: readonly ActionUnderTest[] = [
   {
     label: "loadUniverseKnowledgeAction",
     run: () => loadUniverseKnowledgeAction({ universeId: NONEXISTENT_UNIVERSE_ID }),
+  },
+  {
+    label: "createRelationshipAction",
+    run: () =>
+      createRelationshipAction(
+        buildRelationshipInput(NONEXISTENT_UNIVERSE_ID, {
+          sourceEntityId: NONEXISTENT_UNIVERSE_ID,
+          targetEntityId: NONEXISTENT_ENTITY_ID,
+          relationshipTypeId: NONEXISTENT_UNIVERSE_ID,
+          workId: NONEXISTENT_UNIVERSE_ID,
+        }),
+      ),
+  },
+  {
+    label: "loadEntityDetailsAction",
+    run: () => loadEntityDetailsAction({ universeId: NONEXISTENT_UNIVERSE_ID, entityId: NONEXISTENT_ENTITY_ID }),
   },
 ];
 
@@ -178,7 +220,7 @@ describe("with a valid session", () => {
 
     expect(await loadUniverseKnowledgeAction({ universeId })).toEqual({
       ok: true,
-      value: { works: [], entities: [] },
+      value: { works: [], entities: [], relationshipTypes: expect.any(Array) },
     });
   });
 
@@ -772,6 +814,362 @@ describe("createEntityAction when the storage fails or the request comes from an
         error: { code: VALIDATION_ERROR_CODE, fieldErrors: { request: [{ code: CROSS_SITE_REQUEST_ISSUE_CODE }] } },
       });
       expect(await countStoredEntities()).toBe(0);
+    },
+  );
+});
+
+async function countStoredRelationships(): Promise<number> {
+  return readStoredRowsClient().relationship.count();
+}
+
+/** Creates an entity at unit 2 of the work, in a universe of the current session, and returns its identifier. */
+async function createOwnEntity(universeId: string, workId: string, name: string, fragmentContent = ""): Promise<string> {
+  const creation = await createEntityAction({
+    ...buildEntityInput(universeId, workId),
+    name,
+    fragment: { content: fragmentContent, status: "USER_NOTE" },
+  });
+  if (!creation.ok) {
+    throw new Error("The entity of the test could not be created.");
+  }
+  return creation.value.entity.id;
+}
+
+/** The identifier of the type with that key in the catalog of a universe of the current session. */
+async function findOwnRelationshipTypeId(universeId: string, relationshipTypeKey: string): Promise<string> {
+  const load = await loadUniverseKnowledgeAction({ universeId });
+  const relationshipType = load.ok
+    ? load.value.relationshipTypes.find((candidate) => candidate.key === relationshipTypeKey)
+    : undefined;
+  if (relationshipType === undefined) {
+    throw new Error(`The universe of the test has no type ${relationshipTypeKey}.`);
+  }
+  return relationshipType.id;
+}
+
+/** A universe of the current session with a work, Frodo (with a first fragment) and The Fellowship. */
+async function prepareOwnRelationshipWorld(universeName = "Middle-earth") {
+  const universeId = await createOwnUniverse(universeName);
+  const workId = await createOwnWork(universeId);
+  const frodoId = await createOwnEntity(universeId, workId, "Frodo", "Carries the ring.\nTo Mordor.");
+  const fellowshipId = await createOwnEntity(universeId, workId, "The Fellowship");
+  const memberOfTypeId = await findOwnRelationshipTypeId(universeId, "MEMBER_OF");
+  const references: RelationshipReferences = {
+    sourceEntityId: frodoId,
+    targetEntityId: fellowshipId,
+    relationshipTypeId: memberOfTypeId,
+    workId,
+  };
+  return { universeId, workId, frodoId, fellowshipId, memberOfTypeId, references };
+}
+
+describe("createRelationshipAction and loadEntityDetailsAction with a valid session (FR-7, FR-10)", () => {
+  it("stores one relationship that the details of each of its entities read with the right label", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const world = await prepareOwnRelationshipWorld();
+
+    const creation = await createRelationshipAction(buildRelationshipInput(world.universeId, world.references));
+    const frodoDetails = await loadEntityDetailsAction({ universeId: world.universeId, entityId: world.frodoId });
+    const fellowshipDetails = await loadEntityDetailsAction({
+      universeId: world.universeId,
+      entityId: world.fellowshipId,
+    });
+
+    const relationshipId = creation.ok ? creation.value.relationship.id : "missing";
+    expect(creation).toEqual({
+      ok: true,
+      value: { relationship: { id: relationshipId, sourceEntityId: world.frodoId, targetEntityId: world.fellowshipId } },
+    });
+    const point = { workId: world.workId, workTitle: "The Long Road", unitWording: "chapter", unitLabel: "2" };
+    expect(frodoDetails).toEqual({
+      ok: true,
+      value: {
+        entity: {
+          id: world.frodoId,
+          name: "Frodo",
+          type: "CHARACTER",
+          introducedAt: point,
+          firstFragment: { content: "Carries the ring.\nTo Mordor.", status: "USER_NOTE", point },
+          relationships: [
+            {
+              id: relationshipId,
+              status: "CONFIRMED",
+              point,
+              subjectName: "Frodo",
+              label: "member of",
+              otherName: "The Fellowship",
+            },
+          ],
+        },
+      },
+    });
+    expect(fellowshipDetails).toMatchObject({
+      ok: true,
+      value: {
+        entity: {
+          firstFragment: null,
+          relationships: [{ id: relationshipId, subjectName: "The Fellowship", label: "has member", otherName: "Frodo" }],
+        },
+      },
+    });
+    expect(await countStoredRelationships()).toBe(1);
+  });
+
+  it("loadUniverseKnowledgeAction lists the eight relationship types of the universe ordered by key", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const universeId = await createOwnUniverse();
+
+    const load = await loadUniverseKnowledgeAction({ universeId });
+
+    const relationshipTypes = load.ok ? load.value.relationshipTypes : [];
+    expect(relationshipTypes.map((relationshipType) => relationshipType.key)).toEqual([
+      "ALLY_OF",
+      "ENEMY_OF",
+      "LEADER_OF",
+      "LOCATED_IN",
+      "MEMBER_OF",
+      "PARENT_OF",
+      "POSSESSES",
+      "SIBLING_OF",
+    ]);
+    expect(relationshipTypes.find((relationshipType) => relationshipType.key === "MEMBER_OF")).toEqual({
+      id: expect.any(String),
+      key: "MEMBER_OF",
+      label: "member of",
+      inverseLabel: "has member",
+      isSymmetric: false,
+    });
+  });
+
+  it("answers an entity related to itself with the business rule violation and stores nothing (FR-8)", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const world = await prepareOwnRelationshipWorld();
+
+    const result = await createRelationshipAction(
+      buildRelationshipInput(world.universeId, { ...world.references, targetEntityId: world.frodoId }),
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: BUSINESS_RULE_VIOLATION_ERROR_CODE,
+        message: ERROR_MESSAGE_BY_CODE[BUSINESS_RULE_VIOLATION_ERROR_CODE],
+      },
+    });
+    expect(await countStoredRelationships()).toBe(0);
+  });
+
+  it("reports every failing field together, keyed by its input path, and stores nothing", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const world = await prepareOwnRelationshipWorld();
+    const result = await createRelationshipAction({
+      ...buildRelationshipInput(world.universeId, { ...world.references, relationshipTypeId: "MEMBER_OF" }),
+      status: undefined,
+      boundary: { workId: world.workId, unitNumber: "7.0" },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: VALIDATION_ERROR_CODE,
+        fieldErrors: {
+          relationshipTypeId: [{ code: "ID_INVALID" }],
+          status: [{ code: "STATUS_INVALID" }],
+          "boundary.unitNumber": [{ code: "UNIT_NUMBER_INVALID" }],
+        },
+      },
+    });
+    expect(await countStoredRelationships()).toBe(0);
+  });
+
+  it("reports a boundary that is not an object as a shape failure on that field", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const world = await prepareOwnRelationshipWorld();
+
+    const result = await createRelationshipAction({
+      ...buildRelationshipInput(world.universeId, world.references),
+      boundary: "2",
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: VALIDATION_ERROR_CODE, fieldErrors: { boundary: [{ code: INVALID_INPUT_ISSUE_CODE }] } },
+    });
+    expect(await countStoredRelationships()).toBe(0);
+  });
+
+  it("loadEntityDetailsAction answers a malformed entity identifier with the validation error on entityId", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const universeId = await createOwnUniverse();
+
+    expect(await loadEntityDetailsAction({ universeId, entityId: "frodo" })).toMatchObject({
+      ok: false,
+      error: { code: VALIDATION_ERROR_CODE, fieldErrors: { entityId: [{ code: "ID_INVALID" }] } },
+    });
+  });
+});
+
+describe("createRelationshipAction and loadEntityDetailsAction with another account's items, nonexistent ones and forged data (FR-8, NFR-2)", () => {
+  it("createRelationshipAction answers one and the same not found for a foreign or nonexistent universe and for every reference of another account or universe, storing nothing", async () => {
+    const { anaSessionToken, betoSessionToken } = await signUpAnaThenBeto();
+    switchToSession(betoSessionToken);
+    const beto = await prepareOwnRelationshipWorld("Beto's world");
+    switchToSession(anaSessionToken);
+    const ana = await prepareOwnRelationshipWorld("Ana's world");
+    const anaOther = await prepareOwnRelationshipWorld("Ana's other world");
+    const badInputs = [
+      buildRelationshipInput(beto.universeId, beto.references),
+      buildRelationshipInput(NONEXISTENT_UNIVERSE_ID, ana.references),
+      ...[beto, anaOther].flatMap((other) => [
+        buildRelationshipInput(ana.universeId, { ...ana.references, sourceEntityId: other.frodoId }),
+        buildRelationshipInput(ana.universeId, { ...ana.references, targetEntityId: other.fellowshipId }),
+        buildRelationshipInput(ana.universeId, { ...ana.references, relationshipTypeId: other.memberOfTypeId }),
+        buildRelationshipInput(ana.universeId, { ...ana.references, workId: other.workId }),
+      ]),
+      buildRelationshipInput(ana.universeId, { ...ana.references, sourceEntityId: NONEXISTENT_ENTITY_ID }),
+      buildRelationshipInput(ana.universeId, { ...ana.references, relationshipTypeId: NONEXISTENT_ENTITY_ID }),
+      buildRelationshipInput(ana.universeId, { ...ana.references, workId: NONEXISTENT_ENTITY_ID }),
+      { ...buildRelationshipInput(ana.universeId, ana.references), boundary: { workId: ana.workId, unitNumber: "4" } },
+    ];
+
+    const results: unknown[] = [];
+    for (const badInput of badInputs) {
+      results.push(await createRelationshipAction(badInput));
+    }
+
+    expect(results).toHaveLength(badInputs.length);
+    for (const result of results) {
+      expect(result).toEqual(NOT_FOUND_RESULT);
+    }
+    expect(await countStoredRelationships()).toBe(0);
+  });
+
+  it("loadEntityDetailsAction answers the same not found for an entity of another account, of another own universe, a nonexistent one and a universe of another account", async () => {
+    const { anaSessionToken, betoSessionToken } = await signUpAnaThenBeto();
+    switchToSession(betoSessionToken);
+    const beto = await prepareOwnRelationshipWorld("Beto's world");
+    await createRelationshipAction(buildRelationshipInput(beto.universeId, beto.references));
+    switchToSession(anaSessionToken);
+    const ana = await prepareOwnRelationshipWorld("Ana's world");
+    const anaOther = await prepareOwnRelationshipWorld("Ana's other world");
+
+    const results = [
+      await loadEntityDetailsAction({ universeId: ana.universeId, entityId: beto.frodoId }),
+      await loadEntityDetailsAction({ universeId: beto.universeId, entityId: beto.frodoId }),
+      await loadEntityDetailsAction({ universeId: ana.universeId, entityId: anaOther.frodoId }),
+      await loadEntityDetailsAction({ universeId: ana.universeId, entityId: NONEXISTENT_ENTITY_ID }),
+    ];
+
+    for (const result of results) {
+      expect(result).toEqual(NOT_FOUND_RESULT);
+      expect(JSON.stringify(result)).not.toMatch(/Carries the ring|Frodo/);
+    }
+  });
+
+  it("createRelationshipAction ignores a forged owner, a description and identifiers sent with the input", async () => {
+    const { anaSessionToken, betoSessionToken } = await signUpAnaThenBeto();
+    switchToSession(anaSessionToken);
+    const anaUniverseId = await createOwnUniverse("Ana's world");
+    switchToSession(betoSessionToken);
+    const beto = await prepareOwnRelationshipWorld("Beto's world");
+
+    const result = await createRelationshipAction({
+      ...buildRelationshipInput(beto.universeId, beto.references),
+      id: NONEXISTENT_ENTITY_ID,
+      ownerId: anaUniverseId,
+      userId: anaUniverseId,
+      description: "Joined at Rivendell.",
+      createdAt: "2020-01-01T00:00:00.000Z",
+      boundary: { workId: beto.workId, unitNumber: "2", unitId: NONEXISTENT_ENTITY_ID },
+    });
+
+    expect(result.ok && Object.keys(result.value.relationship).sort()).toEqual([
+      "id",
+      "sourceEntityId",
+      "targetEntityId",
+    ]);
+    const storedRelationships = await readStoredRowsClient().relationship.findMany();
+    expect(storedRelationships).toHaveLength(1);
+    expect(storedRelationships[0]).toMatchObject({ universeId: beto.universeId, status: "CONFIRMED" });
+    expect(storedRelationships[0]?.id).not.toBe(NONEXISTENT_ENTITY_ID);
+    expect(storedRelationships[0]?.createdAt.toISOString()).not.toBe("2020-01-01T00:00:00.000Z");
+  });
+
+  it("two accounts never see each other's relationships", async () => {
+    const { anaSessionToken, betoSessionToken } = await signUpAnaThenBeto();
+    switchToSession(anaSessionToken);
+    const ana = await prepareOwnRelationshipWorld("Ana's world");
+    switchToSession(betoSessionToken);
+    const beto = await prepareOwnRelationshipWorld("Beto's world");
+    await createRelationshipAction(buildRelationshipInput(beto.universeId, beto.references));
+    await createRelationshipAction(buildRelationshipInput(beto.universeId, beto.references));
+
+    const betoDetails = await loadEntityDetailsAction({ universeId: beto.universeId, entityId: beto.frodoId });
+    switchToSession(anaSessionToken);
+    const anaDetails = await loadEntityDetailsAction({ universeId: ana.universeId, entityId: ana.frodoId });
+
+    expect(betoDetails.ok && betoDetails.value.entity.relationships).toHaveLength(2);
+    expect(anaDetails.ok && anaDetails.value.entity.relationships).toEqual([]);
+  });
+});
+
+describe("createRelationshipAction and loadEntityDetailsAction when the storage fails or the request comes from another site", () => {
+  it("createRelationshipAction answers the generic infrastructure result with no internals, logs it once and stores nothing", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const world = await prepareOwnRelationshipWorld();
+    vi.spyOn(getPrismaClient().relationship, "create").mockRejectedValue(
+      new Error("connection to db-host-7 refused: insert into Relationship"),
+    );
+    const loggedLines = silenceServerLog();
+
+    const result = await createRelationshipAction(buildRelationshipInput(world.universeId, world.references));
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: INFRASTRUCTURE_ERROR_CODE,
+        message: ERROR_MESSAGE_BY_CODE[INFRASTRUCTURE_ERROR_CODE],
+      },
+    });
+    expect(JSON.stringify(result)).not.toMatch(/db-host-7|insert|stack|Relationship/i);
+    expect(loggedLines).toHaveLength(1);
+    expect(await countStoredRelationships()).toBe(0);
+  });
+
+  it("loadEntityDetailsAction answers the generic infrastructure result", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const world = await prepareOwnRelationshipWorld();
+    vi.spyOn(getPrismaClient().relationship, "findMany").mockRejectedValue(new Error("connection to db-host-7 refused"));
+    silenceServerLog();
+
+    expect(await loadEntityDetailsAction({ universeId: world.universeId, entityId: world.frodoId })).toEqual({
+      ok: false,
+      error: {
+        code: INFRASTRUCTURE_ERROR_CODE,
+        message: ERROR_MESSAGE_BY_CODE[INFRASTRUCTURE_ERROR_CODE],
+      },
+    });
+  });
+
+  it.each(CROSS_SITE_REQUEST_EMULATIONS)(
+    "both actions reject a request with $label, even with a valid session, and store nothing",
+    async ({ emulate }) => {
+      await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+      const world = await prepareOwnRelationshipWorld();
+      emulate();
+
+      const results = [
+        await createRelationshipAction(buildRelationshipInput(world.universeId, world.references)),
+        await loadEntityDetailsAction({ universeId: world.universeId, entityId: world.frodoId }),
+      ];
+
+      for (const result of results) {
+        expect(result).toMatchObject({
+          ok: false,
+          error: { code: VALIDATION_ERROR_CODE, fieldErrors: { request: [{ code: CROSS_SITE_REQUEST_ISSUE_CODE }] } },
+        });
+      }
+      expect(await countStoredRelationships()).toBe(0);
     },
   );
 });

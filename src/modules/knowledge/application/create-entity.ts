@@ -8,11 +8,15 @@ import { validateEntityName } from "../domain/entity-name";
 import type { EntityRepository } from "../domain/entity-repository";
 import { ENTITY_TYPE_FIELD, ENTITY_TYPE_INVALID_CODE, parseEntityType } from "../domain/entity-type";
 import { readFragmentContent } from "../domain/fragment-content";
-import { KnowledgeItemNotFoundError } from "../domain/knowledge-errors";
-import { parseKnowledgeItemId } from "../domain/knowledge-item-id";
 import { KNOWLEDGE_STATUS_INVALID_CODE, parseKnowledgeStatus, type KnowledgeStatus } from "../domain/knowledge-status";
-import { parseUnitNumber } from "../domain/unit-number";
 import type { WorkRepository } from "../domain/work-repository";
+import {
+  readBoundary,
+  resolveBoundary,
+  type BoundaryCommand,
+  type BoundaryReading,
+  type BoundaryReference,
+} from "./boundary-reference";
 import { toEntitySummaryDto, type EntitySummaryDto } from "./entity-dto";
 import type { OwnUniverseLookup } from "./own-universe-lookup";
 import { resolveViewerContext } from "./resolve-viewer-context";
@@ -31,12 +35,6 @@ export type CreateEntityDependencies = {
   readonly generateEntityId: () => string;
   readonly generateFragmentId: () => string;
   readonly getCurrentTime: () => Date;
-};
-
-/** A point as the form sends it: a work and the number of one of its units, typed as text (D6). */
-export type BoundaryCommand = {
-  readonly workId: string;
-  readonly unitNumber: string;
 };
 
 /** The optional first fragment. Without a boundary it takes the point of the entity (FR-5). */
@@ -61,17 +59,6 @@ export type EntityCreation = {
   readonly similarEntityName: string | null;
 };
 
-/** A well-formed point, not looked up yet. A `null` unit number names no unit of any work. */
-type BoundaryReference = {
-  readonly workId: string;
-  readonly unitNumber: number | null;
-};
-
-type BoundaryReading = {
-  readonly reference: BoundaryReference | null;
-  readonly issues: readonly ValidationIssue[];
-};
-
 type FirstFragmentInput = {
   readonly content: string;
   readonly status: KnowledgeStatus;
@@ -84,26 +71,6 @@ type FirstFragmentReading = {
   readonly fragmentInput: FirstFragmentInput | null;
   readonly issues: readonly ValidationIssue[];
 };
-
-function readBoundary(
-  boundary: BoundaryCommand,
-  workIdField: string,
-  unitNumberField: string,
-): BoundaryReading {
-  const workIdParsing = parseKnowledgeItemId(boundary.workId, workIdField);
-  const unitNumberParsing = parseUnitNumber(boundary.unitNumber, unitNumberField);
-  const issues: ValidationIssue[] = [];
-  if (!workIdParsing.isValid) {
-    issues.push(workIdParsing.issue);
-  }
-  if (!unitNumberParsing.isValid) {
-    issues.push(unitNumberParsing.issue);
-  }
-  if (!workIdParsing.isValid || !unitNumberParsing.isValid) {
-    return { reference: null, issues };
-  }
-  return { reference: { workId: workIdParsing.itemId, unitNumber: unitNumberParsing.unitNumber }, issues };
-}
 
 /**
  * Reads the first fragment. An empty or blank content means there is no fragment: its status and
@@ -137,30 +104,6 @@ function readFirstFragment(fragment: FirstFragmentCommand | null | undefined): F
     fragmentInput: { content: contentReading.content, status, boundaryReference: boundaryReading.reference },
     issues,
   };
-}
-
-/**
- * Looks the point up in the universe of the context. A work that does not exist, is deleted, is of
- * another account or of another universe, and a number with no unit in that work, all give the
- * same not found (FR-8).
- */
-async function resolveBoundary(
-  workRepository: WorkRepository,
-  viewerContext: ViewerContext,
-  reference: BoundaryReference,
-): Promise<SpoilerBoundary> {
-  if (reference.unitNumber === null) {
-    throw new KnowledgeItemNotFoundError();
-  }
-  const boundary = await workRepository.findBoundaryOfUnitNumber(
-    viewerContext,
-    reference.workId,
-    reference.unitNumber,
-  );
-  if (boundary === null) {
-    throw new KnowledgeItemNotFoundError();
-  }
-  return boundary;
 }
 
 async function buildFirstFragment(

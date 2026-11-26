@@ -9,12 +9,25 @@ export {
   FRAGMENT_BOUNDARY_WORK_ID_FIELD,
   FRAGMENT_STATUS_FIELD,
 } from "./application/create-entity";
+export type { CreateEntityCommand, EntityCreation, FirstFragmentCommand } from "./application/create-entity";
+export type { BoundaryCommand } from "./application/boundary-reference";
+export {
+  RELATIONSHIP_BOUNDARY_UNIT_NUMBER_FIELD,
+  RELATIONSHIP_BOUNDARY_WORK_ID_FIELD,
+  RELATIONSHIP_SOURCE_ENTITY_ID_FIELD,
+  RELATIONSHIP_STATUS_FIELD,
+  RELATIONSHIP_TARGET_ENTITY_ID_FIELD,
+  RELATIONSHIP_TYPE_ID_FIELD,
+} from "./application/create-relationship";
+export type { CreatedRelationshipDto, CreateRelationshipCommand } from "./application/create-relationship";
+export { ENTITY_ID_FIELD } from "./application/get-entity-details";
 export type {
-  BoundaryCommand,
-  CreateEntityCommand,
-  EntityCreation,
-  FirstFragmentCommand,
-} from "./application/create-entity";
+  EntityDetailsDto,
+  FirstFragmentDto,
+  PointDto,
+  RelationshipReadingDto,
+} from "./application/entity-details-dto";
+export type { RelationshipTypeDto } from "./application/relationship-type-catalog";
 export type { EntitySummaryDto } from "./application/entity-dto";
 export type { WorkDto } from "./application/work-dto";
 export type { UnitWording } from "./domain/unit-wording";

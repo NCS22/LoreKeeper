@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { OwnUniverseLookup } from "@/modules/knowledge/application/own-universe-lookup";
+import type { RelationshipTypeCatalog } from "@/modules/knowledge/application/relationship-type-catalog";
 import type { EntityRepository } from "@/modules/knowledge/domain/entity-repository";
+import type { RelationshipRepository } from "@/modules/knowledge/domain/relationship-repository";
 import type { NewNarrativeUnit, NewWork } from "@/modules/knowledge/domain/work";
 import type { WorkRepository } from "@/modules/knowledge/domain/work-repository";
 import type { Universe } from "@/modules/universes/domain/universe";
@@ -35,6 +37,13 @@ export type KnowledgeStorage = {
   /** Makes every following write of a fragment fail, until `restoreFragmentWrites`. */
   readonly makeFragmentWritesFail: () => Promise<void>;
   readonly restoreFragmentWrites: () => Promise<void>;
+  readonly relationshipRepository: RelationshipRepository;
+  readonly countStoredRelationships: () => Promise<number>;
+  /**
+   * The catalog of the universe of the context, read through the relationship type repository of
+   * the universes module over the same kind of storage (scoped by the viewer as owner).
+   */
+  readonly relationshipTypeCatalog: RelationshipTypeCatalog;
 };
 
 /** Builds an empty storage holding the given universes (their owners are the two test accounts). */

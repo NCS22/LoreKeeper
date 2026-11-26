@@ -1,4 +1,5 @@
 import type { Entity, NewEntity, NewKnowledgeEntry } from "@/modules/knowledge/domain/entity";
+import type { NarrativePoint } from "@/modules/knowledge/domain/narrative-point";
 import type { EntityRepository } from "@/modules/knowledge/domain/entity-repository";
 import { parseEntityType } from "@/modules/knowledge/domain/entity-type";
 import { InfrastructureError } from "@/shared/domain/error-kinds";
@@ -11,14 +12,23 @@ export type StoredFragment = Omit<NewKnowledgeEntry, "id">;
 export type FakeEntityRepository = EntityRepository & {
   readStoredFragmentsOfEntity(entityId: string): readonly StoredFragment[];
   countStoredEntities(): number;
+  /** Whether a stored entity of that universe has the identifier, as a composite foreign key checks. */
+  holdsEntityInUniverse(universeId: string, entityId: string): boolean;
+  /** The name of a stored entity; it fails when no entity has that identifier. */
+  readNameOfStoredEntity(entityId: string): string;
   countStoredFragments(): number;
   /** Makes every following write of a fragment fail, until `restoreFragmentWrites`. */
   makeFragmentWritesFail(): void;
   restoreFragmentWrites(): void;
 };
 
-/** Whether a boundary is a work of the universe with one of its units (the fake work repository). */
-export type BoundaryOfUniverseCheck = (universeId: string, boundary: SpoilerBoundary) => boolean;
+/** What the fake entity repository reads of the fake work repository, as PostgreSQL joins the tables. */
+export type StoredWorksReader = {
+  /** Whether a boundary is a work of the universe with one of its units. */
+  readonly holdsBoundaryInUniverse: (universeId: string, boundary: SpoilerBoundary) => boolean;
+  /** The stored boundary with the title and medium of its work and the label of its unit. */
+  readonly describeStoredPoint: (boundary: SpoilerBoundary) => NarrativePoint;
+};
 
 type StoredEntityRow = {
   readonly serializedEntity: string;
@@ -64,7 +74,7 @@ function compareByCreationThenId(firstEntity: Entity, secondEntity: Entity): num
  * the scope by universe, the all-or-nothing write of an entity with its fragment and the refusal of
  * a boundary outside the universe or with a unit of another work (the composite foreign keys).
  */
-export function createFakeEntityRepository(isBoundaryOfUniverse: BoundaryOfUniverseCheck): FakeEntityRepository {
+export function createFakeEntityRepository(storedWorks: StoredWorksReader): FakeEntityRepository {
   const rowsByEntityId = new Map<string, StoredEntityRow>();
   let fragmentWritesFail = false;
 
@@ -79,6 +89,19 @@ export function createFakeEntityRepository(isBoundaryOfUniverse: BoundaryOfUnive
       .map((row) => deserializeEntity(row.serializedEntity))
       .filter((entity) => entity.universeId === universeId)
       .sort(compareByCreationThenId);
+  }
+
+  function isBoundaryOfUniverse(universeId: string, boundary: SpoilerBoundary): boolean {
+    return storedWorks.holdsBoundaryInUniverse(universeId, boundary);
+  }
+
+  function readEntityOfUniverse(universeId: string, entityId: string): Entity | null {
+    const row = rowsByEntityId.get(entityId);
+    if (row === undefined) {
+      return null;
+    }
+    const entity = deserializeEntity(row.serializedEntity);
+    return entity.universeId === universeId ? entity : null;
   }
 
   function refuse(): never {
@@ -120,6 +143,42 @@ export function createFakeEntityRepository(isBoundaryOfUniverse: BoundaryOfUnive
           entity.type === entityType && rowsByEntityId.get(entity.id)?.normalizedName === normalizedName,
       );
       return similarEntity?.name ?? null;
+    },
+    async findInUniverse(viewerContext, entityId) {
+      return readEntityOfUniverse(viewerContext.universeId, entityId);
+    },
+    async findDetailsInUniverse(viewerContext, entityId) {
+      const entity = readEntityOfUniverse(viewerContext.universeId, entityId);
+      const row = rowsByEntityId.get(entityId);
+      if (entity === null || row === undefined) {
+        return null;
+      }
+      // A fake entity holds at most one fragment, its first one.
+      const [firstFragment] = readFragments(row);
+      return {
+        id: entity.id,
+        type: entity.type,
+        name: entity.name,
+        introducedAt: storedWorks.describeStoredPoint(entity.introducedAt),
+        firstFragment:
+          firstFragment === undefined
+            ? null
+            : {
+                content: firstFragment.content,
+                status: firstFragment.status,
+                revealedAt: storedWorks.describeStoredPoint(firstFragment.revealedAt),
+              },
+      };
+    },
+    holdsEntityInUniverse(universeId, entityId) {
+      return readEntityOfUniverse(universeId, entityId) !== null;
+    },
+    readNameOfStoredEntity(entityId) {
+      const row = rowsByEntityId.get(entityId);
+      if (row === undefined) {
+        throw new Error("The fake repository holds a relationship with an entity that is not stored.");
+      }
+      return deserializeEntity(row.serializedEntity).name;
     },
     readStoredFragmentsOfEntity(entityId) {
       const row = rowsByEntityId.get(entityId);

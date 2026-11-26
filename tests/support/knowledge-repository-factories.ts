@@ -1,6 +1,7 @@
 import { findOwnUniverse } from "@/modules/universes/application/find-own-universe";
 import type { Universe } from "@/modules/universes/domain/universe";
 import type { NewEntity } from "@/modules/knowledge/domain/entity";
+import type { NewRelationship } from "@/modules/knowledge/domain/relationship";
 import type { NewNarrativeUnit, NewWork } from "@/modules/knowledge/domain/work";
 import type {
   KnowledgeStorage,
@@ -8,7 +9,9 @@ import type {
 } from "./contracts/work-repository-contract";
 import { createPostgresKnowledgeStorage } from "./database/postgres-knowledge-storage";
 import { createFakeEntityRepository } from "./fakes/fake-entity-repository";
+import { createFakeRelationshipRepository } from "./fakes/fake-relationship-repository";
 import { createFakeWorkRepository } from "./fakes/fake-work-repository";
+import { createRelationshipTypeCatalogOverRepository } from "./relationship-type-catalog-over-repository";
 import { createFakeUniverseStorage } from "./universe-repository-factories";
 
 /**
@@ -18,11 +21,24 @@ import { createFakeUniverseStorage } from "./universe-repository-factories";
 export async function createFakeKnowledgeStorage(
   startingUniverses: readonly Universe[] = [],
 ): Promise<KnowledgeStorage> {
-  const { universeRepository } = await createFakeUniverseStorage(startingUniverses);
+  const { universeRepository, relationshipTypeRepository } = await createFakeUniverseStorage(startingUniverses);
   const workRepository = createFakeWorkRepository();
-  const entityRepository = createFakeEntityRepository((universeId, boundary) =>
-    workRepository.holdsBoundaryInUniverse(universeId, boundary),
-  );
+  const entityRepository = createFakeEntityRepository({
+    holdsBoundaryInUniverse: (universeId, boundary) => workRepository.holdsBoundaryInUniverse(universeId, boundary),
+    describeStoredPoint: (boundary) => workRepository.describeStoredPoint(boundary),
+  });
+  const relationshipRepository = createFakeRelationshipRepository({
+    holdsEntityInUniverse: (universeId, entityId) => entityRepository.holdsEntityInUniverse(universeId, entityId),
+    holdsBoundaryInUniverse: (universeId, boundary) => workRepository.holdsBoundaryInUniverse(universeId, boundary),
+    async holdsRelationshipTypeInUniverse(universeId, relationshipTypeId) {
+      // Like the composite foreign key: the type must be of the universe, whoever owns it.
+      const ownerId = startingUniverses.find((universe) => universe.id === universeId)?.ownerId ?? "";
+      const typesOfUniverse = await relationshipTypeRepository.findAllInOwnedUniverse(ownerId, universeId);
+      return typesOfUniverse.some((relationshipType) => relationshipType.id === relationshipTypeId);
+    },
+    readNameOfStoredEntity: (entityId) => entityRepository.readNameOfStoredEntity(entityId),
+    describeStoredPoint: (boundary) => workRepository.describeStoredPoint(boundary),
+  });
   return {
     ownUniverseLookup: {
       findOwnUniverse: (actor, universeId) => findOwnUniverse({ universeRepository }, actor, universeId),
@@ -39,6 +55,9 @@ export async function createFakeKnowledgeStorage(
     countStoredFragments: async () => entityRepository.countStoredFragments(),
     makeFragmentWritesFail: async () => entityRepository.makeFragmentWritesFail(),
     restoreFragmentWrites: async () => entityRepository.restoreFragmentWrites(),
+    relationshipRepository,
+    countStoredRelationships: async () => relationshipRepository.countStoredRelationships(),
+    relationshipTypeCatalog: createRelationshipTypeCatalogOverRepository(relationshipTypeRepository),
   };
 }
 
@@ -85,6 +104,24 @@ export function buildNewEntity(
     createdAt: new Date("2026-03-02T10:00:00.000Z"),
     updatedAt: new Date("2026-03-02T10:00:00.000Z"),
     firstFragment: null,
+    ...overrides,
+  };
+}
+
+/**
+ * A relationship of the first universe. Its entities, type and point must be given by the test:
+ * their identifiers are assigned by the storage or by the setup of the test.
+ */
+export function buildNewRelationship(
+  overrides: Partial<NewRelationship> &
+    Pick<NewRelationship, "sourceEntityId" | "targetEntityId" | "relationshipTypeId" | "revealedAt">,
+): NewRelationship {
+  return {
+    id: "00000000-0000-4000-8000-0000000000c0",
+    universeId: "00000000-0000-4000-8000-000000000001",
+    status: "USER_NOTE",
+    createdAt: new Date("2026-03-03T10:00:00.000Z"),
+    updatedAt: new Date("2026-03-03T10:00:00.000Z"),
     ...overrides,
   };
 }

@@ -1,5 +1,5 @@
 import type { ViewerContext } from "@/shared/domain/viewer-context";
-import type { Entity, NewEntity } from "./entity";
+import type { Entity, EntityDetails, NewEntity } from "./entity";
 import type { EntityType } from "./entity-type";
 
 /**
@@ -28,4 +28,11 @@ export type EntityRepository = {
     entityType: EntityType,
     normalizedName: string,
   ): Promise<string | null>;
+  /** The entity, not deleted, of the universe of the context; `null` for anything else (FR-8). */
+  findInUniverse(viewerContext: ViewerContext, entityId: string): Promise<Entity | null>;
+  /**
+   * The entity, not deleted, of the universe of the context, with its points described and its
+   * oldest fragment that is not deleted (ties by identifier); `null` for anything else (FR-10).
+   */
+  findDetailsInUniverse(viewerContext: ViewerContext, entityId: string): Promise<EntityDetails | null>;
 };
