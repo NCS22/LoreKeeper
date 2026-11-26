@@ -1,15 +1,51 @@
 import { describe, expect, it } from "vitest";
+import type { RelationshipType } from "@/modules/universes/domain/relationship-type";
+import type { RelationshipTypeRepository } from "@/modules/universes/domain/relationship-type-repository";
 import type { RememberedUniverseRepository } from "@/modules/universes/domain/remembered-universe-repository";
 import type { Universe } from "@/modules/universes/domain/universe";
 import type { UniverseRepository } from "@/modules/universes/domain/universe-repository";
+import { InfrastructureError } from "@/shared/domain/error-kinds";
 import { buildUniverse } from "../universe-repository-factories";
 import { FIRST_OWNER_ID, SECOND_OWNER_ID } from "../universe-owners";
 
-/** The two ports the universes module stores through, kept by one implementation. */
+/** The three ports the universes module stores through, kept by one implementation. */
 export type UniverseStorage = {
   readonly universeRepository: UniverseRepository;
   readonly rememberedUniverseRepository: RememberedUniverseRepository;
+  readonly relationshipTypeRepository: RelationshipTypeRepository;
+  /** Makes every following write of a relationship type fail, until `restoreRelationshipTypeWrites`. */
+  readonly makeRelationshipTypeWritesFail: () => Promise<void>;
+  readonly restoreRelationshipTypeWrites: () => Promise<void>;
 };
+
+/**
+ * The eight predefined relationship types of spec 006 (FR-3), written here as literal values and
+ * ordered by key as they are listed, so a wrong label in the seed constant or in the backfill of the
+ * migration fails the tests.
+ */
+export const EXPECTED_PREDEFINED_RELATIONSHIP_TYPES = [
+  { key: "ALLY_OF", label: "ally of", inverseLabel: "ally of", isSymmetric: true, isPredefined: true },
+  { key: "ENEMY_OF", label: "enemy of", inverseLabel: "enemy of", isSymmetric: true, isPredefined: true },
+  { key: "LEADER_OF", label: "leader of", inverseLabel: "led by", isSymmetric: false, isPredefined: true },
+  { key: "LOCATED_IN", label: "located in", inverseLabel: "contains", isSymmetric: false, isPredefined: true },
+  { key: "MEMBER_OF", label: "member of", inverseLabel: "has member", isSymmetric: false, isPredefined: true },
+  { key: "PARENT_OF", label: "parent of", inverseLabel: "child of", isSymmetric: false, isPredefined: true },
+  { key: "POSSESSES", label: "possesses", inverseLabel: "possessed by", isSymmetric: false, isPredefined: true },
+  { key: "SIBLING_OF", label: "sibling of", inverseLabel: "sibling of", isSymmetric: true, isPredefined: true },
+];
+
+/** A type without the values the storage assigns, to compare it with the expected list. */
+export function withoutStoredIdentifiers(relationshipType: RelationshipType) {
+  return {
+    key: relationshipType.key,
+    label: relationshipType.label,
+    inverseLabel: relationshipType.inverseLabel,
+    isSymmetric: relationshipType.isSymmetric,
+    isPredefined: relationshipType.isPredefined,
+  };
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 
 /** Builds an empty storage, optionally holding some universes already. */
 export type UniverseStorageFactory = (
@@ -148,6 +184,104 @@ export function describeUniverseStorageContract(
         universeToAdd.createdAt.setUTCFullYear(1999);
 
         expect(await universeRepository.findAllOwnedBy(FIRST_OWNER_ID)).toEqual([buildUniverse()]);
+      });
+    });
+
+    describe("relationship types", () => {
+      it("stores an added universe with exactly the eight predefined types, their labels and symmetric flags", async () => {
+        const { universeRepository, relationshipTypeRepository } = await createStorage();
+
+        await universeRepository.add(newestUniverse);
+
+        const storedTypes = await relationshipTypeRepository.findAllInOwnedUniverse(
+          FIRST_OWNER_ID,
+          newestUniverse.id,
+        );
+        expect(storedTypes.map(withoutStoredIdentifiers)).toEqual(EXPECTED_PREDEFINED_RELATIONSHIP_TYPES);
+        expect(storedTypes.every((storedType) => storedType.universeId === newestUniverse.id)).toBe(true);
+        expect(storedTypes.every((storedType) => UUID_PATTERN.test(storedType.id))).toBe(true);
+        expect(new Set(storedTypes.map((storedType) => storedType.id)).size).toBe(8);
+      });
+
+      it("gives every universe its own eight types and never a second copy", async () => {
+        const { universeRepository, relationshipTypeRepository } = await createStorage([oldestUniverse]);
+
+        await universeRepository.add(newestUniverse);
+
+        const typesOfOldest = await relationshipTypeRepository.findAllInOwnedUniverse(
+          FIRST_OWNER_ID,
+          oldestUniverse.id,
+        );
+        const typesOfNewest = await relationshipTypeRepository.findAllInOwnedUniverse(
+          FIRST_OWNER_ID,
+          newestUniverse.id,
+        );
+        expect(typesOfOldest.map(withoutStoredIdentifiers)).toEqual(EXPECTED_PREDEFINED_RELATIONSHIP_TYPES);
+        expect(typesOfNewest.map(withoutStoredIdentifiers)).toEqual(EXPECTED_PREDEFINED_RELATIONSHIP_TYPES);
+        const identifiersOfOldest = new Set(typesOfOldest.map((storedType) => storedType.id));
+        expect(typesOfNewest.some((storedType) => identifiersOfOldest.has(storedType.id))).toBe(false);
+      });
+
+      it("never lists the types of a universe of another owner, which looks the same as a nonexistent one", async () => {
+        const { relationshipTypeRepository } = await createStorage([oldestUniverse, otherOwnerUniverse]);
+
+        expect(
+          await relationshipTypeRepository.findAllInOwnedUniverse(FIRST_OWNER_ID, otherOwnerUniverse.id),
+        ).toEqual([]);
+        expect(
+          await relationshipTypeRepository.findAllInOwnedUniverse(
+            FIRST_OWNER_ID,
+            "00000000-0000-4000-8000-0000000000ff",
+          ),
+        ).toEqual([]);
+        expect(
+          await relationshipTypeRepository.findAllInOwnedUniverse(SECOND_OWNER_ID, oldestUniverse.id),
+        ).toEqual([]);
+        expect(
+          (
+            await relationshipTypeRepository.findAllInOwnedUniverse(SECOND_OWNER_ID, otherOwnerUniverse.id)
+          ).map(withoutStoredIdentifiers),
+        ).toEqual(EXPECTED_PREDEFINED_RELATIONSHIP_TYPES);
+      });
+
+      it("stores neither the universe nor any of its types when the types cannot be stored", async () => {
+        const storage = await createStorage([oldestUniverse]);
+
+        await storage.makeRelationshipTypeWritesFail();
+        let failure: unknown;
+        try {
+          failure = await storage.universeRepository.add(newestUniverse).catch((error: unknown) => error);
+        } finally {
+          await storage.restoreRelationshipTypeWrites();
+        }
+
+        expect(failure).toBeInstanceOf(InfrastructureError);
+        expect(await storage.universeRepository.findAllOwnedBy(FIRST_OWNER_ID)).toEqual([oldestUniverse]);
+        expect(
+          await storage.relationshipTypeRepository.findAllInOwnedUniverse(FIRST_OWNER_ID, newestUniverse.id),
+        ).toEqual([]);
+        expect(
+          await storage.relationshipTypeRepository.findAllInOwnedUniverse(FIRST_OWNER_ID, oldestUniverse.id),
+        ).toHaveLength(8);
+      });
+
+      it("stores the universe with its eight types when it is added again after a failed attempt", async () => {
+        const storage = await createStorage();
+
+        await storage.makeRelationshipTypeWritesFail();
+        try {
+          await storage.universeRepository.add(newestUniverse).catch(() => undefined);
+        } finally {
+          await storage.restoreRelationshipTypeWrites();
+        }
+        await storage.universeRepository.add(newestUniverse);
+
+        expect(await storage.universeRepository.findAllOwnedBy(FIRST_OWNER_ID)).toEqual([newestUniverse]);
+        expect(
+          (
+            await storage.relationshipTypeRepository.findAllInOwnedUniverse(FIRST_OWNER_ID, newestUniverse.id)
+          ).map(withoutStoredIdentifiers),
+        ).toEqual(EXPECTED_PREDEFINED_RELATIONSHIP_TYPES);
       });
     });
 

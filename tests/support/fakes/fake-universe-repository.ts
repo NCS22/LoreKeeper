@@ -1,6 +1,10 @@
 import type { Universe } from "@/modules/universes/domain/universe";
 import { parseUniverseMode } from "@/modules/universes/domain/universe-mode";
 import type { UniverseRepository } from "@/modules/universes/domain/universe-repository";
+import {
+  createFakeRelationshipTypeTable,
+  type FakeRelationshipTypeTable,
+} from "./fake-relationship-type-repository";
 
 type StoredUniverseRow = {
   readonly serializedUniverse: string;
@@ -54,13 +58,18 @@ function compareByCreationThenId(firstUniverse: Universe, secondUniverse: Univer
  * The test repository: rows live in a map keyed by identifier and hold serialized text, so
  * nothing the caller holds can alter what is stored. It orders and scopes by owner as the
  * contract demands, and must give the same results as the PostgreSQL repository (NFR-1).
+ * A universe is stored with its eight relationship types in the given table, all or nothing,
+ * the starting universes included.
  */
 export function createFakeUniverseRepository(
   startingUniverses: readonly Universe[] = [],
+  relationshipTypeTable: FakeRelationshipTypeTable = createFakeRelationshipTypeTable(),
 ): UniverseRepository {
   const rowsByUniverseId = new Map<string, StoredUniverseRow>();
 
   function storeRow(universe: Universe): void {
+    // The types are written first: when they fail, the universe is not stored either.
+    relationshipTypeTable.storeTypesOfNewUniverse(universe);
     rowsByUniverseId.set(universe.id, { serializedUniverse: serializeUniverse(universe) });
   }
 

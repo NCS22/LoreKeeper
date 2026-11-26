@@ -42,13 +42,15 @@ describe("the composition of the universes module without environment", () => {
     expect(globalScope[PRISMA_CLIENT_GLOBAL_KEY]).toBeUndefined();
   });
 
-  it("offers the four use cases", async () => {
+  it("offers the six use cases", async () => {
     const { createUniversesModule } = await importComposition();
     const universesModule = createUniversesModule();
 
     expect(Object.keys(universesModule).sort()).toEqual([
       "createUniverse",
+      "findOwnUniverse",
       "isUniverseNameInUse",
+      "listRelationshipTypes",
       "loadWorkspaceUniverses",
       "rememberUniverse",
     ]);
@@ -69,7 +71,15 @@ describe("the composition of the universes module without environment", () => {
           universeId: "2f6c1c0e-5f0a-4c3e-8d1b-9a7e6b5c4d3a",
         }),
       ),
+      readFailure(
+        universesModule.findOwnUniverse(actingUser, "2f6c1c0e-5f0a-4c3e-8d1b-9a7e6b5c4d3a"),
+      ),
+      readFailure(
+        universesModule.listRelationshipTypes(actingUser, "2f6c1c0e-5f0a-4c3e-8d1b-9a7e6b5c4d3a"),
+      ),
     ]);
+
+    expect(failures).toHaveLength(6);
 
     for (const failure of failures) {
       expect(failure).toBeInstanceOf(InfrastructureError);
