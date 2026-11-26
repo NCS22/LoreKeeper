@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { expect as baseExpect, test, type Locator, type Page } from "@playwright/test";
+import { expect as baseExpect, test, type Locator, type Page, type Route } from "@playwright/test";
 import { en } from "../../src/messages/en";
-import { interceptServerActionsOfPage } from "./support/account-form-support";
+import { createGate, interceptServerActionsOfPage } from "./support/account-form-support";
 import {
   createWorkThroughTheForm,
   describePoint,
@@ -64,6 +64,8 @@ import { expectWorkspaceIsShown } from "./support/workspace-content";
 // From T7: relationships and the details panel, the second account, a change of universe with the
 // relationship form open, a work of 5000 units at 320 px and a lost connection in the three forms
 // (FR-7, FR-10, FR-12, NFR-3, NFR-4).
+// From the validation: a creation answer that arrives after the universe changed, and one that arrives
+// after 30 seconds with the duplicate notice (FR-6, FR-12, 004 FR-8).
 // Accounts and universes are written directly in the test database; every test has its own account.
 
 // Sign-in runs a deliberately slow password hash, and tests run in parallel.
@@ -551,6 +553,171 @@ test.describe("changing the selected universe with a relationship form open (FR-
     await page.getByRole("radio", { name: en.center.listView }).click();
     await expect(findListedEntityButtons(page)).toHaveCount(2);
     await expect(findEntityList(page).locator('[aria-pressed="true"]')).toHaveCount(0);
+  });
+});
+
+type HeldCreationCall = {
+  /** From now on, the next call of the action is kept waiting, as a request that has not answered yet. */
+  readonly holdNextCall: () => void;
+  /** Resolves when the held call reached the network and is being kept waiting. */
+  readonly callIsHeld: Promise<void>;
+  /** The held call goes on to the server; resolves when its answer has reached the page. */
+  readonly letHeldCallThrough: () => Promise<void>;
+};
+
+/** Lets every Server Action call of the workspace through, except the one of `actionName` after `holdNextCall()`. */
+async function interceptToHoldOneCallOf(page: Page, actionName: ServerActionName): Promise<HeldCreationCall> {
+  const callArrived = createGate();
+  let isHoldingNextCall = false;
+  let heldRoute: Route | null = null;
+  await interceptServerActionsOfPage(page, WORKSPACE_ROOT_ACTION_PATTERN, async (route, request) => {
+    if (isHoldingNextCall && isCallOfServerAction(request, actionName)) {
+      isHoldingNextCall = false;
+      heldRoute = route;
+      callArrived.open();
+      return;
+    }
+    await route.continue();
+  });
+
+  function takeHeldRoute(): Route {
+    if (heldRoute === null) throw new Error(`No call of ${actionName} is being held.`);
+    return heldRoute;
+  }
+
+  return {
+    holdNextCall: () => {
+      isHoldingNextCall = true;
+    },
+    callIsHeld: callArrived.wait,
+    letHeldCallThrough: async () => {
+      const route = takeHeldRoute();
+      const answerArrived = page.waitForResponse((response) => isCallOfServerAction(response.request(), actionName));
+      await route.continue();
+      await answerArrived;
+    },
+  };
+}
+
+/** A page whose timers the test can move: installed before a reload, as the universe failure specs do. */
+async function reloadWithMovableClock(page: Page): Promise<void> {
+  await page.clock.install();
+  await page.reload();
+  await expectWorkspaceIsShown(page);
+}
+
+const THIRTY_SECONDS_AND_ONE = 31_000;
+
+/** Every message the entity creation can leave on the page about an entity: none must be shown. */
+function findEntityCreationMessages(page: Page, entityName: string): Locator[] {
+  const notices = en.entityCreation.notices;
+  return [notices.failed, notices.resultUnknown, notices.confirmedAfterDelay, notices.signInAgain, en.entityCreation.createdAnnouncement(entityName)].map(
+    (messageText) => page.getByText(messageText),
+  );
+}
+
+test.describe("a creation answer that arrives late (FR-6, FR-12, 004 FR-8)", () => {
+  test("an entity whose answer arrives after the universe changed is discarded without any message, and is in its own universe when coming back", async ({ page }) => {
+    test.slow();
+    const account = await seedAccountInDatabase();
+    const token = buildToken();
+    const [firstUniverse, secondUniverse] = await seedUniversesInDatabase(account.email, [
+      { name: `First ${token}` },
+      { name: `Second ${token}` },
+    ]);
+    const entityName = `Pippin ${token}`;
+    const detailsPanel = findDetailsPanel(page);
+    const entityCreationCalls = await interceptToHoldOneCallOf(page, "createEntityAction");
+    await signInThroughTheForm(page, account);
+    await expectUniverseIsSelected(page, firstUniverse.name);
+    await createWorkThroughTheForm(page, { title: `Saga ${token}`, mediumLabel: en.knowledge.mediums.NOVEL, unitCount: "12" }, 1);
+
+    entityCreationCalls.holdNextCall();
+    await openEntityFormFromTheList(page);
+    await findEntityNameField(page).fill(entityName);
+    await findPointUnitField(findEntityPointGroup(page), en.unitPicker.wordingLabels.chapter).fill("3");
+    await findCreateEntityButton(page).click();
+    await entityCreationCalls.callIsHeld;
+    await expect(findCreateEntityButton(page)).toBeDisabled();
+
+    const secondUniverseLoaded = page.waitForResponse(
+      (response) =>
+        isCallOfServerAction(response.request(), "loadUniverseKnowledgeAction") &&
+        (response.request().postData() ?? "").includes(secondUniverse.id),
+    );
+    await findUniverseTreeItems(page).nth(1).click();
+    await expectUniverseIsSelected(page, secondUniverse.name);
+    await expect(findEntityFormHeading(page)).toHaveCount(0);
+
+    // The answer of the first universe arrives while the second one is selected.
+    await entityCreationCalls.letHeldCallThrough();
+    await secondUniverseLoaded;
+    await expect.poll(async () => (await readEntitiesOfUniverseInDatabase(firstUniverse.id)).map((entity) => entity.name)).toEqual([
+      entityName,
+    ]);
+    expect(await readEntitiesOfUniverseInDatabase(secondUniverse.id)).toEqual([]);
+
+    await expect(findWorksArea(page).getByText(en.sidebar.noWorks)).toBeVisible();
+    await expect(page.getByText(en.entityList.workNeededFirst)).toBeVisible();
+    await expect(detailsPanel.getByText(en.entityDetails.noEntitiesTitle)).toBeVisible();
+    await expect(detailsPanel.getByRole("article")).toHaveCount(0);
+    await expect(page.getByText(entityName)).toHaveCount(0);
+    for (const entityCreationMessage of findEntityCreationMessages(page, entityName)) {
+      await expect(entityCreationMessage).toHaveCount(0);
+    }
+
+    await findUniverseTreeItems(page).nth(0).click();
+
+    await expectUniverseIsSelected(page, firstUniverse.name);
+    await page.getByRole("radio", { name: en.center.listView }).click();
+    await expect(findListedEntityButtons(page)).toHaveText([`${entityName}${en.knowledge.entityTypes.CHARACTER}`]);
+    await expect(findEntityList(page).locator('[aria-pressed="true"]')).toHaveCount(0);
+    await expect(detailsPanel.getByText(en.entityDetails.selectEntityTitle)).toBeVisible();
+    for (const entityCreationMessage of findEntityCreationMessages(page, entityName)) {
+      await expect(entityCreationMessage).toHaveCount(0);
+    }
+  });
+
+  test("an entity with a similar name whose answer arrives after 30 seconds is added and selected, with the confirmation and the notice naming the existing one", async ({ page }) => {
+    test.slow();
+    const account = await seedAccountInDatabase();
+    const token = buildToken();
+    const [universe] = await seedUniversesInDatabase(account.email, [{ name: `Late world ${token}`, mode: "AUTHOR" }]);
+    const existingName = `Saruman the White ${token}`;
+    const similarName = `saruman  the WHITE ${token}`;
+    const detailsPanel = findDetailsPanel(page);
+    const entityCreationCalls = await interceptToHoldOneCallOf(page, "createEntityAction");
+    await signInThroughTheForm(page, account);
+    await reloadWithMovableClock(page);
+    await createWorkThroughTheForm(page, { title: `Saga ${token}`, mediumLabel: en.knowledge.mediums.NOVEL, unitCount: "12" }, 1);
+    await createEntityThroughTheForm(page, { name: existingName, chapter: "1" }, 1);
+
+    entityCreationCalls.holdNextCall();
+    await openEntityFormFromTheList(page);
+    await findEntityNameField(page).fill(similarName);
+    await findPointUnitField(findEntityPointGroup(page), en.unitPicker.wordingLabels.chapter).fill("2");
+    await findCreateEntityButton(page).click();
+    await entityCreationCalls.callIsHeld;
+    await page.clock.fastForward(THIRTY_SECONDS_AND_ONE);
+
+    const unknownResultAlert = findUnknownResultAlert(page, en.entityCreation.notices.resultUnknown);
+    await expect(unknownResultAlert).toBeVisible();
+    await expect(findCreateEntityButton(page)).toBeDisabled();
+    await expect(findSimilarEntityNotice(page, existingName)).toHaveCount(0);
+
+    // The answer arrives late: a normal success, with the confirmation and the notice of FR-6.
+    await entityCreationCalls.letHeldCallThrough();
+
+    await expect(findEntityFormHeading(page)).toHaveCount(0);
+    await expect(page.getByRole("status").filter({ hasText: en.entityCreation.notices.confirmedAfterDelay })).toBeVisible();
+    await expect(unknownResultAlert).toHaveCount(0);
+    await expect(findSimilarEntityNotice(page, existingName)).toBeVisible();
+    const entityButtons = findListedEntityButtons(page);
+    await expect(entityButtons).toHaveCount(2);
+    await expect(entityButtons.last()).toHaveAttribute("aria-pressed", "true");
+    await expect(findEntityList(page).locator('[aria-pressed="true"]')).toHaveCount(1);
+    await expect(findEntityDetails(detailsPanel, similarName)).toBeVisible();
+    expect((await readEntitiesOfUniverseInDatabase(universe.id)).map((entity) => entity.name)).toEqual([existingName, similarName]);
   });
 });
 
