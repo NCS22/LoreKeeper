@@ -6,13 +6,21 @@ function buildWorkspaceState(overrides: Partial<WorkspaceState> = {}): Workspace
     selectedUniverseId: "universe-a",
     view: "graph",
     isCreatingUniverse: false,
+    knowledgeForm: null,
+    selectedEntityId: null,
     ...overrides,
   };
 }
 
 describe("reduceWorkspaceState: the shape of the state", () => {
-  it("holds only the selected universe, the view and whether the creation form is open", () => {
-    expect(Object.keys(buildWorkspaceState()).sort()).toEqual(["isCreatingUniverse", "selectedUniverseId", "view"]);
+  it("holds only the selected universe, the view, whether the creation form is open, the open knowledge form and the selected entity", () => {
+    expect(Object.keys(buildWorkspaceState()).sort()).toEqual([
+      "isCreatingUniverse",
+      "knowledgeForm",
+      "selectedEntityId",
+      "selectedUniverseId",
+      "view",
+    ]);
   });
 });
 
@@ -23,7 +31,13 @@ describe("reduceWorkspaceState: selecting", () => {
       universeId: "universe-b",
     });
 
-    expect(nextState).toEqual({ selectedUniverseId: "universe-b", view: "list", isCreatingUniverse: false });
+    expect(nextState).toEqual({
+      selectedUniverseId: "universe-b",
+      view: "list",
+      isCreatingUniverse: false,
+      knowledgeForm: null,
+      selectedEntityId: null,
+    });
   });
 
   it("selecting a universe while the form is open closes it", () => {
@@ -79,7 +93,13 @@ describe("reduceWorkspaceState: the creation form", () => {
       universeId: "universe-new",
     });
 
-    expect(nextState).toEqual({ selectedUniverseId: "universe-new", view: "list", isCreatingUniverse: false });
+    expect(nextState).toEqual({
+      selectedUniverseId: "universe-new",
+      view: "list",
+      isCreatingUniverse: false,
+      knowledgeForm: null,
+      selectedEntityId: null,
+    });
   });
 
   it("with no universe selected, a created universe is selected and the form closes", () => {
@@ -103,5 +123,80 @@ describe("reduceWorkspaceState: the creation form", () => {
     expect(startedState.isCreatingUniverse).toBe(true);
     expect(startedState.selectedUniverseId).toBeNull();
     expect(cancelledState).toEqual(stateWithoutUniverse);
+  });
+});
+
+describe("reduceWorkspaceState: the knowledge forms and the selected entity (spec 006, FR-9, FR-12)", () => {
+  it("opening a knowledge form opens it, closes the universe creation form and keeps the selections", () => {
+    const initialState = buildWorkspaceState({ isCreatingUniverse: true, selectedEntityId: "entity-a" });
+
+    const nextState = reduceWorkspaceState(initialState, { type: "knowledgeFormOpened", form: "work" });
+
+    expect(nextState).toEqual({ ...initialState, isCreatingUniverse: false, knowledgeForm: "work" });
+  });
+
+  it("opening another knowledge form replaces the open one", () => {
+    const nextState = reduceWorkspaceState(buildWorkspaceState({ knowledgeForm: "work" }), {
+      type: "knowledgeFormOpened",
+      form: "entity",
+    });
+
+    expect(nextState.knowledgeForm).toBe("entity");
+  });
+
+  it("closing the knowledge form closes it and leaves everything else unchanged", () => {
+    const initialState = buildWorkspaceState({ knowledgeForm: "relationship", selectedEntityId: "entity-a", view: "list" });
+
+    const nextState = reduceWorkspaceState(initialState, { type: "knowledgeFormClosed" });
+
+    expect(nextState).toEqual({ ...initialState, knowledgeForm: null });
+  });
+
+  it("selecting an entity selects it and leaves everything else unchanged", () => {
+    const initialState = buildWorkspaceState({ view: "list", selectedEntityId: "entity-a" });
+
+    const nextState = reduceWorkspaceState(initialState, { type: "entitySelected", entityId: "entity-b" });
+
+    expect(nextState).toEqual({ ...initialState, selectedEntityId: "entity-b" });
+  });
+
+  it("selecting another universe closes the knowledge form and clears the selected entity (FR-12)", () => {
+    const nextState = reduceWorkspaceState(buildWorkspaceState({ knowledgeForm: "entity", selectedEntityId: "entity-a" }), {
+      type: "universeSelected",
+      universeId: "universe-b",
+    });
+
+    expect(nextState.selectedUniverseId).toBe("universe-b");
+    expect(nextState.knowledgeForm).toBeNull();
+    expect(nextState.selectedEntityId).toBeNull();
+  });
+
+  it("a created universe closes the knowledge form and clears the selected entity (FR-12)", () => {
+    const nextState = reduceWorkspaceState(buildWorkspaceState({ knowledgeForm: "work", selectedEntityId: "entity-a" }), {
+      type: "universeCreated",
+      universeId: "universe-new",
+    });
+
+    expect(nextState.selectedUniverseId).toBe("universe-new");
+    expect(nextState.knowledgeForm).toBeNull();
+    expect(nextState.selectedEntityId).toBeNull();
+  });
+
+  it("starting a universe creation closes the knowledge form and clears the selected entity", () => {
+    const nextState = reduceWorkspaceState(buildWorkspaceState({ knowledgeForm: "work", selectedEntityId: "entity-a" }), {
+      type: "universeCreationStarted",
+    });
+
+    expect(nextState.isCreatingUniverse).toBe(true);
+    expect(nextState.knowledgeForm).toBeNull();
+    expect(nextState.selectedEntityId).toBeNull();
+  });
+
+  it("changing the view keeps the knowledge form and the selected entity", () => {
+    const initialState = buildWorkspaceState({ knowledgeForm: "work", selectedEntityId: "entity-a" });
+
+    const nextState = reduceWorkspaceState(initialState, { type: "viewChanged", view: "list" });
+
+    expect(nextState).toEqual({ ...initialState, view: "list" });
   });
 });

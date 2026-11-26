@@ -35,10 +35,85 @@ export const en = {
   },
   graph: {
     emptyText:
-      "The graph will show the entities of this universe and the relationships between them. There is nothing to draw yet.",
+      "The graph will draw the entities of this universe and the relationships between them in a future version. The list view shows the entities.",
   },
+  // The entity list of the central area (spec 006, FR-9).
   entityList: {
-    emptyText: "The list will show the entities of this universe, grouped by type. There are no entities yet.",
+    heading: "Entities",
+    loading: "Loading the entities",
+    loadFailed: "The entities could not be loaded.",
+    noEntities: "This universe has no entities yet.",
+    workNeededFirst: "Add a work first: every entity is introduced at a point of a work.",
+    addWork: "Add work",
+  },
+  // Texts shared by the knowledge items of a universe (spec 006).
+  knowledge: {
+    mediums: {
+      NOVEL: "Novel",
+      MANGA: "Manga",
+      COMIC: "Comic",
+      ANIME: "Anime",
+      TV_SERIES: "TV series",
+      FILM: "Film",
+      OTHER: "Other",
+    },
+    entityTypes: {
+      CHARACTER: "Character",
+      LOCATION: "Location",
+      ORGANIZATION: "Organization",
+      FACTION: "Faction",
+      OBJECT: "Object",
+      ABILITY: "Ability",
+      SPECIES: "Species",
+      CONCEPT: "Concept",
+    },
+    // The number of units of a work with its unit wording: "1 chapter", "120 chapters".
+    unitWordings: {
+      chapter: { singular: "chapter", plural: "chapters" },
+      episode: { singular: "episode", plural: "episodes" },
+      unit: { singular: "unit", plural: "units" },
+    },
+    tryAgain: "Try again",
+  },
+  // The works area of the navigation (spec 006, FR-2).
+  works: {
+    addWork: "Add work",
+    loading: "Loading the works",
+    loadFailed: "The works could not be loaded.",
+    listLabel: "Works of this universe",
+  },
+  workCreation: {
+    title: "New work",
+    titleLabel: "Title",
+    titlePlaceholder: "The title of the work",
+    mediumLabel: "Medium",
+    unitCountLabel: "Number of units",
+    unitCountHint: (maximumUnitCount: number) =>
+      `How many chapters or episodes the work has, in digits, from 1 to ${maximumUnitCount}. They are numbered from 1.`,
+    cancel: "Cancel",
+    create: "Create work",
+    createdAnnouncement: (workTitle: string) => `Work created: ${workTitle}`,
+    // Messages of the creation request itself, shown in the form (never an error detail).
+    notices: {
+      failed: "The work could not be created. Your entries are kept; you can try again.",
+      resultUnknown:
+        "We could not confirm whether the work was created. It may exist already: check the works of this universe before trying again.",
+      confirmedAfterDelay: "The work was created after all and is now in the works of this universe.",
+      signInAgain: "Your session has ended, so nothing was created. Your entries are kept: sign in again to continue.",
+      signInLink: "Sign in",
+      dismiss: "Dismiss",
+    },
+    // Validation messages, keyed by the stable issue code. Limits come from the issue or the vocabulary.
+    issues: {
+      TITLE_REQUIRED: "Enter a title for the work.",
+      TITLE_TOO_LONG: (maximumLength: number) => `The title can have at most ${maximumLength} characters.`,
+      TITLE_INVALID_CHARACTERS: "The title contains characters that cannot be stored.",
+      MEDIUM_INVALID: "Choose the medium of the work.",
+      UNIT_COUNT_REQUIRED: "Enter how many chapters or episodes the work has.",
+      UNIT_COUNT_INVALID: "Write the number with digits only, without signs, decimals, spaces or separators.",
+      UNIT_COUNT_OUT_OF_RANGE: (maximumUnitCount: number) => `The number must be from 1 to ${maximumUnitCount}.`,
+      UNKNOWN: "This value is not valid.",
+    },
   },
   universeCreation: {
     title: "New universe",
@@ -93,7 +168,6 @@ export const en = {
   },
   universeEmptyState: {
     modeLabel: "Mode:",
-    emptyText: "This universe is empty. Works, entities and relationships arrive in future versions.",
     createdAnnouncement: (universeName: string) => `Universe created: ${universeName}`,
   },
   inspector: {

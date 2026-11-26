@@ -4,12 +4,19 @@ import { createContext, useContext, useMemo, useReducer, type Dispatch, type Rea
 
 export type CentralView = "graph" | "list";
 
+/** The knowledge creation forms; at most one is open, in the central area (spec 006). */
+export type KnowledgeForm = "work" | "entity" | "relationship";
+
 export type WorkspaceState = {
   // Null while the account has no universe, or none was selected yet.
   selectedUniverseId: string | null;
   view: CentralView;
   // While true the central area shows the universe creation form instead of the current view.
   isCreatingUniverse: boolean;
+  // The open knowledge form, or null. It closes with its typed values when the universe changes (FR-12).
+  knowledgeForm: KnowledgeForm | null;
+  // The entity shown in the details panel. Nothing is selected after a reload or a change of universe (FR-9).
+  selectedEntityId: string | null;
 };
 
 export type WorkspaceAction =
@@ -17,19 +24,34 @@ export type WorkspaceAction =
   | { type: "viewChanged"; view: CentralView }
   | { type: "universeCreationStarted" }
   | { type: "universeCreationCancelled" }
-  | { type: "universeCreated"; universeId: string };
+  | { type: "universeCreated"; universeId: string }
+  | { type: "knowledgeFormOpened"; form: KnowledgeForm }
+  | { type: "knowledgeFormClosed" }
+  | { type: "entitySelected"; entityId: string };
 
 export function reduceWorkspaceState(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
   switch (action.type) {
     case "universeSelected":
     case "universeCreated":
-      return { ...state, selectedUniverseId: action.universeId, isCreatingUniverse: false };
+      return {
+        ...state,
+        selectedUniverseId: action.universeId,
+        isCreatingUniverse: false,
+        knowledgeForm: null,
+        selectedEntityId: null,
+      };
     case "viewChanged":
       return { ...state, view: action.view };
     case "universeCreationStarted":
-      return { ...state, isCreatingUniverse: true };
+      return { ...state, isCreatingUniverse: true, knowledgeForm: null, selectedEntityId: null };
     case "universeCreationCancelled":
       return { ...state, isCreatingUniverse: false };
+    case "knowledgeFormOpened":
+      return { ...state, isCreatingUniverse: false, knowledgeForm: action.form };
+    case "knowledgeFormClosed":
+      return { ...state, knowledgeForm: null };
+    case "entitySelected":
+      return { ...state, selectedEntityId: action.entityId };
   }
 }
 
@@ -51,6 +73,8 @@ export function WorkspaceStateProvider({ children, initialSelectedUniverseId }: 
     selectedUniverseId: initialSelectedUniverseId,
     view: "graph",
     isCreatingUniverse: false,
+    knowledgeForm: null,
+    selectedEntityId: null,
   });
   const contextValue = useMemo(() => ({ state, dispatch }), [state]);
 

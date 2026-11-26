@@ -204,3 +204,52 @@ Decisions taken after the plan was approved. Design decisions of the plan stay i
 - **Why:** the catalog is listed by the universes use case; a knowledge use case would only forward it.
 - **Discarded:** a `list-relationship-types` use case in the knowledge module.
 - **Approved by:** pending, to be asked at the implementation gate after T4.
+
+## D-T5-1. The reads of the knowledge provider do not pass the tab account guard
+
+- **Decided:** the load of a universe and the load of the details of an entity are sent without `confirmAccountBeforeSending`; only the three creations pass it (plan section 5).
+- **Why:** the server takes the account from the session and answers not found for an identifier of another account, so nothing leaks; a guard probe before every read would double the calls. The tabs test counts these calls apart from the remember calls (D-T5-2).
+- **Discarded:** passing every read through the guard.
+- **Approved by:** the user, 2026-11-26, during T5.
+
+## D-T5-2. Browser tests recognize a Server Action by its identifier
+
+- **Decided:** the end-to-end support reads the identifier of each action from `.next/server/server-reference-manifest.json` (its `exportedName`) and compares it with the `next-action` header (`tests/e2e/support/server-action-ids.ts`). `isRememberCall` of `universes-tabs.spec.ts`, `waitForRememberAnswer` and `captureServerActionId` use it instead of the text of the body. No action contract changes.
+- **Why:** `loadUniverseKnowledgeAction` and `rememberUniverseAction` send the same body (`{ universeId }`), so the body no longer tells them apart; the identifier does, exactly.
+- **Discarded:** telling them apart by the answer (it cannot be used by the predicates that look at the request); changing the input of an action.
+- **Approved by:** the user, 2026-11-26, during T5.
+
+## D-T5-3. The text of the graph view
+
+- **Decided:** "There is nothing to draw yet" is replaced by a text that speaks only about the graph: it arrives in a future version and the list view shows the entities.
+- **Why:** with entities stored, "nothing to draw" says that the universe has no entities (T5 done-when: no text says that entities are unavailable), and the list view is where they are now.
+- **Discarded:** leaving it for T7 (it would be wrong as soon as an entity exists).
+- **Approved by:** pending, to be asked at the implementation gate after T5.
+
+## D-T5-4. Ends of the universe load
+
+- **Decided:** a load without a session leaves the page for the sign-in, as remembering a universe does; any other end (not found, validation, storage failure, no answer in 30 seconds, an unverifiable session, an answer of the wrong shape) is the `failed` state with "Try again". Loading the shown universe again (after a creation) keeps its content on screen until the new answer; an earlier answer of the same universe that arrives after a later request is discarded.
+- **Why:** a read stores nothing, so trying again is safe; the list does not flash empty after every creation.
+- **Discarded:** a separate unknown-result state for reads.
+- **Approved by:** pending, to be asked at the implementation gate after T5.
+
+## D-T5-5. The creation state belongs to the universe of its last submission
+
+- **Decided:** the provider keeps the universe each creation was sent for. In another selected universe that creation neither blocks the forms nor shows its message, a new submission there releases it silently, and its answer is discarded without any message (the item appears when the person goes back, because the selection loads that universe again). The late-success confirmation of a work is shown only in its universe.
+- **Why:** FR-12 and plan D12: a response of the previous universe is discarded without any message and does not alter the new one; the reducer of `universe-creation-state.ts` is reused as it is.
+- **Discarded:** one global block for every universe (a form of the new universe would stay disabled without a reason shown).
+- **Approved by:** pending, to be asked at the implementation gate after T5.
+
+## D-T5-6. Where the work form opens, and the entity form entry
+
+- **Decided:** the work form opens in the central area in place of the view, as the universe form does, from the "Add work" button of the works area (the drawer closes on a narrow screen) and from the "a work is needed first" state of the entity list. Selecting a universe, also the one already selected, closes it, as it closes the universe form. The "New entity" entry of the entity list arrives with the entity form in T6.
+- **Why:** the sidebar is too narrow for a form and is a drawer below the md breakpoint; T5 does not build the entity form.
+- **Discarded:** the form inside the works area.
+- **Approved by:** pending, to be asked at the implementation gate after T5.
+
+## D-T5-7. Files the plan did not name, and the files removed
+
+- **Decided:** `src/components/knowledge/knowledge-form-vocabulary.ts` (type only, CMP-13, as `universe-form-vocabulary.ts`) and `src/components/knowledge/late-knowledge-creation-confirmation.tsx` (CMP-16). `works-empty-state.tsx` and `entity-list-empty-state.tsx` are removed (replaced by `works-area.tsx` and `entity-list.tsx`), and with them the folder `src/components/entities/`. `classifyEnd` and `readIssues` of `interpret-universe-action-result.ts` and `settleActionCall` of `universes-provider.tsx` are exported for the knowledge provider and interpreter, with no behavior change.
+- **Why:** small single-purpose files in the planned entries, and no second copy of the classification of an action end.
+- **Discarded:** copying the classification into the knowledge interpreter.
+- **Approved by:** pending, to be asked at the implementation gate after T5.

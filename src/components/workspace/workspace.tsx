@@ -5,6 +5,8 @@ import { PreferencesSync } from "@/components/accessibility/preferences-sync";
 import { InspectorEmptyState } from "@/components/inspector/inspector-empty-state";
 import { InspectorPanel } from "@/components/inspector/inspector-panel";
 import { Sidebar } from "@/components/sidebar/sidebar";
+import { buildKnowledgeFormVocabulary } from "@/components/knowledge/build-knowledge-form-vocabulary";
+import { KnowledgeProvider } from "@/components/knowledge/knowledge-provider";
 import { Topbar } from "@/components/topbar/topbar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { buildUniverseFormVocabulary } from "@/components/universes/build-universe-form-vocabulary";
@@ -39,16 +41,26 @@ async function WorkspaceWithUniverses() {
           signInAddress={buildSignInAddress(null)}
           vocabulary={buildUniverseFormVocabulary()}
         >
-          <PreferencesSync />
-          <a
-            href="#main-content"
-            className="bg-primary text-primary-foreground rounded-control sr-only z-50 px-3 py-1.5 focus:not-sr-only focus:absolute focus:top-2 focus:left-2"
-          >
-            {en.workspace.skipToContent}
-          </a>
-          <WorkspaceLayout topbar={<Topbar />} sidebar={<Sidebar />} inspector={<InspectorPanel><InspectorEmptyState /></InspectorPanel>}>
-            <CentralArea />
-          </WorkspaceLayout>
+          <KnowledgeProvider vocabulary={buildKnowledgeFormVocabulary()}>
+            <PreferencesSync />
+            <a
+              href="#main-content"
+              className="bg-primary text-primary-foreground rounded-control sr-only z-50 px-3 py-1.5 focus:not-sr-only focus:absolute focus:top-2 focus:left-2"
+            >
+              {en.workspace.skipToContent}
+            </a>
+            <WorkspaceLayout
+              topbar={<Topbar />}
+              sidebar={<Sidebar />}
+              inspector={
+                <InspectorPanel>
+                  <InspectorEmptyState />
+                </InspectorPanel>
+              }
+            >
+              <CentralArea />
+            </WorkspaceLayout>
+          </KnowledgeProvider>
         </UniversesProvider>
       </WorkspaceStateProvider>
     </TooltipProvider>

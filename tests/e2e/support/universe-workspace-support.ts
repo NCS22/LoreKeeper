@@ -1,5 +1,6 @@
 import { expect as baseExpect, type Locator, type Page, type Response } from "@playwright/test";
 import { en } from "../../../src/messages/en";
+import { isCallOfServerAction } from "./server-action-ids";
 import { isServerActionRequestWithText } from "./server-action-requests";
 import { findSignOutButton, openUserMenu } from "./user-menu-locators";
 import { waitForElementHydration } from "./wait-for-element-hydration";
@@ -66,10 +67,15 @@ export function waitForNameCheckAnswer(page: Page, checkedName: string): Promise
   );
 }
 
-/** Waits for the answer to a call that stores the remembered universe. */
+/**
+ * Waits for the answer to a call that stores the remembered universe. The call is recognized by the
+ * identifier of its action: loading the knowledge of a universe sends the same body (spec 006, D-T5-2).
+ */
 export function waitForRememberAnswer(page: Page, universeId?: string): Promise<Response> {
-  return page.waitForResponse((response) =>
-    isServerActionRequestWithText(response.request(), universeId === undefined ? '"universeId"' : `"universeId":"${universeId}"`),
+  return page.waitForResponse(
+    (response) =>
+      isCallOfServerAction(response.request(), "rememberUniverseAction") &&
+      (universeId === undefined || isServerActionRequestWithText(response.request(), `"universeId":"${universeId}"`)),
   );
 }
 

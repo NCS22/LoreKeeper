@@ -40,7 +40,8 @@ export type NameCheckOutcome = "in-use" | "not-in-use" | "signed-out";
 /** Remembering the selection is silent (FR-30) unless the session is missing (FR-32). */
 export type RememberOutcome = "remembered" | "signed-out" | "ignored";
 
-type ClassifiedEnd =
+/** How an action call ended, before it is read for one form; shared with the knowledge forms (spec 006). */
+export type ClassifiedEnd =
   | { readonly kind: "succeeded"; readonly value: unknown }
   | { readonly kind: "validation-failed"; readonly fieldErrors: unknown }
   | { readonly kind: "signed-out" }
@@ -82,7 +83,7 @@ export function interpretRememberResult(outcome: TimeLimitedOutcome<unknown>): R
   return end.kind === "succeeded" ? "remembered" : "ignored";
 }
 
-function classifyEnd(outcome: TimeLimitedOutcome<unknown>): ClassifiedEnd {
+export function classifyEnd(outcome: TimeLimitedOutcome<unknown>): ClassifiedEnd {
   switch (outcome.status) {
     case "timed-out":
       return { kind: "unknown-result" };
@@ -136,7 +137,8 @@ function interpretFieldErrors(fieldErrors: unknown, vocabulary: UniverseFormVoca
     : { status: "field-errors", messagesByField };
 }
 
-function readIssues(issues: unknown): ActionFieldIssue[] {
+/** The well-formed issues of one field; anything else in the list is left out. */
+export function readIssues(issues: unknown): ActionFieldIssue[] {
   return Array.isArray(issues) ? issues.filter(isFieldIssue) : [];
 }
 
