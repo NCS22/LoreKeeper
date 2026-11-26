@@ -45,6 +45,71 @@ export const en = {
     noEntities: "This universe has no entities yet.",
     workNeededFirst: "Add a work first: every entity is introduced at a point of a work.",
     addWork: "Add work",
+    newEntity: "New entity",
+  },
+  // The choice of a point of a work in the knowledge forms (spec 006, FR-4): a work and a unit number.
+  unitPicker: {
+    workLabel: "Work",
+    workOption: (workTitle: string, mediumLabel: string) => `${workTitle} (${mediumLabel})`,
+    // The label of the unit number field, by the unit wording of the chosen work.
+    wordingLabels: { chapter: "Chapter", episode: "Episode", unit: "Unit" },
+    range: (unitCount: number) => `1 to ${unitCount}`,
+    first: "First",
+    last: "Last",
+    firstLabel: (unitWording: string) => `First ${unitWording}`,
+    lastLabel: (unitWording: string) => `Last ${unitWording}`,
+    resolvedPoint: (wordingLabel: string, unitNumber: number, workTitle: string) =>
+      `${wordingLabel} ${unitNumber} of ${workTitle}`,
+    noUnit: (unitWording: string, unitCount: number) =>
+      `No ${unitWording} has this number. Type a number from 1 to ${unitCount} with digits only, or use First or Last.`,
+  },
+  entityCreation: {
+    title: "New entity",
+    nameLabel: "Name",
+    namePlaceholder: "The name of the character, place, object...",
+    typeLabel: "Type",
+    pointLegend: "Introduced at",
+    fragmentLegend: "First fragment",
+    fragmentOptionalHint: "Optional",
+    fragmentContentLabel: "What you know about it",
+    fragmentContentHint: "Leave it empty to create the entity without a fragment.",
+    statusLegend: "Status",
+    statuses: {
+      CONFIRMED: { label: "Confirmed", explanation: "Stated by the work." },
+      USER_NOTE: { label: "My note", explanation: "Your own note or reading." },
+      SPECULATION: { label: "Speculation", explanation: "A theory the work has not stated." },
+    },
+    samePointLabel: "Same point as the entity",
+    fragmentPointLegend: "Revealed at",
+    cancel: "Cancel",
+    create: "Create entity",
+    createdAnnouncement: (entityName: string) => `Entity created: ${entityName}`,
+    // The notice of FR-6: it names the oldest entity of the same type with the same comparable name.
+    similarEntityNotice: (similarEntityName: string) =>
+      `A similar entity already exists: ${similarEntityName}. The new one was created as well.`,
+    notices: {
+      failed: "The entity could not be created. Your entries are kept; you can try again.",
+      resultUnknown:
+        "We could not confirm whether the entity was created. It may exist already: check the entities of this universe before trying again.",
+      confirmedAfterDelay: "The entity was created after all and is now in the entities of this universe.",
+      signInAgain: "Your session has ended, so nothing was created. Your entries are kept: sign in again to continue.",
+      signInLink: "Sign in",
+      dismiss: "Dismiss",
+    },
+    // Validation messages, keyed by the stable issue code. Limits come from the issue or the vocabulary.
+    issues: {
+      NAME_REQUIRED: "Enter a name for the entity.",
+      NAME_TOO_LONG: (maximumLength: number) => `The name can have at most ${maximumLength} characters.`,
+      NAME_INVALID_CHARACTERS: "The name contains characters that cannot be stored.",
+      TYPE_INVALID: "Choose the type of the entity.",
+      WORK_INVALID: "Choose a work of this universe.",
+      UNIT_NUMBER_REQUIRED: "Choose the chapter or episode: type its number, or use First or Last.",
+      UNIT_NUMBER_INVALID: "Write the number with digits only, without signs, decimals, spaces or separators.",
+      CONTENT_TOO_LONG: (maximumLength: number) => `The fragment can have at most ${maximumLength} characters.`,
+      CONTENT_INVALID_CHARACTERS: "The fragment contains characters that cannot be stored.",
+      STATUS_INVALID: "Choose the status of the fragment.",
+      UNKNOWN: "This value is not valid.",
+    },
   },
   // Texts shared by the knowledge items of a universe (spec 006).
   knowledge: {

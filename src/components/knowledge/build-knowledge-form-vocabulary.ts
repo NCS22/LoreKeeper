@@ -1,11 +1,32 @@
 import {
+  ENTITY_BOUNDARY_UNIT_NUMBER_FIELD,
+  ENTITY_BOUNDARY_WORK_ID_FIELD,
+  ENTITY_NAME_FIELD,
+  ENTITY_NAME_INVALID_CHARACTERS_CODE,
+  ENTITY_NAME_REQUIRED_CODE,
+  ENTITY_NAME_TOO_LONG_CODE,
+  ENTITY_TYPE_FIELD,
+  ENTITY_TYPE_INVALID_CODE,
   ENTITY_TYPES,
+  FRAGMENT_BOUNDARY_UNIT_NUMBER_FIELD,
+  FRAGMENT_BOUNDARY_WORK_ID_FIELD,
+  FRAGMENT_CONTENT_FIELD,
+  FRAGMENT_CONTENT_INVALID_CHARACTERS_CODE,
+  FRAGMENT_CONTENT_TOO_LONG_CODE,
+  FRAGMENT_STATUS_FIELD,
+  KNOWLEDGE_ITEM_ID_INVALID_CODE,
+  KNOWLEDGE_STATUS_INVALID_CODE,
+  KNOWLEDGE_STATUSES,
+  MAXIMUM_ENTITY_NAME_LENGTH,
+  MAXIMUM_FRAGMENT_CONTENT_LENGTH,
   MAXIMUM_UNIT_COUNT,
   MAXIMUM_WORK_TITLE_LENGTH,
   UNIT_COUNT_FIELD,
   UNIT_COUNT_INVALID_CODE,
   UNIT_COUNT_OUT_OF_RANGE_CODE,
   UNIT_COUNT_REQUIRED_CODE,
+  UNIT_NUMBER_INVALID_CODE,
+  UNIT_NUMBER_REQUIRED_CODE,
   WORK_MEDIUM_FIELD,
   WORK_MEDIUM_INVALID_CODE,
   WORK_MEDIUMS,
@@ -17,7 +38,7 @@ import {
 import type { KnowledgeFormVocabulary } from "@/components/knowledge/knowledge-form-vocabulary";
 
 /**
- * SERVER ONLY. Reads the field names, issue codes, media, entity types and limits of the knowledge
+ * SERVER ONLY. Reads the field names, issue codes, media, entity types, statuses and limits of the knowledge
  * module, to be passed as a prop to the knowledge provider. A client component must never import
  * this file: the knowledge module also exports server-only wiring, and the production build fails if
  * it does.
@@ -42,6 +63,33 @@ export function buildKnowledgeFormVocabulary(): KnowledgeFormVocabulary {
       mediums: WORK_MEDIUMS,
       maximumTitleLength: MAXIMUM_WORK_TITLE_LENGTH,
       maximumUnitCount: MAXIMUM_UNIT_COUNT,
+    },
+    entity: {
+      fieldNames: {
+        name: ENTITY_NAME_FIELD,
+        type: ENTITY_TYPE_FIELD,
+        boundaryWorkId: ENTITY_BOUNDARY_WORK_ID_FIELD,
+        boundaryUnitNumber: ENTITY_BOUNDARY_UNIT_NUMBER_FIELD,
+        fragmentContent: FRAGMENT_CONTENT_FIELD,
+        fragmentStatus: FRAGMENT_STATUS_FIELD,
+        fragmentBoundaryWorkId: FRAGMENT_BOUNDARY_WORK_ID_FIELD,
+        fragmentBoundaryUnitNumber: FRAGMENT_BOUNDARY_UNIT_NUMBER_FIELD,
+      },
+      issueCodes: {
+        nameRequired: ENTITY_NAME_REQUIRED_CODE,
+        nameTooLong: ENTITY_NAME_TOO_LONG_CODE,
+        nameInvalidCharacters: ENTITY_NAME_INVALID_CHARACTERS_CODE,
+        typeInvalid: ENTITY_TYPE_INVALID_CODE,
+        workIdInvalid: KNOWLEDGE_ITEM_ID_INVALID_CODE,
+        unitNumberRequired: UNIT_NUMBER_REQUIRED_CODE,
+        unitNumberInvalid: UNIT_NUMBER_INVALID_CODE,
+        contentTooLong: FRAGMENT_CONTENT_TOO_LONG_CODE,
+        contentInvalidCharacters: FRAGMENT_CONTENT_INVALID_CHARACTERS_CODE,
+        statusInvalid: KNOWLEDGE_STATUS_INVALID_CODE,
+      },
+      statuses: KNOWLEDGE_STATUSES,
+      maximumNameLength: MAXIMUM_ENTITY_NAME_LENGTH,
+      maximumFragmentContentLength: MAXIMUM_FRAGMENT_CONTENT_LENGTH,
     },
     entityTypes: ENTITY_TYPES,
   };

@@ -30,3 +30,38 @@ export function getWorkIssueMessage(issue: ActionFieldIssue, vocabulary: Knowled
       return messages.UNKNOWN;
   }
 }
+
+/**
+ * Turns a validation issue of the entity creation, its first fragment included, into the text shown
+ * under its field, by the stable issue code (the work identifier code is only reported for the work of
+ * a point in this form).
+ */
+export function getEntityIssueMessage(issue: ActionFieldIssue, vocabulary: KnowledgeFormVocabulary): string {
+  const messages = en.entityCreation.issues;
+  const codes = vocabulary.entity.issueCodes;
+
+  switch (issue.code) {
+    case codes.nameRequired:
+      return messages.NAME_REQUIRED;
+    case codes.nameTooLong:
+      return messages.NAME_TOO_LONG(issue.maximumLength ?? vocabulary.entity.maximumNameLength);
+    case codes.nameInvalidCharacters:
+      return messages.NAME_INVALID_CHARACTERS;
+    case codes.typeInvalid:
+      return messages.TYPE_INVALID;
+    case codes.workIdInvalid:
+      return messages.WORK_INVALID;
+    case codes.unitNumberRequired:
+      return messages.UNIT_NUMBER_REQUIRED;
+    case codes.unitNumberInvalid:
+      return messages.UNIT_NUMBER_INVALID;
+    case codes.contentTooLong:
+      return messages.CONTENT_TOO_LONG(issue.maximumLength ?? vocabulary.entity.maximumFragmentContentLength);
+    case codes.contentInvalidCharacters:
+      return messages.CONTENT_INVALID_CHARACTERS;
+    case codes.statusInvalid:
+      return messages.STATUS_INVALID;
+    default:
+      return messages.UNKNOWN;
+  }
+}

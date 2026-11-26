@@ -21,12 +21,14 @@ const ROW_CLASS_NAME = cn(
 
 type EntityListProps = {
   onAddWork: () => void;
+  onAddEntity: () => void;
 };
 
 // The entity list of the selected universe (spec 006, FR-9): its entities in creation order, each a
 // button that selects it; an honest empty state while there are none, or, while the universe has no
-// work, the message that a work is needed first with the way to the work form.
-export function EntityList({ onAddWork }: EntityListProps) {
+// work, the message that a work is needed first with the way to the work form. While a work exists, a
+// "New entity" button opens the entity form (decision D-T5-6).
+export function EntityList({ onAddWork, onAddEntity }: EntityListProps) {
   const headingId = useId();
 
   return (
@@ -34,12 +36,12 @@ export function EntityList({ onAddWork }: EntityListProps) {
       <h2 id={headingId} className="font-serif text-lg">
         {en.entityList.heading}
       </h2>
-      <EntityListContent onAddWork={onAddWork} />
+      <EntityListContent onAddWork={onAddWork} onAddEntity={onAddEntity} />
     </section>
   );
 }
 
-function EntityListContent({ onAddWork }: EntityListProps): ReactNode {
+function EntityListContent({ onAddWork, onAddEntity }: EntityListProps): ReactNode {
   const { knowledgeLoad, retryKnowledgeLoad } = useKnowledge();
 
   if (knowledgeLoad === null || knowledgeLoad.phase === "loading") {
@@ -76,9 +78,21 @@ function EntityListContent({ onAddWork }: EntityListProps): ReactNode {
     );
   }
 
-  if (entities.length === 0) return <p className="text-ink-muted text-sm">{en.entityList.noEntities}</p>;
-
-  return <EntityRows entities={entities} />;
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      <div>
+        <Button variant="secondary" size="sm" onClick={onAddEntity}>
+          <Plus aria-hidden />
+          {en.entityList.newEntity}
+        </Button>
+      </div>
+      {entities.length === 0 ? (
+        <p className="text-ink-muted text-sm">{en.entityList.noEntities}</p>
+      ) : (
+        <EntityRows entities={entities} />
+      )}
+    </div>
+  );
 }
 
 function EntityRows({ entities }: { entities: readonly EntitySummaryDto[] }) {

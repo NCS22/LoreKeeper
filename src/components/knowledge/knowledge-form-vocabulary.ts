@@ -5,6 +5,17 @@
 /** The fields of the work creation form. */
 export type WorkFormFieldName = "title" | "medium" | "unitCount";
 
+/** The fields of the entity creation form, with its optional first fragment. */
+export type EntityFormFieldName =
+  | "name"
+  | "type"
+  | "boundaryWorkId"
+  | "boundaryUnitNumber"
+  | "fragmentContent"
+  | "fragmentStatus"
+  | "fragmentBoundaryWorkId"
+  | "fragmentBoundaryUnitNumber";
+
 export type KnowledgeFormVocabulary = {
   readonly work: {
     /** The name each form field has in the issues the actions return. */
@@ -23,6 +34,28 @@ export type KnowledgeFormVocabulary = {
     readonly mediums: readonly string[];
     readonly maximumTitleLength: number;
     readonly maximumUnitCount: number;
+  };
+  readonly entity: {
+    /** The input path each form field has in the issues the entity action returns (D17). */
+    readonly fieldNames: Readonly<Record<EntityFormFieldName, string>>;
+    /** The stable code of each issue the entity and fragment rules report. */
+    readonly issueCodes: {
+      readonly nameRequired: string;
+      readonly nameTooLong: string;
+      readonly nameInvalidCharacters: string;
+      readonly typeInvalid: string;
+      /** A work identifier that is not well formed, for either point. */
+      readonly workIdInvalid: string;
+      readonly unitNumberRequired: string;
+      readonly unitNumberInvalid: string;
+      readonly contentTooLong: string;
+      readonly contentInvalidCharacters: string;
+      readonly statusInvalid: string;
+    };
+    /** The statuses of a fragment, in the order the form offers them. */
+    readonly statuses: readonly string[];
+    readonly maximumNameLength: number;
+    readonly maximumFragmentContentLength: number;
   };
   /** The types an entity can have, in the order the forms offer them. */
   readonly entityTypes: readonly string[];

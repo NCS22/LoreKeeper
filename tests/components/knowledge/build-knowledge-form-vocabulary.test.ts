@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { buildKnowledgeFormVocabulary } from "@/components/knowledge/build-knowledge-form-vocabulary";
+import { validateEntityName } from "@/modules/knowledge/domain/entity-name";
 import { parseEntityType } from "@/modules/knowledge/domain/entity-type";
+import { readFragmentContent } from "@/modules/knowledge/domain/fragment-content";
+import { parseKnowledgeItemId } from "@/modules/knowledge/domain/knowledge-item-id";
+import { KNOWLEDGE_STATUSES } from "@/modules/knowledge/domain/knowledge-status";
+import { parseUnitNumber } from "@/modules/knowledge/domain/unit-number";
 import { parseUnitCount } from "@/modules/knowledge/domain/unit-count";
 import { parseWorkMedium } from "@/modules/knowledge/domain/work-medium";
 import { validateWorkTitle } from "@/modules/knowledge/domain/work-title";
@@ -66,5 +71,73 @@ describe("buildKnowledgeFormVocabulary: the entity types", () => {
 
     expect(entityTypes).toHaveLength(8);
     expect(entityTypes.every((entityType) => parseEntityType(entityType) !== null)).toBe(true);
+  });
+});
+
+describe("buildKnowledgeFormVocabulary: the entity form", () => {
+  const { entity } = buildKnowledgeFormVocabulary();
+
+  it("carries the field and code the domain reports for every refusal of the name", () => {
+    expect(readIssue(validateEntityName("  "))).toEqual({ field: entity.fieldNames.name, code: entity.issueCodes.nameRequired });
+    expect(readIssue(validateEntityName("a".repeat(entity.maximumNameLength + 1)))).toEqual({
+      field: entity.fieldNames.name,
+      code: entity.issueCodes.nameTooLong,
+    });
+    expect(readIssue(validateEntityName(`bad${NULL_CHARACTER}`))).toEqual({
+      field: entity.fieldNames.name,
+      code: entity.issueCodes.nameInvalidCharacters,
+    });
+    expect(validateEntityName("a".repeat(entity.maximumNameLength)).isValid).toBe(true);
+  });
+
+  it("carries the codes the domain reports for a malformed work and unit number of a point", () => {
+    expect(readIssue(parseKnowledgeItemId("not-an-id", entity.fieldNames.boundaryWorkId))).toEqual({
+      field: entity.fieldNames.boundaryWorkId,
+      code: entity.issueCodes.workIdInvalid,
+    });
+    expect(readIssue(parseUnitNumber(" ", entity.fieldNames.boundaryUnitNumber))).toEqual({
+      field: entity.fieldNames.boundaryUnitNumber,
+      code: entity.issueCodes.unitNumberRequired,
+    });
+    expect(readIssue(parseUnitNumber("1e3", entity.fieldNames.boundaryUnitNumber))).toEqual({
+      field: entity.fieldNames.boundaryUnitNumber,
+      code: entity.issueCodes.unitNumberInvalid,
+    });
+  });
+
+  it("carries the field and code the domain reports for every refusal of the fragment content", () => {
+    expect(readFragmentContent("a".repeat(entity.maximumFragmentContentLength + 1))).toMatchObject({
+      isValid: false,
+      issue: { field: entity.fieldNames.fragmentContent, code: entity.issueCodes.contentTooLong },
+    });
+    expect(readFragmentContent(`bad${NULL_CHARACTER}`)).toMatchObject({
+      isValid: false,
+      issue: { field: entity.fieldNames.fragmentContent, code: entity.issueCodes.contentInvalidCharacters },
+    });
+    expect(readFragmentContent("a".repeat(entity.maximumFragmentContentLength))).toMatchObject({ isValid: true });
+  });
+
+  it("names the fields with the input paths the entity action reports (D17)", () => {
+    expect(entity.fieldNames).toEqual({
+      name: "name",
+      type: "type",
+      boundaryWorkId: "boundary.workId",
+      boundaryUnitNumber: "boundary.unitNumber",
+      fragmentContent: "fragment.content",
+      fragmentStatus: "fragment.status",
+      fragmentBoundaryWorkId: "fragment.boundary.workId",
+      fragmentBoundaryUnitNumber: "fragment.boundary.unitNumber",
+    });
+  });
+
+  it("has the codes of the ten issues, all different", () => {
+    const codes = Object.values(entity.issueCodes);
+
+    expect(codes).toHaveLength(10);
+    expect(new Set(codes).size).toBe(10);
+  });
+
+  it("lists the three statuses the domain accepts, in its order", () => {
+    expect(entity.statuses).toEqual([...KNOWLEDGE_STATUSES]);
   });
 });

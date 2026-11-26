@@ -4,8 +4,10 @@ import { useRef, useState } from "react";
 import { List, Network } from "lucide-react";
 import { en } from "@/messages/en";
 import { GraphEmptyState } from "@/components/graph/graph-empty-state";
+import { EntityCreationForm } from "@/components/knowledge/entity-creation-form";
 import { EntityList } from "@/components/knowledge/entity-list";
 import { LateKnowledgeCreationConfirmation } from "@/components/knowledge/late-knowledge-creation-confirmation";
+import { SimilarEntityNotice } from "@/components/knowledge/similar-entity-notice";
 import { WorkCreationForm } from "@/components/knowledge/work-creation-form";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LateCreationConfirmation } from "@/components/universes/late-creation-confirmation";
@@ -13,7 +15,7 @@ import { NoUniversesEmptyState } from "@/components/universes/no-universes-empty
 import { UniverseCreationForm } from "@/components/universes/universe-creation-form";
 import { UniverseEmptyState } from "@/components/universes/universe-empty-state";
 import { useUniverses } from "@/components/universes/universes-provider";
-import type { WorkDto } from "@/modules/knowledge";
+import type { EntitySummaryDto, WorkDto } from "@/modules/knowledge";
 import type { UniverseDto } from "@/modules/universes";
 import { useWorkspaceState, type CentralView } from "@/components/workspace/workspace-state";
 
@@ -57,6 +59,10 @@ export function CentralArea() {
     dispatch({ type: "knowledgeFormOpened", form: "work" });
   }
 
+  function startEntityCreation() {
+    dispatch({ type: "knowledgeFormOpened", form: "entity" });
+  }
+
   function cancelKnowledgeForm() {
     dispatch({ type: "knowledgeFormClosed" });
     focusUniverseHeadingAfterRender();
@@ -69,6 +75,21 @@ export function CentralArea() {
       setKnowledgeAnnouncement({
         universeId: state.selectedUniverseId,
         text: en.workCreation.createdAnnouncement(createdWork.title),
+      });
+    }
+    focusUniverseHeadingAfterRender();
+  }
+
+  // The created entity is selected and shown in the list; the provider loads the universe again, so it
+  // appears there (FR-4, plan section 5).
+  function finishEntityCreation(createdEntity: EntitySummaryDto) {
+    dispatch({ type: "knowledgeFormClosed" });
+    dispatch({ type: "entitySelected", entityId: createdEntity.id });
+    dispatch({ type: "viewChanged", view: "list" });
+    if (state.selectedUniverseId !== null) {
+      setKnowledgeAnnouncement({
+        universeId: state.selectedUniverseId,
+        text: en.entityCreation.createdAnnouncement(createdEntity.name),
       });
     }
     focusUniverseHeadingAfterRender();
@@ -109,6 +130,7 @@ export function CentralArea() {
 
       <LateCreationConfirmation />
       <LateKnowledgeCreationConfirmation />
+      <SimilarEntityNotice />
       <div role="status" aria-live="polite" className="sr-only">
         {knowledgeAnnouncement?.universeId === universe.id ? knowledgeAnnouncement.text : null}
       </div>
@@ -118,6 +140,12 @@ export function CentralArea() {
           <UniverseCreationForm onCreated={finishUniverseCreation} onCancel={cancelUniverseCreation} />
         ) : state.knowledgeForm === "work" ? (
           <WorkCreationForm onCreated={finishWorkCreation} onCancel={cancelKnowledgeForm} />
+        ) : state.knowledgeForm === "entity" ? (
+          <EntityCreationForm
+            universeMode={universe.mode}
+            onCreated={finishEntityCreation}
+            onCancel={cancelKnowledgeForm}
+          />
         ) : (
           <div className="mx-auto flex min-w-0 max-w-3xl flex-col gap-6 p-6">
             <UniverseEmptyState
@@ -126,7 +154,7 @@ export function CentralArea() {
               headingRef={headingRef}
               wasJustCreated={universe.id === justCreatedUniverseId}
             />
-            {state.view === "list" ? <EntityList onAddWork={startWorkCreation} /> : <GraphEmptyState />}
+            {state.view === "list" ? <EntityList onAddWork={startWorkCreation} onAddEntity={startEntityCreation} /> : <GraphEmptyState />}
           </div>
         )}
       </div>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { TimeLimitedOutcome } from "@/components/accounts/run-with-time-limit";
 import { buildKnowledgeFormVocabulary } from "@/components/knowledge/build-knowledge-form-vocabulary";
 import {
+  interpretCreateEntityResult,
   interpretCreateWorkResult,
   interpretLoadUniverseKnowledgeResult,
 } from "@/components/knowledge/interpret-knowledge-action-result";
@@ -181,5 +182,93 @@ describe("interpretLoadUniverseKnowledgeResult", () => {
     ["the signed-out refusal of the guard", rejected(new Error(SIGNED_OUT_ACTION_REFUSAL.text))],
   ])("reads %s as signed out", (_description, end) => {
     expect(interpretLoadUniverseKnowledgeResult(end, vocabulary)).toEqual({ status: "signed-out" });
+  });
+});
+
+describe("interpretCreateEntityResult", () => {
+  const entityFieldNames = vocabulary.entity.fieldNames;
+  const entityIssueCodes = vocabulary.entity.issueCodes;
+  const entityMessages = en.entityCreation.issues;
+
+  it("reads a stored entity as created, without a similar entity", () => {
+    expect(
+      interpretCreateEntityResult(answered({ ok: true, value: { entity: STORED_ENTITY, similarEntityName: null } }), vocabulary),
+    ).toEqual({ status: "created", entity: STORED_ENTITY, similarEntityName: null });
+  });
+
+  it("reads a stored entity as created with the name of the similar entity it reports (FR-6)", () => {
+    expect(
+      interpretCreateEntityResult(answered({ ok: true, value: { entity: STORED_ENTITY, similarEntityName: "frodo" } }), vocabulary),
+    ).toEqual({ status: "created", entity: STORED_ENTITY, similarEntityName: "frodo" });
+  });
+
+  it.each([
+    ["no entity in the value", { ok: true, value: { similarEntityName: null } }],
+    ["an entity with an unknown type", { ok: true, value: { entity: { ...STORED_ENTITY, type: "DRAGON" }, similarEntityName: null } }],
+    ["an entity without an identifier", { ok: true, value: { entity: { ...STORED_ENTITY, id: 3 }, similarEntityName: null } }],
+    ["no similar entity field", { ok: true, value: { entity: STORED_ENTITY } }],
+    ["a similar entity that is not a name", { ok: true, value: { entity: STORED_ENTITY, similarEntityName: 4 } }],
+    ["a body that is not an object", "ok"],
+  ])("reads %s as a generic failure", (_description, body) => {
+    expect(interpretCreateEntityResult(answered(body), vocabulary)).toEqual({ status: "generic-failure" });
+  });
+
+  it("gives each rejected field of the form its own message, by its input path, and ignores fields it does not know", () => {
+    const outcome = interpretCreateEntityResult(
+      failure("VALIDATION_ERROR", {
+        [entityFieldNames.name]: [{ code: entityIssueCodes.nameTooLong, maximumLength: 120 }],
+        [entityFieldNames.type]: [{ code: entityIssueCodes.typeInvalid }],
+        [entityFieldNames.boundaryWorkId]: [{ code: entityIssueCodes.workIdInvalid }],
+        [entityFieldNames.boundaryUnitNumber]: [{ code: entityIssueCodes.unitNumberRequired }],
+        [entityFieldNames.fragmentContent]: [{ code: entityIssueCodes.contentTooLong, maximumLength: 5000 }],
+        [entityFieldNames.fragmentStatus]: [{ code: entityIssueCodes.statusInvalid }],
+        [entityFieldNames.fragmentBoundaryWorkId]: [{ code: entityIssueCodes.workIdInvalid }],
+        [entityFieldNames.fragmentBoundaryUnitNumber]: [{ code: entityIssueCodes.unitNumberInvalid }],
+        attributes: [{ code: "SOMETHING" }],
+      }),
+      vocabulary,
+    );
+
+    expect(outcome).toEqual({
+      status: "field-errors",
+      messagesByField: {
+        name: entityMessages.NAME_TOO_LONG(120),
+        type: entityMessages.TYPE_INVALID,
+        boundaryWorkId: entityMessages.WORK_INVALID,
+        boundaryUnitNumber: entityMessages.UNIT_NUMBER_REQUIRED,
+        fragmentContent: entityMessages.CONTENT_TOO_LONG(5000),
+        fragmentStatus: entityMessages.STATUS_INVALID,
+        fragmentBoundaryWorkId: entityMessages.WORK_INVALID,
+        fragmentBoundaryUnitNumber: entityMessages.UNIT_NUMBER_INVALID,
+      },
+    });
+  });
+
+  it("reads a validation failure with only issues of fields that are not in the form as a generic failure", () => {
+    expect(
+      interpretCreateEntityResult(failure("VALIDATION_ERROR", { universeId: [{ code: "ID_INVALID" }] }), vocabulary),
+    ).toEqual({ status: "generic-failure" });
+  });
+
+  it.each([
+    ["a reference that is not found, such as a unit the work does not have", failure("NOT_FOUND")],
+    ["a storage failure", failure("INFRASTRUCTURE_ERROR")],
+    ["an unverifiable session", rejected(new Error(SESSION_CHECK_FAILED_ACTION_REFUSAL.text))],
+  ])("reads %s as a generic failure, with nothing stored", (_description, end) => {
+    expect(interpretCreateEntityResult(end, vocabulary)).toEqual({ status: "generic-failure" });
+  });
+
+  it.each([
+    ["the authentication error", failure("AUTHENTICATION_ERROR")],
+    ["the signed-out refusal of the guard", rejected(new Error(SIGNED_OUT_ACTION_REFUSAL.text))],
+  ])("asks the person to sign in again on %s", (_description, end) => {
+    expect(interpretCreateEntityResult(end, vocabulary)).toEqual({ status: "sign-in-again" });
+  });
+
+  it.each([
+    ["no answer in time", TIMED_OUT],
+    ["a lost connection", rejected(new TypeError("Failed to fetch"))],
+  ])("reads %s as an unknown result: the entity may exist", (_description, end) => {
+    expect(interpretCreateEntityResult(end, vocabulary)).toEqual({ status: "result-unknown" });
   });
 });
