@@ -1,3 +1,4 @@
+import type { SpoilerBoundary } from "@/shared/domain/spoiler-boundary";
 import type { ViewerContext } from "@/shared/domain/viewer-context";
 import type { NewWork, Work } from "./work";
 
@@ -17,4 +18,14 @@ export type WorkRepository = {
    * the same instant are ordered by identifier ascending. Each work carries its number of units.
    */
   findAllInUniverse(viewerContext: ViewerContext): Promise<readonly Work[]>;
+  /**
+   * The boundary (work and unit) named by a work identifier and a unit number: the work must be a
+   * work of the universe of the context that is not deleted, and the unit one of its units that is
+   * not deleted, labelled with that number. `null` for anything else (FR-4, FR-8).
+   */
+  findBoundaryOfUnitNumber(
+    viewerContext: ViewerContext,
+    workId: string,
+    unitNumber: number,
+  ): Promise<SpoilerBoundary | null>;
 };

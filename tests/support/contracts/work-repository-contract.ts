@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { OwnUniverseLookup } from "@/modules/knowledge/application/own-universe-lookup";
+import type { EntityRepository } from "@/modules/knowledge/domain/entity-repository";
 import type { NewNarrativeUnit, NewWork } from "@/modules/knowledge/domain/work";
 import type { WorkRepository } from "@/modules/knowledge/domain/work-repository";
 import type { Universe } from "@/modules/universes/domain/universe";
 import { InfrastructureError } from "@/shared/domain/error-kinds";
 import type { ViewerContext } from "@/shared/domain/viewer-context";
+import type { StoredFragment } from "../fakes/fake-entity-repository";
 import { buildNewWork, buildNumberedTestUnits } from "../knowledge-repository-factories";
 import { SECOND_OWNER_ID } from "../universe-owners";
 import { buildUniverse } from "../universe-repository-factories";
@@ -23,6 +25,16 @@ export type KnowledgeStorage = {
   /** Makes every following write of a narrative unit fail, until `restoreUnitWrites`. */
   readonly makeUnitWritesFail: () => Promise<void>;
   readonly restoreUnitWrites: () => Promise<void>;
+  /** The label of a stored unit, or `null` when no unit has that identifier. */
+  readonly readLabelOfStoredUnit: (unitId: string) => Promise<string | null>;
+  readonly entityRepository: EntityRepository;
+  /** The stored fragments of an entity, oldest first, deleted ones included. */
+  readonly readStoredFragmentsOfEntity: (entityId: string) => Promise<readonly StoredFragment[]>;
+  readonly countStoredEntities: () => Promise<number>;
+  readonly countStoredFragments: () => Promise<number>;
+  /** Makes every following write of a fragment fail, until `restoreFragmentWrites`. */
+  readonly makeFragmentWritesFail: () => Promise<void>;
+  readonly restoreFragmentWrites: () => Promise<void>;
 };
 
 /** Builds an empty storage holding the given universes (their owners are the two test accounts). */
@@ -160,6 +172,51 @@ export function describeWorkStorageContract(
       expect(await storage.countStoredWorks()).toBe(0);
       expect(await storage.readStoredUnitsOfWork(newWork.id)).toEqual([]);
       expect(await storage.workRepository.findAllInUniverse(buildViewerContext())).toEqual([]);
+    });
+
+    it("finds the boundary of a unit number of a work of the universe of the context", async () => {
+      const storage = await createStorage(startingUniverses);
+      const newWork = buildNewWork({ units: buildNumberedTestUnits(3) });
+      await storage.workRepository.add(newWork);
+
+      const boundary = await storage.workRepository.findBoundaryOfUnitNumber(
+        buildViewerContext(),
+        newWork.id,
+        2,
+      );
+
+      expect(boundary?.workId).toBe(newWork.id);
+      expect(await storage.readLabelOfStoredUnit(boundary?.unitId ?? "")).toBe("2");
+    });
+
+    it.each([0, 4, 5000])(
+      "finds no boundary for unit number %i, which no unit of a work of 3 units has",
+      async (unitNumber) => {
+        const storage = await createStorage(startingUniverses);
+        const newWork = buildNewWork({ units: buildNumberedTestUnits(3) });
+        await storage.workRepository.add(newWork);
+
+        expect(
+          await storage.workRepository.findBoundaryOfUnitNumber(buildViewerContext(), newWork.id, unitNumber),
+        ).toBeNull();
+      },
+    );
+
+    it("finds no boundary in a work of another account's universe, nor in a work that does not exist", async () => {
+      const storage = await createStorage(startingUniverses);
+      const foreignWork = buildNewWork({ universeId: SECOND_OWNER_UNIVERSE.id });
+      await storage.workRepository.add(foreignWork);
+
+      expect(
+        await storage.workRepository.findBoundaryOfUnitNumber(buildViewerContext(), foreignWork.id, 1),
+      ).toBeNull();
+      expect(
+        await storage.workRepository.findBoundaryOfUnitNumber(
+          buildViewerContext(),
+          "00000000-0000-4000-8000-0000000000ff",
+          1,
+        ),
+      ).toBeNull();
     });
 
     it("stores the work with its units when it is added again after a failed attempt", async () => {

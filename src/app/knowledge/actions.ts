@@ -6,6 +6,7 @@ import { assertSameSiteRequest } from "@/shared/presentation/assert-same-site-re
 import { getActingUser } from "@/shared/presentation/get-acting-user";
 import { parseActionInput } from "@/shared/presentation/parse-action-input";
 import { runAction } from "@/shared/presentation/run-action";
+import { createEntityInputSchema } from "./create-entity-input-schema";
 import { createWorkInputSchema } from "./create-work-input-schema";
 import { loadUniverseKnowledgeInputSchema } from "./load-universe-knowledge-input-schema";
 
@@ -23,7 +24,20 @@ export async function createWorkAction(input: unknown) {
   });
 }
 
-/** Reads what the workspace shows of an own universe of the acting account: today, its works. */
+/**
+ * Creates an entity, with an optional first fragment, in an own universe of the acting account.
+ * The answer carries the name of the oldest similar entity, if any (FR-6). Input arrives untyped.
+ */
+export async function createEntityAction(input: unknown) {
+  return runAction(async () => {
+    assertSameSiteRequest(await headers());
+    const actor = await getActingUser();
+    const createEntityCommand = parseActionInput(createEntityInputSchema, input);
+    return createKnowledgeModule().createEntity(actor, createEntityCommand);
+  });
+}
+
+/** Reads what the workspace shows of an own universe of the acting account: its works and entities. */
 export async function loadUniverseKnowledgeAction(input: unknown) {
   return runAction(async () => {
     assertSameSiteRequest(await headers());

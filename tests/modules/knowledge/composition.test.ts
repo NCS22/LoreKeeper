@@ -43,10 +43,14 @@ describe("the composition of the knowledge module without environment", () => {
     expect(globalScope[PRISMA_CLIENT_GLOBAL_KEY]).toBeUndefined();
   });
 
-  it("offers the two operations", async () => {
+  it("offers the three operations", async () => {
     const { createKnowledgeModule } = await importComposition();
 
-    expect(Object.keys(createKnowledgeModule()).sort()).toEqual(["createWork", "loadUniverseKnowledge"]);
+    expect(Object.keys(createKnowledgeModule()).sort()).toEqual([
+      "createEntity",
+      "createWork",
+      "loadUniverseKnowledge",
+    ]);
   });
 
   it("checks the universe through the universes module first, so every operation fails with the InfrastructureError without a database", async () => {
@@ -62,10 +66,18 @@ describe("the composition of the knowledge module without environment", () => {
           unitCount: "3",
         }),
       ),
+      readFailure(
+        knowledgeModule.createEntity(actingUser, {
+          universeId: UNIVERSE_ID,
+          name: "Frodo",
+          type: "CHARACTER",
+          boundary: { workId: UNIVERSE_ID, unitNumber: "1" },
+        }),
+      ),
       readFailure(knowledgeModule.loadUniverseKnowledge(actingUser, UNIVERSE_ID)),
     ]);
 
-    expect(failures).toHaveLength(2);
+    expect(failures).toHaveLength(3);
     for (const failure of failures) {
       expect(failure).toBeInstanceOf(InfrastructureError);
     }
@@ -84,5 +96,8 @@ describe("the composition of the knowledge module without environment", () => {
       "FILM",
       "OTHER",
     ]);
+    expect(publicInterface.ENTITY_TYPES).toHaveLength(8);
+    expect(publicInterface.KNOWLEDGE_STATUSES).toEqual(["CONFIRMED", "USER_NOTE", "SPECULATION"]);
+    expect(publicInterface.isBlankFragmentContent(" \t ")).toBe(true);
   });
 });

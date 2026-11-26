@@ -2,6 +2,7 @@ import type { NewNarrativeUnit, Work } from "@/modules/knowledge/domain/work";
 import { parseWorkMedium } from "@/modules/knowledge/domain/work-medium";
 import type { WorkRepository } from "@/modules/knowledge/domain/work-repository";
 import { InfrastructureError } from "@/shared/domain/error-kinds";
+import type { SpoilerBoundary } from "@/shared/domain/spoiler-boundary";
 
 type SerializedWork = {
   readonly id: string;
@@ -11,6 +12,8 @@ type SerializedWork = {
   readonly createdAt: string;
   readonly updatedAt: string;
 };
+
+type StoredUnit = NewNarrativeUnit & { readonly id: string };
 
 type StoredWorkRow = {
   readonly serializedWork: string;
@@ -22,6 +25,13 @@ export type FakeWorkRepository = WorkRepository & {
   /** The stored units of a work, in order, as `{ label, ordinal }`. */
   readStoredUnitsOfWork(workId: string): readonly NewNarrativeUnit[];
   countStoredWorks(): number;
+  /**
+   * Whether the boundary is a stored work of the universe with one of its units, as the composite
+   * foreign keys of PostgreSQL require of every boundary (deleted rows included, as there).
+   */
+  holdsBoundaryInUniverse(universeId: string, boundary: SpoilerBoundary): boolean;
+  /** The label of a stored unit, or `null` when no unit has that identifier. */
+  readLabelOfStoredUnit(unitId: string): string | null;
   /** Makes every following write of a unit fail, until `restoreUnitWrites`. */
   makeUnitWritesFail(): void;
   restoreUnitWrites(): void;
@@ -62,10 +72,14 @@ export function createFakeWorkRepository(): FakeWorkRepository {
   const rowsByWorkId = new Map<string, StoredWorkRow>();
   let unitWritesFail = false;
 
-  function readUnits(row: StoredWorkRow): NewNarrativeUnit[] {
+  function readUnits(row: StoredWorkRow): StoredUnit[] {
     // JSON.parse is typed as returning `any`; the annotation narrows it to the shape written by `add`.
-    const units: NewNarrativeUnit[] = JSON.parse(row.serializedUnits);
+    const units: StoredUnit[] = JSON.parse(row.serializedUnits);
     return units;
+  }
+
+  function readWorkOfRow(row: StoredWorkRow): Work {
+    return deserializeWork(row.serializedWork, readUnits(row).length);
   }
 
   return {
@@ -82,22 +96,49 @@ export function createFakeWorkRepository(): FakeWorkRepository {
           updatedAt: work.updatedAt.toISOString(),
         }),
         serializedUnits: JSON.stringify(
-          units.map((unit) => ({ label: unit.label, ordinal: unit.ordinal })),
+          units.map((unit) => ({ id: crypto.randomUUID(), label: unit.label, ordinal: unit.ordinal })),
         ),
       });
     },
     async findAllInUniverse(viewerContext) {
       return [...rowsByWorkId.values()]
-        .map((row) => deserializeWork(row.serializedWork, readUnits(row).length))
+        .map(readWorkOfRow)
         .filter((work) => work.universeId === viewerContext.universeId)
         .sort(compareByCreationThenId);
+    },
+    async findBoundaryOfUnitNumber(viewerContext, workId, unitNumber) {
+      const row = rowsByWorkId.get(workId);
+      if (row === undefined || readWorkOfRow(row).universeId !== viewerContext.universeId) {
+        return null;
+      }
+      const unit = readUnits(row).find((storedUnit) => storedUnit.label === String(unitNumber));
+      return unit === undefined ? null : { workId, unitId: unit.id };
     },
     readStoredUnitsOfWork(workId) {
       const row = rowsByWorkId.get(workId);
       if (row === undefined) {
         return [];
       }
-      return readUnits(row).sort((firstUnit, secondUnit) => firstUnit.ordinal - secondUnit.ordinal);
+      return readUnits(row)
+        .map((unit) => ({ label: unit.label, ordinal: unit.ordinal }))
+        .sort((firstUnit, secondUnit) => firstUnit.ordinal - secondUnit.ordinal);
+    },
+    holdsBoundaryInUniverse(universeId, boundary) {
+      const row = rowsByWorkId.get(boundary.workId);
+      return (
+        row !== undefined &&
+        readWorkOfRow(row).universeId === universeId &&
+        readUnits(row).some((unit) => unit.id === boundary.unitId)
+      );
+    },
+    readLabelOfStoredUnit(unitId) {
+      for (const row of rowsByWorkId.values()) {
+        const unit = readUnits(row).find((storedUnit) => storedUnit.id === unitId);
+        if (unit !== undefined) {
+          return unit.label;
+        }
+      }
+      return null;
     },
     countStoredWorks() {
       return rowsByWorkId.size;

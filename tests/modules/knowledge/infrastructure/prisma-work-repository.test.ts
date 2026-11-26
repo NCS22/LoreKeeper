@@ -100,6 +100,32 @@ describe("PostgreSQL work repository", () => {
     );
   });
 
+  it("finds no boundary in a deleted work, nor for a deleted unit", async () => {
+    const newWork = buildNewWork({ units: buildNumberedTestUnits(2) });
+    await workRepository.add(newWork);
+    await client.narrativeUnit.updateMany({
+      where: { workId: newWork.id, label: "2" },
+      data: { deletedAt: new Date() },
+    });
+
+    expect(await workRepository.findBoundaryOfUnitNumber(buildViewerContext(), newWork.id, 2)).toBeNull();
+    expect(await workRepository.findBoundaryOfUnitNumber(buildViewerContext(), newWork.id, 1)).not.toBeNull();
+
+    await client.work.update({ where: { id: newWork.id }, data: { deletedAt: new Date() } });
+
+    expect(await workRepository.findBoundaryOfUnitNumber(buildViewerContext(), newWork.id, 1)).toBeNull();
+  });
+
+  it("turns a failure to find a unit into the infrastructure error", async () => {
+    const failingRepository = createPrismaWorkRepository(() => {
+      throw new Error("connection to db-host-7 refused");
+    });
+
+    await expect(
+      failingRepository.findBoundaryOfUnitNumber(buildViewerContext(), buildNewWork().id, 1),
+    ).rejects.toBeInstanceOf(InfrastructureError);
+  });
+
   it("refuses a work in a universe that does not exist", async () => {
     await expect(
       workRepository.add(buildNewWork({ universeId: "00000000-0000-4000-8000-0000000000ff" })),

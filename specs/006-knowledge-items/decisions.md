@@ -99,3 +99,52 @@ Decisions taken after the plan was approved. Design decisions of the plan stay i
 - **Why:** the screen can say which rule failed and show the maximum from the constant.
 - **Discarded:** extending `ValidationIssue` with numeric limits (a shared change outside the task).
 - **Approved by:** the user, 2026-11-26, after T2.
+
+## D-T3-1. A well-formed unit number with no unit answers not found
+
+- **Decided:** a unit number that passes the format rules but matches no unit (0, beyond the unit count, or huge) answers the single not found; only the format rules give a validation failure (`UNIT_NUMBER_REQUIRED`, `UNIT_NUMBER_INVALID`).
+- **Why:** FR-4 asks only for the format rules of FR-1; a missing unit is a bad reference like the others of FR-8.
+- **Discarded:** a range validation error (it would need the unit count of the work, which is a lookup).
+- **Approved by:** the user, 2026-11-26, at the implementation gate after T3.
+
+## D-T3-2. The unit is found by its label
+
+- **Decided:** the boundary unit is the unit whose label equals the number, through `WorkRepository.findBoundaryOfUnitNumber`, ignoring deleted works and units.
+- **Why:** labels are "1" to "N" (FR-1) and the contract sends work + unit number (plan D6).
+- **Discarded:** computing the ordinal from the number (it ties the lookup to the step 1000 that rebalancing may change).
+- **Approved by:** the user, 2026-11-26, after T3.
+
+## D-T3-3. `domain/knowledge-item-id.ts`
+
+- **Decided:** a validator of the identifier format with the code `ID_INVALID`, following the pattern of the universe identifier.
+- **Why:** modules interact only through their public interface, so the universes rule cannot be imported.
+- **Discarded:** exporting the universe identifier rule from `universes` for another module's validation.
+- **Approved by:** the user, 2026-11-26, after T3.
+
+## D-T3-4. One code for the fragment status
+
+- **Decided:** `STATUS_INVALID` both when the status is missing and when it is unknown.
+- **Why:** the form always proposes `USER_NOTE`, so a missing status only comes from a direct call; one message covers both.
+- **Discarded:** a separate `STATUS_REQUIRED`.
+- **Approved by:** the user, 2026-11-26, after T3.
+
+## D-T3-5. Input shape of the fragment
+
+- **Decided:** the fragment status and boundary accept `null` as well as being absent; without a boundary the fragment takes the entity's. The module exports `isBlankFragmentContent` so the Zod schema drops an empty fragment by the same domain rule.
+- **Why:** an empty fragment is dropped before its shape is parsed (plan section 4) and the rule is not duplicated.
+- **Discarded:** a second blank check written in the schema.
+- **Approved by:** the user, 2026-11-26, after T3.
+
+## D-T3-6. The duplicate notice is computed before storing
+
+- **Decided:** the notice compares with the stored normalized names, ignoring deleted entities, before the write; the fragment gets the creation time of its entity.
+- **Why:** the oldest existing entity is the one named; computing it after the write would have to exclude the new row.
+- **Discarded:** a query after the write.
+- **Approved by:** the user, 2026-11-26, after T3.
+
+## D-T3-7. The fake entity repository refuses foreign boundaries too
+
+- **Decided:** the fake refuses a boundary outside the universe or a unit of another work, so those refusals are contract scenarios run on the fake and on PostgreSQL; the direct database insert is tested only on PostgreSQL.
+- **Why:** the use-case tests on fakes then see the same answers as production.
+- **Discarded:** testing those refusals only on PostgreSQL.
+- **Approved by:** the user, 2026-11-26, after T3.

@@ -49,5 +49,21 @@ export function createPrismaWorkRepository(getPrismaClient: () => PrismaClient):
         return storedWorks.map(toDomainWork);
       });
     },
+    // Works and units are structure, visible in the final design as well (temporary exception of
+    // spec 006 aside): the lookup finds the unit labelled with the number in a work of the universe.
+    findBoundaryOfUnitNumber(viewerContext, workId, unitNumber) {
+      return runKnowledgeStorageOperation("find a unit of a work", async () => {
+        const storedUnit = await getPrismaClient().narrativeUnit.findFirst({
+          where: {
+            label: String(unitNumber),
+            deletedAt: null,
+            work: { id: workId, universeId: viewerContext.universeId, deletedAt: null },
+          },
+          orderBy: { ordinal: "asc" },
+          select: { id: true, workId: true },
+        });
+        return storedUnit === null ? null : { workId: storedUnit.workId, unitId: storedUnit.id };
+      });
+    },
   };
 }
