@@ -33,7 +33,8 @@ src/
 │   │   ├── page.tsx
 │   │   ├── actions.ts                # Server Actions used by this route
 │   │   └── _components/              # Components used only by this route
-│   └── universes/                    # No page: the Server Actions of the universes (create, check a name, remember a universe) and their Zod input schemas, used by the workspace at `/`
+│   ├── universes/                    # No page: the Server Actions of the universes (create, check a name, remember a universe) and their Zod input schemas, used by the workspace at `/`
+│   └── knowledge/                    # No page: the Server Actions of the knowledge items (load a universe's knowledge and an entity's details, create a work, an entity, a relationship) and their Zod input schemas, used by the workspace at `/`
 ├── components/
 │   ├── ui/                           # shadcn/ui
 │   └── <feature>/                    # Components shared across routes

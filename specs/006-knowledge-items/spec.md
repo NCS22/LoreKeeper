@@ -1,6 +1,6 @@
 # Spec 006 — Knowledge items: first creation and viewing
 
-Status: approved
+Status: implemented
 
 ## Context and goal
 
