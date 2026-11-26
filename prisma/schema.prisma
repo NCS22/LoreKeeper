@@ -91,8 +91,13 @@ model Universe {
   createdAt    DateTime             @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime             @default(now()) @updatedAt @db.Timestamptz(3)
   deletedAt    DateTime?            @db.Timestamptz(3)
-  owner        User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  rememberedBy RememberedUniverse[]
+  owner             User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  rememberedBy      RememberedUniverse[]
+  relationshipTypes RelationshipType[]
+  works             Work[]
+  entities          Entity[]
+  knowledgeEntries  KnowledgeEntry[]
+  relationships     Relationship[]
 
   /// Target of the composite foreign key of `RememberedUniverse`.
   @@unique([id, ownerId])
@@ -107,4 +112,173 @@ model RememberedUniverse {
   updatedAt  DateTime @default(now()) @updatedAt @db.Timestamptz(3)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   universe   Universe @relation(fields: [universeId, userId], references: [id, ownerId], onDelete: Cascade)
+}
+
+// Knowledge items of a universe (specs/006-knowledge-items/plan.md, section 2). Every table carries
+// `deletedAt`, filtered by every query (the trash is a later spec). The migration adds by hand the
+// partial unique index of the relationship type keys, the CHECK constraints on text lengths (in code
+// points) and on a relationship from an entity to itself, and the backfill of the predefined types.
+// Composite foreign keys that include `universeId` make the database refuse a reference to an item of
+// another universe, and the boundary pair `(boundaryUnitId, boundaryWorkId)` a unit of another work.
+
+enum WorkMedium {
+  NOVEL
+  MANGA
+  COMIC
+  ANIME
+  TV_SERIES
+  FILM
+  OTHER
+}
+
+enum EntityType {
+  CHARACTER
+  LOCATION
+  ORGANIZATION
+  FACTION
+  OBJECT
+  ABILITY
+  SPECIES
+  CONCEPT
+}
+
+enum KnowledgeStatus {
+  CONFIRMED
+  USER_NOTE
+  SPECULATION
+}
+
+/// Catalog of relationship kinds of one universe, owned by the universes module. The eight predefined
+/// types are written in the same statement as their universe. The migration adds a partial unique index
+/// on `(universeId, key)` among the types that are not deleted, so a universe never has a second copy.
+model RelationshipType {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  universeId    String         @db.Uuid
+  key           String
+  label         String
+  inverseLabel  String
+  isSymmetric   Boolean
+  isPredefined  Boolean
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @default(now()) @updatedAt @db.Timestamptz(3)
+  deletedAt     DateTime?      @db.Timestamptz(3)
+  universe      Universe       @relation(fields: [universeId], references: [id], onDelete: Cascade)
+  relationships Relationship[]
+
+  /// Target of the composite foreign key of `Relationship`.
+  @@unique([id, universeId])
+}
+
+/// The migration adds a CHECK constraint on the length of `title` (1 to 200 code points).
+model Work {
+  id                         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  universeId                 String           @db.Uuid
+  title                      String
+  medium                     WorkMedium
+  createdAt                  DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt                  DateTime         @default(now()) @updatedAt @db.Timestamptz(3)
+  deletedAt                  DateTime?        @db.Timestamptz(3)
+  universe                   Universe         @relation(fields: [universeId], references: [id], onDelete: Cascade)
+  units                      NarrativeUnit[]
+  introducedEntities         Entity[]         @relation("EntityBoundaryWork")
+  knowledgeEntriesRevealedIn KnowledgeEntry[] @relation("KnowledgeEntryBoundaryWork")
+  relationshipsRevealedIn    Relationship[]   @relation("RelationshipBoundaryWork")
+
+  /// Target of the composite foreign keys of the boundaries: the work is of the item's universe.
+  @@unique([id, universeId])
+  @@index([universeId, createdAt, id])
+}
+
+/// Ordinals are assigned by the system (step 1000) and only compared; labels are what the person sees.
+model NarrativeUnit {
+  id                         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workId                     String           @db.Uuid
+  ordinal                    Int
+  label                      String
+  createdAt                  DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt                  DateTime         @default(now()) @updatedAt @db.Timestamptz(3)
+  deletedAt                  DateTime?        @db.Timestamptz(3)
+  work                       Work             @relation(fields: [workId], references: [id], onDelete: Cascade)
+  introducedEntities         Entity[]         @relation("EntityBoundaryUnit")
+  knowledgeEntriesRevealedIn KnowledgeEntry[] @relation("KnowledgeEntryBoundaryUnit")
+  relationshipsRevealedIn    Relationship[]   @relation("RelationshipBoundaryUnit")
+
+  @@unique([workId, ordinal])
+  /// Target of the composite foreign keys of the boundaries: the unit is of the boundary work.
+  @@unique([id, workId])
+  @@index([workId, label])
+}
+
+/// No description column: what is known of an entity is its knowledge entries. The migration adds a
+/// CHECK constraint on the length of `name` (1 to 120 code points).
+model Entity {
+  id                    String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  universeId            String           @db.Uuid
+  type                  EntityType
+  name                  String
+  normalizedName        String
+  attributes            Json             @default("{}")
+  boundaryWorkId        String           @db.Uuid
+  boundaryUnitId        String           @db.Uuid
+  createdAt             DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime         @default(now()) @updatedAt @db.Timestamptz(3)
+  deletedAt             DateTime?        @db.Timestamptz(3)
+  universe              Universe         @relation(fields: [universeId], references: [id], onDelete: Cascade)
+  boundaryWork          Work             @relation("EntityBoundaryWork", fields: [boundaryWorkId, universeId], references: [id, universeId], onDelete: Restrict)
+  boundaryUnit          NarrativeUnit    @relation("EntityBoundaryUnit", fields: [boundaryUnitId, boundaryWorkId], references: [id, workId], onDelete: Restrict)
+  knowledgeEntries      KnowledgeEntry[]
+  outgoingRelationships Relationship[]   @relation("RelationshipSource")
+  incomingRelationships Relationship[]   @relation("RelationshipTarget")
+
+  /// Target of the composite foreign keys of knowledge entries and relationships.
+  @@unique([id, universeId])
+  @@index([universeId, createdAt, id])
+  @@index([universeId, type, normalizedName])
+}
+
+/// A fragment of knowledge about an entity. It carries `universeId` so the database checks that its
+/// entity and its boundary work are of the same universe. The migration adds a CHECK constraint on the
+/// length of `content` (1 to 5000 code points).
+model KnowledgeEntry {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  universeId     String          @db.Uuid
+  entityId       String          @db.Uuid
+  content        String
+  status         KnowledgeStatus
+  boundaryWorkId String          @db.Uuid
+  boundaryUnitId String          @db.Uuid
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime        @default(now()) @updatedAt @db.Timestamptz(3)
+  deletedAt      DateTime?       @db.Timestamptz(3)
+  universe       Universe        @relation(fields: [universeId], references: [id], onDelete: Cascade)
+  entity         Entity          @relation(fields: [entityId, universeId], references: [id, universeId], onDelete: Cascade)
+  boundaryWork   Work            @relation("KnowledgeEntryBoundaryWork", fields: [boundaryWorkId, universeId], references: [id, universeId], onDelete: Restrict)
+  boundaryUnit   NarrativeUnit   @relation("KnowledgeEntryBoundaryUnit", fields: [boundaryUnitId, boundaryWorkId], references: [id, workId], onDelete: Restrict)
+
+  @@index([entityId, createdAt, id])
+}
+
+/// Directed: from the source entity to the target entity. The migration adds a CHECK constraint that
+/// refuses a relationship from an entity to itself.
+model Relationship {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  universeId         String           @db.Uuid
+  relationshipTypeId String           @db.Uuid
+  sourceEntityId     String           @db.Uuid
+  targetEntityId     String           @db.Uuid
+  status             KnowledgeStatus
+  boundaryWorkId     String           @db.Uuid
+  boundaryUnitId     String           @db.Uuid
+  createdAt          DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime         @default(now()) @updatedAt @db.Timestamptz(3)
+  deletedAt          DateTime?        @db.Timestamptz(3)
+  universe           Universe         @relation(fields: [universeId], references: [id], onDelete: Cascade)
+  relationshipType   RelationshipType @relation(fields: [relationshipTypeId, universeId], references: [id, universeId], onDelete: Restrict)
+  sourceEntity       Entity           @relation("RelationshipSource", fields: [sourceEntityId, universeId], references: [id, universeId], onDelete: Cascade)
+  targetEntity       Entity           @relation("RelationshipTarget", fields: [targetEntityId, universeId], references: [id, universeId], onDelete: Cascade)
+  boundaryWork       Work             @relation("RelationshipBoundaryWork", fields: [boundaryWorkId, universeId], references: [id, universeId], onDelete: Restrict)
+  boundaryUnit       NarrativeUnit    @relation("RelationshipBoundaryUnit", fields: [boundaryUnitId, boundaryWorkId], references: [id, workId], onDelete: Restrict)
+
+  @@index([universeId, sourceEntityId])
+  @@index([universeId, targetEntityId])
 }

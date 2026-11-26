@@ -16,6 +16,7 @@ import {
 } from "@/app/universes/actions";
 import { leaveAccountPage } from "@/components/accounts/leave-account-page";
 import { runWithTimeLimit, type TimeLimitedOutcome } from "@/components/accounts/run-with-time-limit";
+import type { AccountGuardDecision } from "@/components/universes/account-guard-decision";
 import { insertUniverseInCreationOrder } from "@/components/universes/insert-universe-in-creation-order";
 import {
   interpretCreateUniverseResult,
@@ -58,6 +59,11 @@ type UniversesContextValue = {
   /** Selects one of the universes and stores it as the remembered one, silently (FR-25, FR-30). */
   selectUniverse: (universeId: string) => void;
   dismissCreationNotice: () => void;
+  /**
+   * The check of the tab account guard (FR-18), for the other creations of the workspace (spec 006):
+   * resolves with what the caller does next; on `replace-document` the page is already leaving.
+   */
+  confirmAccountBeforeSending: () => Promise<AccountGuardDecision>;
 };
 
 const UniversesContext = createContext<UniversesContextValue | null>(null);
@@ -200,6 +206,7 @@ export function UniversesProvider({
       isUniverseNameInUse,
       selectUniverse,
       dismissCreationNotice,
+      confirmAccountBeforeSending,
     }),
     [
       universes,
@@ -210,6 +217,7 @@ export function UniversesProvider({
       isUniverseNameInUse,
       selectUniverse,
       dismissCreationNotice,
+      confirmAccountBeforeSending,
     ],
   );
 
@@ -239,7 +247,7 @@ function noticeCodeOfFailure(outcome: Exclude<CreationOutcome, { status: "create
 }
 
 /** Runs the call and settles, without a time limit, with how it ended; it never rejects. */
-function settleActionCall(work: () => Promise<unknown>): Promise<TimeLimitedOutcome<unknown>> {
+export function settleActionCall(work: () => Promise<unknown>): Promise<TimeLimitedOutcome<unknown>> {
   return Promise.resolve()
     .then(work)
     .then(

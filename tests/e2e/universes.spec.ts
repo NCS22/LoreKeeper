@@ -93,21 +93,22 @@ test.describe("creating a universe (FR-1, FR-13, FR-17, FR-24)", () => {
     await expect(page.getByRole("main").getByText(en.universeCreation.modes.READER.label, { exact: true })).toBeVisible();
     await expect(page.getByText(en.universeCreation.modes.READER.explanation)).toBeVisible();
     await expect(page.getByText("A world for readers.")).toBeVisible();
-    await expect(page.getByText(en.universeEmptyState.emptyText)).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: en.universeEmptyState.createdAnnouncement(readerName) })).toHaveCount(1);
-    // Every section keeps an honest empty text, and the works area says so too (FR-15).
+    // Every section keeps an honest empty state: the works area has no work and offers to add one, and
+    // the entity list says a work is needed first (004 FR-15, changed by spec 006 FR-2 and FR-9).
     await expect(page.getByText(en.graph.emptyText)).toBeVisible();
     await expect(page.getByText(en.sidebar.noWorks)).toBeVisible();
+    await expect(page.getByRole("button", { name: en.works.addWork })).toBeVisible();
     await expect(page.getByText(en.inspector.emptyText)).toBeVisible();
     await page.getByRole("radio", { name: en.center.listView }).click();
-    await expect(page.getByText(en.entityList.emptyText)).toBeVisible();
+    await expect(page.getByText(en.entityList.workNeededFirst)).toBeVisible();
 
     await createUniverseThroughTheForm(page, { name: authorName, mode: "AUTHOR" });
 
     await expectUniverseIsSelected(page, authorName);
     await expect(page.getByRole("main").getByText(en.universeCreation.modes.AUTHOR.label, { exact: true })).toBeVisible();
     await expect(page.getByText(en.universeCreation.modes.AUTHOR.explanation)).toBeVisible();
-    await expect(page.getByText(en.universeEmptyState.emptyText)).toBeVisible();
+    await expect(page.getByText(en.sidebar.noWorks)).toBeVisible();
     await expectListedUniverseNames(page, [readerName, authorName]);
     const storedUniverses = await readUniversesOfAccountInDatabase(account.email);
     expect(storedUniverses.map((universe) => [universe.name, universe.mode, universe.description])).toEqual([

@@ -2,6 +2,13 @@
 
 Status: implemented
 
+> **Superseded in part by spec 006 (knowledge items: first creation and viewing), 2026-11-27.** The requirement text below is kept as it was approved and implemented; this spec stays `implemented`. These items no longer hold as written:
+> - FR-15 (the graph view, the entity list, the works area and the details panel always show an honest empty state; the details panel says that knowledge, relationships, events, sources and reading positions arrive in future versions): the works area, the entity list and the details panel show the created works, entities, first fragments and relationships, and keep an honest empty state only while they have nothing to show (006 FR-2, FR-9, FR-10). The details panel says only that events, sources and reading positions arrive in future versions. The graph view and the timeline entry are unchanged, and the graph view's text speaks only about the graph.
+> - FR-17 and the sentence "In this version every stored universe is empty": the universe-level empty state saying that works, entities and relationships arrive in future versions is removed; the empty states of 006 FR-2, FR-9 and FR-10 replace it, and no text says that works, entities or relationships are not available.
+> - Out of scope, "Seeding predefined relationship types or any content when a universe is created": replaced by 006 FR-3. Every universe is stored with the eight predefined relationship types, the ones created before spec 006 included; it still has no work, entity or relationship.
+> - The sentences about every universe being empty and about the entity list, works area and details panel as empty states in the Context and goal, the Definitions (honest empty state: "works, entities and relationships arrive in future versions"), the Edge cases and the Completion criteria.
+> The other requirements of this spec are unchanged.
+
 ## Context and goal
 
 Today a universe lives only in the memory of the open page (spec 001): it is lost on reload, it belongs to nobody, and the workspace is filled with two sample universes that are the same for everyone. Accounts exist (specs 002 and 003), but nothing in the application is tied to them yet. Both earlier specs handed this work to "the stored-universes spec".

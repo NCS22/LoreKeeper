@@ -5,9 +5,10 @@ import { en } from "@/messages/en";
 import { UniverseNameText } from "@/components/universes/universe-name-text";
 import type { UniverseDto } from "@/modules/universes";
 
-// Shown in the central area for the selected universe: every stored universe is empty in this version
-// (FR-17). It shows what the person entered, so it can be seen that it was kept (name, mode and
-// description, as plain text), and the honest text. Text only: there is no action to offer.
+// Shown in the central area for the selected universe, above its view. It shows what the person
+// entered, so it can be seen that it was kept (name, mode and description, as plain text). The text
+// that said the universe is empty is gone (spec 006): the works area and the entity list say what
+// the universe has.
 // Focus and the announcement only happen right after the universe was created; selecting an empty
 // universe later just shows the state, so it does not steal focus or repeat "Universe created".
 type UniverseEmptyStateProps = {
@@ -49,7 +50,6 @@ export function UniverseEmptyState({ universe, wasJustCreated, headingRef }: Uni
           <UniverseNameText text={universe.description} className="whitespace-pre-line" />
         </p>
       )}
-      <p className="text-ink">{en.universeEmptyState.emptyText}</p>
       <div ref={announcementRef} role="status" aria-live="polite" className="sr-only" />
     </div>
   );

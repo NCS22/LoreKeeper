@@ -19,6 +19,7 @@ Nothing listed in `docs/open-decisions.md` may be implemented until it is resolv
 - Timestamps are `timestamptz`, stored in UTC and serialized as ISO 8601.
 - Every user-content table has `createdAt`, `updatedAt` and `deletedAt` (nullable, soft delete). The only exceptions are tables of user state, not content: `ReadingProgress`, `RememberedUniverse` and `UserPreferences` have only `updatedAt` and are hard-deleted (with their work or user when it is purged).
 - `status` (`CONFIRMED | USER_NOTE | SPECULATION`) lives on `KnowledgeEntry`, `EntityAlias`, `Relationship` and `Event`; `Entity` has none because its knowledge already carries one per entry. `CONFIRMED` does not require a `Citation`; the interface flags confirmed items that have none as "without source".
+  - Temporary exception (2026-11-25, spec 006): the items of spec 006 do not show the "without source" flag, because no source exists yet. It expires, and is removed, when the Phase 3 spec for sources is implemented.
 - Closed categories are enums. User-extensible categories are catalog tables (e.g. `RelationshipType`).
 - Foreign keys are always declared. Writes touching several records run in one transaction.
 - Every universe belongs to one user. Tables that hang directly from a universe carry `universeId`, so every query can be scoped by owner.
@@ -53,7 +54,7 @@ These four are identity and credential tables, not user content, so they carry n
 | name | text | 1-120 characters (Unicode code points), trimmed |
 | description | text? | at most 2000 characters (Unicode code points), trimmed; only whitespace counts as none |
 | mode | enum `READER` \| `AUTHOR` | default `READER`; cannot change after creation |
-| createdAt, updatedAt, deletedAt | timestamptz | `deletedAt` is filtered by every repository query from spec 004 and written by the trash of spec 006 |
+| createdAt, updatedAt, deletedAt | timestamptz | `deletedAt` is filtered by every repository query from spec 004 and written by the trash of spec 007 |
 
 Stored since spec 004. The migration adds `CHECK` constraints on the length of `name` and `description` (in code points) and `ON DELETE CASCADE` from the owner. A unique `(id, ownerId)` is the target of the composite foreign key of `RememberedUniverse`; the list is read by `(ownerId, createdAt, id)`. A universe has no cover image: `coverImageUrl` is not in the schema (plan 004, approval 1); adding one needs its own spec and migration.
 
@@ -66,7 +67,7 @@ The last-used universe of an account (spec 004). User state, not content.
 | universeId | uuid | composite FK `(universeId, userId) → Universe(id, ownerId)` (`ON DELETE CASCADE`), so the database refuses a universe of another account |
 | updatedAt | timestamptz | |
 
-No `deletedAt`: it is hard-deleted with its user or its universe. Saving is a plain upsert. A universe in the trash (`deletedAt` set) reads as no remembered universe (the oldest one is selected instead),; the lifecycle of spec 006 decides what else happens to the row.
+No `deletedAt`: it is hard-deleted with its user or its universe. Saving is a plain upsert. A universe in the trash (`deletedAt` set) reads as no remembered universe (the oldest one is selected instead),; the lifecycle of spec 007 decides what else happens to the row.
 
 ### Work
 | Field | Type | Notes |
@@ -80,6 +81,8 @@ No `deletedAt`: it is hard-deleted with its user or its universe. Saving is a pl
 | coverImageUrl | text? | |
 | displayOrder | int | order of works inside the universe |
 | createdAt, updatedAt, deletedAt | timestamptz | |
+
+Stored since spec 006, with three deviations: `unitKind` is not stored (the wording of the units derives from the medium in one domain function), and `description`, `coverImageUrl` and `displayOrder` are not created (out of scope; nullable columns can be added later). A unique `(id, universeId)` is the target of the composite foreign keys of the boundaries; the list is read by `(universeId, createdAt, id)`; a `CHECK` limits `title` to 1-200 characters (code points). `ON DELETE CASCADE` from the universe.
 
 ### NarrativeUnit
 Ordered index of the chapters or episodes of a work. Created only by the user, in bulk ("chapters 1-500") or one by one. The system never infers units. AI may suggest units, but they exist only once the user approves them.
@@ -96,6 +99,7 @@ Ordered index of the chapters or episodes of a work. Created only by the user, i
 - The user only sees and picks labels. `ordinal` is never user input and is only used for comparisons.
 - New units get ordinals with gaps (step 1000). Inserting between two units takes the midpoint; when no gap is left, the work's ordinals are rebalanced in one transaction.
 - A unit referenced by any boundary or reading progress cannot be deleted (`ON DELETE RESTRICT`).
+- Stored since spec 006: units are created in bulk with their work, labelled "1" to "N" with ordinals in steps of 1000, unique `(workId, ordinal)` and `(id, workId)`, index `(workId, label)`; `groupLabel` is not created yet, and inserting or adding units later is not built.
 
 ### Entity
 | Field | Type | Notes |
@@ -111,6 +115,7 @@ Ordered index of the chapters or episodes of a work. Created only by the user, i
 
 - An entity has no description column. Its description is the composition of its visible `KnowledgeEntry` fragments.
 - A secret identity or later name is an `EntityAlias`, never a rename.
+- Stored since spec 006: composite foreign keys `(boundaryUnitId, boundaryWorkId) → NarrativeUnit(id, workId)` and `(boundaryWorkId, universeId) → Work(id, universeId)` (`ON DELETE RESTRICT`), so the database refuses a boundary of another universe; unique `(id, universeId)`; indexes `(universeId, createdAt, id)` and `(universeId, type, normalizedName)`; a `CHECK` limits `name` to 1-120 characters. `normalizedName` uses the same comparable form as universe names. Attributes stay `{}` (OD-7).
 
 ### KnowledgeEntry
 A fragment of knowledge about an entity, revealed at a specific point.
@@ -126,6 +131,7 @@ A fragment of knowledge about an entity, revealed at a specific point.
 
 - Displayed ordered by boundary ordinal, then `createdAt`.
 - **Edit vs create rule:** editing a fragment corrects or extends it with information from the same point of the work, and keeps its boundary unless the user changes it explicitly. Information from a later point is always a new fragment with its own boundary. The edit flow asks the user which case applies.
+- Stored since spec 006, with one deviation: it also carries `universeId`, so the composite foreign keys `(entityId, universeId) → Entity(id, universeId)` (`ON DELETE CASCADE`) and the two boundary keys (`ON DELETE RESTRICT`) make the database check that its entity and its boundary work share the universe. A `CHECK` limits `content` to 1-5000 characters; index `(entityId, createdAt, id)`. Only one first fragment can be created, with its entity, and it is read first by creation order (plan 006, D15); later fragments, editing and the boundary order arrive with a later spec.
 
 ### EntityAlias
 | Field | Type | Notes |
@@ -139,7 +145,7 @@ A fragment of knowledge about an entity, revealed at a specific point.
 | createdAt, updatedAt, deletedAt | timestamptz | |
 
 ### RelationshipType
-Catalog per universe. Predefined types are seeded when a universe is created; the user can add their own.
+Catalog per universe, owned by the universes module (the knowledge module reads it through a port). Predefined types are seeded when a universe is created; the user can add their own (not built yet: spec 006 has only the predefined ones).
 
 | Field | Type | Notes |
 |---|---|---|
@@ -152,7 +158,9 @@ Catalog per universe. Predefined types are seeded when a universe is created; th
 | isPredefined | boolean | seeded types cannot be deleted |
 | createdAt, updatedAt, deletedAt | timestamptz | |
 
-Proposed seed (to confirm in Phase 2, OD-16 in `docs/open-decisions.md`): `MEMBER_OF`, `LEADER_OF`, `ALLY_OF` (symmetric), `ENEMY_OF` (symmetric), `PARENT_OF`, `SIBLING_OF` (symmetric), `LOCATED_IN`, `POSSESSES`.
+Seed (OD-16, decided 2026-11-25 and recorded in plan 006, D5), label / inverse label: `MEMBER_OF` (member of / has member), `LEADER_OF` (leader of / led by), `ALLY_OF` (ally of, symmetric), `ENEMY_OF` (enemy of, symmetric), `PARENT_OF` (parent of / child of), `SIBLING_OF` (sibling of, symmetric), `LOCATED_IN` (located in / contains), `POSSESSES` (possesses / possessed by).
+
+Stored since spec 006. The eight types are written in the same statement as their universe, so a universe never exists without them; the migration gave them to every existing universe, with the creation time of their universe. The unique key among non-deleted types is a partial unique index written by hand in the migration (not expressed in `schema.prisma`); a unique `(id, universeId)` is the target of the composite foreign key of `Relationship`. `ON DELETE CASCADE` from the universe.
 
 Rules for user-created types:
 - `label` and `inverseLabel` can always be edited.
@@ -175,6 +183,7 @@ Rules for user-created types:
 - Directed: `source —type→ target`. The inverse reading uses `inverseLabel`; no relationship is implicitly equivalent to another.
 - `sourceEntityId ≠ targetEntityId`. Both entities and the type belong to the relationship's universe.
 - Duplicates are allowed (the same pair can have the same type again at a different point).
+- Stored since spec 006, without `description` (not offered yet): composite foreign keys with `universeId` for both entities (`ON DELETE CASCADE`), the type and the boundary (`ON DELETE RESTRICT`), so the database refuses a cross-universe reference; a `CHECK` refuses `sourceEntityId = targetEntityId`; indexes `(universeId, sourceEntityId)` and `(universeId, targetEntityId)`. A relationship with a deleted end is not listed. The end of a relationship stays open (OD-2).
 
 ### Event
 | Field | Type | Notes |
@@ -276,6 +285,8 @@ Visibility is computed in the backend (`SpoilerService` in the domain, applied b
 
 Spoiler visibility rules have mandatory unit tests covering: boundary equal to progress, one unit before and after, no progress, `AUTHOR` mode, and every dependent case above.
 
+Temporary exception (2026-11-25, spec 006): the reads of spec 006 (the works, units, entities, knowledge fragments, relationship types and relationships of a universe, including what its creation forms read) are not filtered by reading position, so changes to them run no spoiler suite; the cross-account isolation tests protect them instead. It expires, and is removed, when the Phase 4 spec that filters these reads is implemented; that spec must filter them and add the spoiler suite. The rules of this section do not apply to those reads until then.
+
 ## 5. Integrity and lifecycle
 
 - No cross-universe references: every FK between user-content tables must stay inside one universe (checked in the application layer and covered by integration tests).
@@ -327,4 +338,4 @@ This is an API DTO, not the database structure. Ordinals are never exposed.
 
 ## 8. Open decisions
 
-Tracked in `docs/open-decisions.md`. The ones that affect this model: OD-1 to OD-8 (information without a known boundary, end of a relationship, participation-level spoilers, links between events, indicators of locked information, trash retention, attribute schemas, origin tracking of AI suggestions), OD-16 (relationship type seed), OD-19 (trashing a work that has bounded items) and OD-20 (sources without a unit). Do not implement until resolved.
+Tracked in `docs/open-decisions.md`. The ones that affect this model: OD-1 to OD-8 (information without a known boundary, end of a relationship, participation-level spoilers, links between events, indicators of locked information, trash retention, attribute schemas, origin tracking of AI suggestions), OD-19 (trashing a work that has bounded items) and OD-20 (sources without a unit). Do not implement until resolved.

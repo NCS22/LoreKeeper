@@ -10,6 +10,7 @@ import {
 } from "./support/read-universes-in-database";
 import { seedAccountInDatabase } from "./support/seed-account-in-database";
 import { seedUniversesInDatabase } from "./support/seed-universes-in-database";
+import { isCallOfServerAction } from "./support/server-action-ids";
 import { isServerActionRequestWithText } from "./support/server-action-requests";
 import { signInThroughTheForm as signInAndWaitForTheRoot } from "./support/sign-in-through-the-form";
 import type { E2eAccount } from "./support/unique-account";
@@ -51,8 +52,10 @@ function isCreationCall(request: Request): boolean {
   return isServerActionRequestWithText(request, '"mode"');
 }
 
+// Recognized by the identifier of its action: loading the knowledge of a universe sends the same body
+// (spec 006, D-T5-2).
 function isRememberCall(request: Request): boolean {
-  return isServerActionRequestWithText(request, '"universeId"');
+  return isCallOfServerAction(request, "rememberUniverseAction");
 }
 
 /** Records the calls of the page that match, from now on and across the documents it loads. */

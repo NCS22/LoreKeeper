@@ -3,6 +3,10 @@ import type {
   UniverseStorage,
   UniverseStorageFactory,
 } from "./contracts/universe-repository-contract";
+import {
+  createFakeRelationshipTypeRepository,
+  createFakeRelationshipTypeTable,
+} from "./fakes/fake-relationship-type-repository";
 import { createFakeRememberedUniverseRepository } from "./fakes/fake-remembered-universe-repository";
 import { createFakeUniverseRepository } from "./fakes/fake-universe-repository";
 import { createPostgresUniverseStorage } from "./database/postgres-universe-storage";
@@ -10,12 +14,17 @@ import { FIRST_OWNER_ID } from "./universe-owners";
 
 export { buildActingUser, FIRST_OWNER_ID, SECOND_OWNER_ID } from "./universe-owners";
 
+/** A fake storage; the starting universes are stored with their relationship types, as `add` does. */
 export async function createFakeUniverseStorage(
   startingUniverses: readonly Universe[] = [],
 ): Promise<UniverseStorage> {
+  const relationshipTypeTable = createFakeRelationshipTypeTable();
   return {
-    universeRepository: createFakeUniverseRepository(startingUniverses),
+    universeRepository: createFakeUniverseRepository(startingUniverses, relationshipTypeTable),
     rememberedUniverseRepository: createFakeRememberedUniverseRepository(),
+    relationshipTypeRepository: createFakeRelationshipTypeRepository(relationshipTypeTable),
+    makeRelationshipTypeWritesFail: async () => relationshipTypeTable.makeWritesFail(),
+    restoreRelationshipTypeWrites: async () => relationshipTypeTable.restoreWrites(),
   };
 }
 

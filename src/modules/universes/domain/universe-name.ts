@@ -1,3 +1,4 @@
+import { toComparableText } from "@/shared/domain/comparable-text";
 import type { ValidationIssue } from "@/shared/domain/validation-error";
 import { countUniverseTextCharacters, isValidUniverseText } from "./universe-text";
 
@@ -51,14 +52,8 @@ export function validateUniverseName(rawName: string): UniverseNameValidation {
 /**
  * Name used to decide whether two universe names are "the same": letter case, accents,
  * surrounding or repeated whitespace and the composed or decomposed form of a character
- * are ignored.
+ * are ignored (the shared comparable form).
  */
 export function toComparableUniverseName(name: string): string {
-  return name
-    .normalize("NFC")
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/gu, " ");
+  return toComparableText(name);
 }

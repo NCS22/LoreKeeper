@@ -317,7 +317,7 @@ test.describe("the form, the empty states and the navigation at 320 px, with the
     await expect.poll(() => heading.locator("bdi").textContent()).toBe(longestName);
     await rememberedAnswer;
     await expect(page.getByRole("main").locator("bdi").nth(1)).toHaveText(longestDescription);
-    await expect(page.getByText(en.universeEmptyState.emptyText)).toBeVisible();
+    await expect(page.getByText(en.graph.emptyText)).toBeVisible();
     await expectNothingOutsideTheViewportWidth(page);
 
     // The view switcher is reached with the keyboard and its empty state fits as well.
@@ -326,7 +326,7 @@ test.describe("the form, the empty states and the navigation at 320 px, with the
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("radio", { name: en.center.listView })).toBeFocused();
     await page.keyboard.press("Space");
-    await expect(page.getByText(en.entityList.emptyText)).toBeVisible();
+    await expect(page.getByText(en.entityList.workNeededFirst)).toBeVisible();
     await expectNothingOutsideTheViewportWidth(page);
 
     // The navigation: opened from the top bar, its rows are a single tab stop moved with the arrows.

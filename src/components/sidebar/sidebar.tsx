@@ -6,7 +6,7 @@ import { en } from "@/messages/en";
 import { Button } from "@/components/ui/button";
 import { SidebarRail } from "@/components/sidebar/sidebar-rail";
 import { SidebarTree } from "@/components/sidebar/sidebar-tree";
-import { WorksEmptyState } from "@/components/sidebar/works-empty-state";
+import { WorksArea } from "@/components/knowledge/works-area";
 import { useWorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { useWorkspaceState } from "@/components/workspace/workspace-state";
 
@@ -17,6 +17,12 @@ export function Sidebar() {
   // Below the md breakpoint the sidebar is a drawer that covers the form, so it closes once the creation starts.
   const startUniverseCreation = useCallback(() => {
     dispatch({ type: "universeCreationStarted" });
+    closeSidebarAfterNavigation();
+  }, [dispatch, closeSidebarAfterNavigation]);
+
+  // The work form opens in the central area; the drawer closes for the same reason.
+  const startWorkCreation = useCallback(() => {
+    dispatch({ type: "knowledgeFormOpened", form: "work" });
     closeSidebarAfterNavigation();
   }, [dispatch, closeSidebarAfterNavigation]);
 
@@ -37,7 +43,7 @@ export function Sidebar() {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <SidebarTree />
-        {state.selectedUniverseId === null ? null : <WorksEmptyState />}
+        {state.selectedUniverseId === null ? null : <WorksArea onAddWork={startWorkCreation} />}
       </div>
     </div>
   );

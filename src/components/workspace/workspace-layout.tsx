@@ -29,6 +29,8 @@ type WorkspaceLayoutState = {
   openInspector: () => void;
   // Drawers cover the content, so they close once the user has picked something; panels stay.
   closeSidebarAfterNavigation: () => void;
+  // The same for the details drawer, when an action in it opens a form in the central area (spec 006).
+  closeInspectorAfterNavigation: () => void;
 };
 
 const WorkspaceLayoutContext = createContext<WorkspaceLayoutState | null>(null);
@@ -98,6 +100,7 @@ function DesktopWorkspaceLayout({ topbar, sidebar, inspector, children }: Worksp
   }, [animateNextResize, inspectorPanelRef]);
 
   const closeSidebarAfterNavigation = useCallback(() => {}, []);
+  const closeInspectorAfterNavigation = useCallback(() => {}, []);
 
   const layoutState = useMemo<WorkspaceLayoutState>(
     () => ({
@@ -108,8 +111,17 @@ function DesktopWorkspaceLayout({ topbar, sidebar, inspector, children }: Worksp
       toggleInspector,
       openInspector,
       closeSidebarAfterNavigation,
+      closeInspectorAfterNavigation,
     }),
-    [isSidebarCollapsed, isInspectorCollapsed, toggleSidebar, toggleInspector, openInspector, closeSidebarAfterNavigation],
+    [
+      isSidebarCollapsed,
+      isInspectorCollapsed,
+      toggleSidebar,
+      toggleInspector,
+      openInspector,
+      closeSidebarAfterNavigation,
+      closeInspectorAfterNavigation,
+    ],
   );
 
   return (
@@ -200,6 +212,7 @@ function MobileWorkspaceLayout({ topbar, sidebar, inspector, children }: Workspa
     setIsInspectorOpen(true);
   }, [isInspectorOpen]);
   const closeSidebarAfterNavigation = useCallback(() => setIsSidebarOpen(false), []);
+  const closeInspectorAfterNavigation = useCallback(() => setIsInspectorOpen(false), []);
 
   // When a drawer closes because the user's action moved the focus elsewhere (for example the form
   // that opens with "New universe"), that focus is kept; otherwise it goes back to the opener.
@@ -225,8 +238,17 @@ function MobileWorkspaceLayout({ topbar, sidebar, inspector, children }: Workspa
       toggleInspector,
       openInspector,
       closeSidebarAfterNavigation,
+      closeInspectorAfterNavigation,
     }),
-    [isSidebarOpen, isInspectorOpen, toggleSidebar, toggleInspector, openInspector, closeSidebarAfterNavigation],
+    [
+      isSidebarOpen,
+      isInspectorOpen,
+      toggleSidebar,
+      toggleInspector,
+      openInspector,
+      closeSidebarAfterNavigation,
+      closeInspectorAfterNavigation,
+    ],
   );
 
   return (

@@ -35,10 +35,150 @@ export const en = {
   },
   graph: {
     emptyText:
-      "The graph will show the entities of this universe and the relationships between them. There is nothing to draw yet.",
+      "The graph will draw the entities of this universe and the relationships between them in a future version. The list view shows the entities.",
   },
+  // The entity list of the central area (spec 006, FR-9).
   entityList: {
-    emptyText: "The list will show the entities of this universe, grouped by type. There are no entities yet.",
+    heading: "Entities",
+    loading: "Loading the entities",
+    loadFailed: "The entities could not be loaded.",
+    noEntities: "This universe has no entities yet.",
+    workNeededFirst: "Add a work first: every entity is introduced at a point of a work.",
+    addWork: "Add work",
+    newEntity: "New entity",
+  },
+  // The choice of a point of a work in the knowledge forms (spec 006, FR-4): a work and a unit number.
+  unitPicker: {
+    workLabel: "Work",
+    workOption: (workTitle: string, mediumLabel: string) => `${workTitle} (${mediumLabel})`,
+    // The label of the unit number field, by the unit wording of the chosen work.
+    wordingLabels: { chapter: "Chapter", episode: "Episode", unit: "Unit" },
+    range: (unitCount: number) => `1 to ${unitCount}`,
+    first: "First",
+    last: "Last",
+    firstLabel: (unitWording: string) => `First ${unitWording}`,
+    lastLabel: (unitWording: string) => `Last ${unitWording}`,
+    resolvedPoint: (wordingLabel: string, unitNumber: number, workTitle: string) =>
+      `${wordingLabel} ${unitNumber} of ${workTitle}`,
+    noUnit: (unitWording: string, unitCount: number) =>
+      `No ${unitWording} has this number. Type a number from 1 to ${unitCount} with digits only, or use First or Last.`,
+  },
+  entityCreation: {
+    title: "New entity",
+    nameLabel: "Name",
+    namePlaceholder: "The name of the character, place, object...",
+    typeLabel: "Type",
+    pointLegend: "Introduced at",
+    fragmentLegend: "First fragment",
+    fragmentOptionalHint: "Optional",
+    fragmentContentLabel: "What you know about it",
+    fragmentContentHint: "Leave it empty to create the entity without a fragment.",
+    statusLegend: "Status",
+    statuses: {
+      CONFIRMED: { label: "Confirmed", explanation: "Stated by the work." },
+      USER_NOTE: { label: "My note", explanation: "Your own note or reading." },
+      SPECULATION: { label: "Speculation", explanation: "A theory the work has not stated." },
+    },
+    samePointLabel: "Same point as the entity",
+    fragmentPointLegend: "Revealed at",
+    cancel: "Cancel",
+    create: "Create entity",
+    createdAnnouncement: (entityName: string) => `Entity created: ${entityName}`,
+    // The notice of FR-6: it names the oldest entity of the same type with the same comparable name.
+    similarEntityNotice: (similarEntityName: string) =>
+      `A similar entity already exists: ${similarEntityName}. The new one was created as well.`,
+    notices: {
+      failed: "The entity could not be created. Your entries are kept; you can try again.",
+      resultUnknown:
+        "We could not confirm whether the entity was created. It may exist already: check the entities of this universe before trying again.",
+      confirmedAfterDelay: "The entity was created after all and is now in the entities of this universe.",
+      signInAgain: "Your session has ended, so nothing was created. Your entries are kept: sign in again to continue.",
+      signInLink: "Sign in",
+      dismiss: "Dismiss",
+    },
+    // Validation messages, keyed by the stable issue code. Limits come from the issue or the vocabulary.
+    issues: {
+      NAME_REQUIRED: "Enter a name for the entity.",
+      NAME_TOO_LONG: (maximumLength: number) => `The name can have at most ${maximumLength} characters.`,
+      NAME_INVALID_CHARACTERS: "The name contains characters that cannot be stored.",
+      TYPE_INVALID: "Choose the type of the entity.",
+      WORK_INVALID: "Choose a work of this universe.",
+      UNIT_NUMBER_REQUIRED: "Choose the chapter or episode: type its number, or use First or Last.",
+      UNIT_NUMBER_INVALID: "Write the number with digits only, without signs, decimals, spaces or separators.",
+      CONTENT_TOO_LONG: (maximumLength: number) => `The fragment can have at most ${maximumLength} characters.`,
+      CONTENT_INVALID_CHARACTERS: "The fragment contains characters that cannot be stored.",
+      STATUS_INVALID: "Choose the status of the fragment.",
+      UNKNOWN: "This value is not valid.",
+    },
+  },
+  // Texts shared by the knowledge items of a universe (spec 006).
+  knowledge: {
+    mediums: {
+      NOVEL: "Novel",
+      MANGA: "Manga",
+      COMIC: "Comic",
+      ANIME: "Anime",
+      TV_SERIES: "TV series",
+      FILM: "Film",
+      OTHER: "Other",
+    },
+    entityTypes: {
+      CHARACTER: "Character",
+      LOCATION: "Location",
+      ORGANIZATION: "Organization",
+      FACTION: "Faction",
+      OBJECT: "Object",
+      ABILITY: "Ability",
+      SPECIES: "Species",
+      CONCEPT: "Concept",
+    },
+    // The number of units of a work with its unit wording: "1 chapter", "120 chapters".
+    unitWordings: {
+      chapter: { singular: "chapter", plural: "chapters" },
+      episode: { singular: "episode", plural: "episodes" },
+      unit: { singular: "unit", plural: "units" },
+    },
+    tryAgain: "Try again",
+  },
+  // The works area of the navigation (spec 006, FR-2).
+  works: {
+    addWork: "Add work",
+    loading: "Loading the works",
+    loadFailed: "The works could not be loaded.",
+    listLabel: "Works of this universe",
+  },
+  workCreation: {
+    title: "New work",
+    titleLabel: "Title",
+    titlePlaceholder: "The title of the work",
+    mediumLabel: "Medium",
+    unitCountLabel: "Number of units",
+    unitCountHint: (maximumUnitCount: number) =>
+      `How many chapters or episodes the work has, in digits, from 1 to ${maximumUnitCount}. They are numbered from 1.`,
+    cancel: "Cancel",
+    create: "Create work",
+    createdAnnouncement: (workTitle: string) => `Work created: ${workTitle}`,
+    // Messages of the creation request itself, shown in the form (never an error detail).
+    notices: {
+      failed: "The work could not be created. Your entries are kept; you can try again.",
+      resultUnknown:
+        "We could not confirm whether the work was created. It may exist already: check the works of this universe before trying again.",
+      confirmedAfterDelay: "The work was created after all and is now in the works of this universe.",
+      signInAgain: "Your session has ended, so nothing was created. Your entries are kept: sign in again to continue.",
+      signInLink: "Sign in",
+      dismiss: "Dismiss",
+    },
+    // Validation messages, keyed by the stable issue code. Limits come from the issue or the vocabulary.
+    issues: {
+      TITLE_REQUIRED: "Enter a title for the work.",
+      TITLE_TOO_LONG: (maximumLength: number) => `The title can have at most ${maximumLength} characters.`,
+      TITLE_INVALID_CHARACTERS: "The title contains characters that cannot be stored.",
+      MEDIUM_INVALID: "Choose the medium of the work.",
+      UNIT_COUNT_REQUIRED: "Enter how many chapters or episodes the work has.",
+      UNIT_COUNT_INVALID: "Write the number with digits only, without signs, decimals, spaces or separators.",
+      UNIT_COUNT_OUT_OF_RANGE: (maximumUnitCount: number) => `The number must be from 1 to ${maximumUnitCount}.`,
+      UNKNOWN: "This value is not valid.",
+    },
   },
   universeCreation: {
     title: "New universe",
@@ -93,12 +233,71 @@ export const en = {
   },
   universeEmptyState: {
     modeLabel: "Mode:",
-    emptyText: "This universe is empty. Works, entities and relationships arrive in future versions.",
     createdAnnouncement: (universeName: string) => `Universe created: ${universeName}`,
   },
   inspector: {
     emptyTitle: "Nothing to show yet",
-    emptyText: "Knowledge, relationships, events, sources and reading positions arrive in future versions.",
+    // Shown under every state of the details panel: what the panel does not show yet (spec 006).
+    emptyText: "Events, sources and reading positions arrive in future versions.",
+  },
+  // The details panel of the selected entity (spec 006, FR-10).
+  entityDetails: {
+    loadingUniverse: "Loading the details",
+    noEntitiesTitle: "No entities yet",
+    noEntitiesText: "The details of an entity are shown here once it exists. Create one in the list view.",
+    selectEntityTitle: "Select an entity",
+    selectEntityText: "Choose an entity in the list view to see what you know about it.",
+    loading: "Loading the entity",
+    loadFailed: "The details of this entity could not be loaded.",
+    typeLabel: "Type",
+    introducedAtLabel: "Introduced at",
+    // A point of a work as the panel shows it, "Chapter 3 of The Fellowship": the title follows as isolated text.
+    pointUnitOf: (wordingLabel: string, unitLabel: string) => `${wordingLabel} ${unitLabel} of`,
+    firstFragmentHeading: "First fragment",
+    noFragment: "No fragment yet.",
+    statusLabel: "Status",
+    revealedAtLabel: "Revealed at",
+    relationshipsHeading: "Relationships",
+    noRelationships: "No relationships yet.",
+    newRelationship: "New relationship",
+    // The reading of a relationship from the entity of the panel: "<subject> — <label> → <other>".
+    readingConnectors: { afterSubject: " — ", afterLabel: " → " },
+  },
+  relationshipCreation: {
+    title: "New relationship",
+    // Shown instead of the form while the universe has fewer than two entities (FR-7).
+    twoEntitiesNeeded: "A relationship connects two entities: create at least two entities first.",
+    sourceLabel: "From",
+    typeLabel: "Relationship",
+    targetLabel: "To",
+    entityOption: (entityName: string, typeLabel: string) => `${entityName} (${typeLabel})`,
+    statusLegend: "Status",
+    pointLegend: "Known at",
+    cancel: "Cancel",
+    create: "Create relationship",
+    createdAnnouncement: (sourceName: string, label: string, targetName: string) =>
+      `Relationship created: ${sourceName} — ${label} → ${targetName}`,
+    notices: {
+      failed: "The relationship could not be created. Your entries are kept; you can try again.",
+      resultUnknown:
+        "We could not confirm whether the relationship was created. It may exist already: check the details of its entities before trying again.",
+      confirmedAfterDelay: "The relationship was created after all and is now in the details of its entities.",
+      signInAgain: "Your session has ended, so nothing was created. Your entries are kept: sign in again to continue.",
+      signInLink: "Sign in",
+      dismiss: "Dismiss",
+    },
+    // Validation messages, keyed by the stable issue code and, for a malformed identifier, by its field.
+    issues: {
+      SOURCE_INVALID: "Choose the entity the relationship starts from.",
+      TARGET_INVALID: "Choose the entity the relationship points to.",
+      TYPE_INVALID: "Choose the type of the relationship.",
+      WORK_INVALID: "Choose a work of this universe.",
+      UNIT_NUMBER_REQUIRED: "Choose the chapter or episode: type its number, or use First or Last.",
+      UNIT_NUMBER_INVALID: "Write the number with digits only, without signs, decimals, spaces or separators.",
+      STATUS_INVALID: "Choose the status of the relationship.",
+      RELATED_TO_ITSELF: "Choose another entity: a relationship cannot connect an entity with itself.",
+      UNKNOWN: "This value is not valid.",
+    },
   },
   menus: {
     label: "Application menu",

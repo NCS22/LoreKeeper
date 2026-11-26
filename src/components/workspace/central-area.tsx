@@ -3,14 +3,20 @@
 import { useRef, useState } from "react";
 import { List, Network } from "lucide-react";
 import { en } from "@/messages/en";
-import { EntityListEmptyState } from "@/components/entities/entity-list-empty-state";
 import { GraphEmptyState } from "@/components/graph/graph-empty-state";
+import { EntityCreationForm } from "@/components/knowledge/entity-creation-form";
+import { EntityList } from "@/components/knowledge/entity-list";
+import { LateKnowledgeCreationConfirmation } from "@/components/knowledge/late-knowledge-creation-confirmation";
+import { RelationshipCreationForm } from "@/components/knowledge/relationship-creation-form";
+import { SimilarEntityNotice } from "@/components/knowledge/similar-entity-notice";
+import { WorkCreationForm } from "@/components/knowledge/work-creation-form";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LateCreationConfirmation } from "@/components/universes/late-creation-confirmation";
 import { NoUniversesEmptyState } from "@/components/universes/no-universes-empty-state";
 import { UniverseCreationForm } from "@/components/universes/universe-creation-form";
 import { UniverseEmptyState } from "@/components/universes/universe-empty-state";
 import { useUniverses } from "@/components/universes/universes-provider";
+import type { EntitySummaryDto, WorkDto } from "@/modules/knowledge";
 import type { UniverseDto } from "@/modules/universes";
 import { useWorkspaceState, type CentralView } from "@/components/workspace/workspace-state";
 
@@ -25,6 +31,8 @@ export function CentralArea() {
     // The user moved to another universe: coming back later is a plain selection, not a creation.
     setJustCreatedUniverseId(null);
   }
+  // The announcement of the last item created, kept with its universe so it is never read in another one.
+  const [knowledgeAnnouncement, setKnowledgeAnnouncement] = useState<{ universeId: string; text: string } | null>(null);
   const universe = universes.find((candidate) => candidate.id === state.selectedUniverseId);
 
   function changeView(value: string) {
@@ -42,6 +50,67 @@ export function CentralArea() {
   // The provider has already added, selected and remembered the universe: here only its focus and announcement.
   function finishUniverseCreation(createdUniverse: UniverseDto) {
     setJustCreatedUniverseId(createdUniverse.id);
+  }
+
+  function focusUniverseHeadingAfterRender() {
+    requestAnimationFrame(() => headingRef.current?.focus());
+  }
+
+  function startWorkCreation() {
+    dispatch({ type: "knowledgeFormOpened", form: "work" });
+  }
+
+  function startEntityCreation() {
+    dispatch({ type: "knowledgeFormOpened", form: "entity" });
+  }
+
+  function cancelKnowledgeForm() {
+    dispatch({ type: "knowledgeFormClosed" });
+    focusUniverseHeadingAfterRender();
+  }
+
+  // The provider loads the universe again, so the work appears in the works area (FR-2).
+  function finishWorkCreation(createdWork: WorkDto) {
+    dispatch({ type: "knowledgeFormClosed" });
+    if (state.selectedUniverseId !== null) {
+      setKnowledgeAnnouncement({
+        universeId: state.selectedUniverseId,
+        text: en.workCreation.createdAnnouncement(createdWork.title),
+      });
+    }
+    focusUniverseHeadingAfterRender();
+  }
+
+  // The created entity is selected and shown in the list; the provider loads the universe again, so it
+  // appears there (FR-4, plan section 5).
+  function finishEntityCreation(createdEntity: EntitySummaryDto) {
+    dispatch({ type: "knowledgeFormClosed" });
+    dispatch({ type: "entitySelected", entityId: createdEntity.id });
+    dispatch({ type: "viewChanged", view: "list" });
+    if (state.selectedUniverseId !== null) {
+      setKnowledgeAnnouncement({
+        universeId: state.selectedUniverseId,
+        text: en.entityCreation.createdAnnouncement(createdEntity.name),
+      });
+    }
+    focusUniverseHeadingAfterRender();
+  }
+
+  // The selected entity stays selected; the provider loads the universe and, when the selected entity is
+  // one of the two, its details again, so the relationship appears in the details panel (FR-10).
+  function finishRelationshipCreation(createdReading: { sourceName: string; label: string; targetName: string }) {
+    dispatch({ type: "knowledgeFormClosed" });
+    if (state.selectedUniverseId !== null) {
+      setKnowledgeAnnouncement({
+        universeId: state.selectedUniverseId,
+        text: en.relationshipCreation.createdAnnouncement(
+          createdReading.sourceName,
+          createdReading.label,
+          createdReading.targetName,
+        ),
+      });
+    }
+    focusUniverseHeadingAfterRender();
   }
 
   // No universe is selected (the account has none yet): no views to switch, only the way to create one.
@@ -78,10 +147,30 @@ export function CentralArea() {
       </div>
 
       <LateCreationConfirmation />
+      <LateKnowledgeCreationConfirmation />
+      <SimilarEntityNotice />
+      <div role="status" aria-live="polite" className="sr-only">
+        {knowledgeAnnouncement?.universeId === universe.id ? knowledgeAnnouncement.text : null}
+      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {state.isCreatingUniverse ? (
           <UniverseCreationForm onCreated={finishUniverseCreation} onCancel={cancelUniverseCreation} />
+        ) : state.knowledgeForm === "work" ? (
+          <WorkCreationForm onCreated={finishWorkCreation} onCancel={cancelKnowledgeForm} />
+        ) : state.knowledgeForm === "entity" ? (
+          <EntityCreationForm
+            universeMode={universe.mode}
+            onCreated={finishEntityCreation}
+            onCancel={cancelKnowledgeForm}
+          />
+        ) : state.knowledgeForm === "relationship" ? (
+          <RelationshipCreationForm
+            universeMode={universe.mode}
+            proposedSourceEntityId={state.selectedEntityId}
+            onCreated={finishRelationshipCreation}
+            onCancel={cancelKnowledgeForm}
+          />
         ) : (
           <div className="mx-auto flex min-w-0 max-w-3xl flex-col gap-6 p-6">
             <UniverseEmptyState
@@ -90,7 +179,7 @@ export function CentralArea() {
               headingRef={headingRef}
               wasJustCreated={universe.id === justCreatedUniverseId}
             />
-            {state.view === "list" ? <EntityListEmptyState /> : <GraphEmptyState />}
+            {state.view === "list" ? <EntityList onAddWork={startWorkCreation} onAddEntity={startEntityCreation} /> : <GraphEmptyState />}
           </div>
         )}
       </div>

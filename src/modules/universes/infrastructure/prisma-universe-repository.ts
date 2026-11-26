@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/shared/infrastructure/generated/prisma/client";
+import { PREDEFINED_RELATIONSHIP_TYPES } from "../domain/predefined-relationship-types";
 import type { UniverseRepository } from "../domain/universe-repository";
 import { runUniverseStorageOperation } from "./run-universe-storage-operation";
 import { toDomainUniverse } from "./universe-prisma-mapper";
@@ -31,6 +32,7 @@ export function createPrismaUniverseRepository(
     },
     add(universe) {
       return runUniverseStorageOperation("store a universe", async () => {
+        // One nested write, so one transaction: the universe and its eight types, or nothing (FR-3).
         await getPrismaClient().universe.create({
           data: {
             id: universe.id,
@@ -40,6 +42,19 @@ export function createPrismaUniverseRepository(
             mode: universe.mode,
             createdAt: universe.createdAt,
             updatedAt: universe.updatedAt,
+            relationshipTypes: {
+              createMany: {
+                data: PREDEFINED_RELATIONSHIP_TYPES.map((predefinedType) => ({
+                  key: predefinedType.key,
+                  label: predefinedType.label,
+                  inverseLabel: predefinedType.inverseLabel,
+                  isSymmetric: predefinedType.isSymmetric,
+                  isPredefined: true,
+                  createdAt: universe.createdAt,
+                  updatedAt: universe.createdAt,
+                })),
+              },
+            },
           },
         });
       });

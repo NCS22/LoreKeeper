@@ -106,6 +106,7 @@ Checked against the out-of-scope list in docs/roadmap.md, the open decisions in 
 
 - One user-visible capability per spec, at most ~12 FR. The cap only counts if the tasks stay small (see "Tasks"): never reach it by writing huge tasks.
 - Always in the spec, no negotiation: owner isolation, Zod at the boundary, spoiler filtering, typed errors.
+  - Temporary exception (2026-11-25, spec 006): the reads of spec 006 (the works, units, entities, knowledge fragments, relationship types and relationships of a universe, including what its creation forms read) are not filtered by reading position in `READER` universes. It expires, and is removed, when the Phase 4 spec that filters these reads is implemented; that spec must filter them and add the spoiler suite.
 - Protections that already exist as shared code (single submission, unanswered or late answers, text rules, clearing state on account change, error mapping) are reused. The spec says "uses the pattern of spec NNN" and tests only what differs; it does not restate them.
 - Costly and rare hardening (several tabs at once, network cuts with a simulated clock, layout stress at 320 px with hundreds of items) goes to `docs/hardening.md` with its reason, to be decided in one block before Phase 5, not spec by spec. Open that file when a phase starts.
 
@@ -176,6 +177,7 @@ When the tasks end, or it stops, the user gets the report of every task done and
 2. `pnpm test` passes, including the tests the task needs by its criticality (CORE and IMPORTANT carry tests, TIER 0 none).
 3. `pnpm test:e2e` if the change affects a user flow (once that script exists).
 4. The spoiler protection tests if the change touches queries, visibility or reading progress.
+   - Temporary exception (2026-11-25, spec 006): the reads of spec 006 (the works, units, entities, knowledge fragments, relationship types and relationships of a universe, including what its creation forms read) are not filtered by reading position, so changes to them run no spoiler suite; the cross-account isolation tests protect them instead. It expires, and is removed, when the Phase 4 spec that filters these reads is implemented; that spec must filter them and add the spoiler suite.
 5. Schema changes: the migration applies cleanly on an empty database.
 6. The diff has no secrets and nothing outside the task.
 

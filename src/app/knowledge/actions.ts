@@ -1,0 +1,76 @@
+"use server";
+
+import { headers } from "next/headers";
+import { createKnowledgeModule } from "@/modules/knowledge";
+import { assertSameSiteRequest } from "@/shared/presentation/assert-same-site-request";
+import { getActingUser } from "@/shared/presentation/get-acting-user";
+import { parseActionInput } from "@/shared/presentation/parse-action-input";
+import { runAction } from "@/shared/presentation/run-action";
+import { createEntityInputSchema } from "./create-entity-input-schema";
+import { createRelationshipInputSchema } from "./create-relationship-input-schema";
+import { createWorkInputSchema } from "./create-work-input-schema";
+import { loadEntityDetailsInputSchema } from "./load-entity-details-input-schema";
+import { loadUniverseKnowledgeInputSchema } from "./load-universe-knowledge-input-schema";
+
+// Every action reads the acting user before it parses the input: a person without a session gets
+// the authentication error and learns nothing about validation. The universe must be an own
+// universe of that user; anything else answers the same not found (FR-11).
+
+/** Creates a work with its units in an own universe of the acting account. Input arrives untyped. */
+export async function createWorkAction(input: unknown) {
+  return runAction(async () => {
+    assertSameSiteRequest(await headers());
+    const actor = await getActingUser();
+    const createWorkCommand = parseActionInput(createWorkInputSchema, input);
+    return { work: await createKnowledgeModule().createWork(actor, createWorkCommand) };
+  });
+}
+
+/**
+ * Creates an entity, with an optional first fragment, in an own universe of the acting account.
+ * The answer carries the name of the oldest similar entity, if any (FR-6). Input arrives untyped.
+ */
+export async function createEntityAction(input: unknown) {
+  return runAction(async () => {
+    assertSameSiteRequest(await headers());
+    const actor = await getActingUser();
+    const createEntityCommand = parseActionInput(createEntityInputSchema, input);
+    return createKnowledgeModule().createEntity(actor, createEntityCommand);
+  });
+}
+
+/**
+ * Creates one directed relationship between two entities of an own universe of the acting account
+ * (FR-7, FR-8). Input arrives untyped.
+ */
+export async function createRelationshipAction(input: unknown) {
+  return runAction(async () => {
+    assertSameSiteRequest(await headers());
+    const actor = await getActingUser();
+    const createRelationshipCommand = parseActionInput(createRelationshipInputSchema, input);
+    return { relationship: await createKnowledgeModule().createRelationship(actor, createRelationshipCommand) };
+  });
+}
+
+/**
+ * Reads what the workspace shows of an own universe of the acting account: its works, its entities
+ * and the relationship types its forms offer.
+ */
+export async function loadUniverseKnowledgeAction(input: unknown) {
+  return runAction(async () => {
+    assertSameSiteRequest(await headers());
+    const actor = await getActingUser();
+    const { universeId } = parseActionInput(loadUniverseKnowledgeInputSchema, input);
+    return createKnowledgeModule().loadUniverseKnowledge(actor, universeId);
+  });
+}
+
+/** Reads the details of one entity of an own universe of the acting account (FR-10). */
+export async function loadEntityDetailsAction(input: unknown) {
+  return runAction(async () => {
+    assertSameSiteRequest(await headers());
+    const actor = await getActingUser();
+    const { universeId, entityId } = parseActionInput(loadEntityDetailsInputSchema, input);
+    return { entity: await createKnowledgeModule().loadEntityDetails(actor, universeId, entityId) };
+  });
+}

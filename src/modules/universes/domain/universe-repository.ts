@@ -16,6 +16,9 @@ export type UniverseRepository = {
    * all three look the same.
    */
   findOwnedById(ownerId: string, universeId: string): Promise<Universe | null>;
-  /** Stores a new universe. Other universes are not changed. */
+  /**
+   * Stores a new universe together with its eight predefined relationship types, all or nothing:
+   * when the types cannot be stored, the universe is not stored either. Other universes are not changed.
+   */
   add(universe: Universe): Promise<void>;
 };
