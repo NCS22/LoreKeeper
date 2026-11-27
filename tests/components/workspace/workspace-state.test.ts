@@ -6,6 +6,7 @@ function buildWorkspaceState(overrides: Partial<WorkspaceState> = {}): Workspace
     selectedUniverseId: "universe-a",
     view: "graph",
     isCreatingUniverse: false,
+    isEditingUniverse: false,
     knowledgeForm: null,
     selectedEntityId: null,
     ...overrides,
@@ -13,9 +14,10 @@ function buildWorkspaceState(overrides: Partial<WorkspaceState> = {}): Workspace
 }
 
 describe("reduceWorkspaceState: the shape of the state", () => {
-  it("holds only the selected universe, the view, whether the creation form is open, the open knowledge form and the selected entity", () => {
+  it("holds only the selected universe, the view, whether the creation form is open, whether the edit form is open, the open knowledge form and the selected entity", () => {
     expect(Object.keys(buildWorkspaceState()).sort()).toEqual([
       "isCreatingUniverse",
+      "isEditingUniverse",
       "knowledgeForm",
       "selectedEntityId",
       "selectedUniverseId",
@@ -35,6 +37,7 @@ describe("reduceWorkspaceState: selecting", () => {
       selectedUniverseId: "universe-b",
       view: "list",
       isCreatingUniverse: false,
+      isEditingUniverse: false,
       knowledgeForm: null,
       selectedEntityId: null,
     });
@@ -97,6 +100,7 @@ describe("reduceWorkspaceState: the creation form", () => {
       selectedUniverseId: "universe-new",
       view: "list",
       isCreatingUniverse: false,
+      isEditingUniverse: false,
       knowledgeForm: null,
       selectedEntityId: null,
     });
@@ -198,5 +202,136 @@ describe("reduceWorkspaceState: the knowledge forms and the selected entity (spe
     const nextState = reduceWorkspaceState(initialState, { type: "viewChanged", view: "list" });
 
     expect(nextState).toEqual({ ...initialState, view: "list" });
+  });
+});
+
+describe("reduceWorkspaceState: the universe edit form (spec 007a, FR-2, FR-3)", () => {
+  it("starting the edit with a universe selected opens the form and keeps the selections and the view (FR-2)", () => {
+    const initialState = buildWorkspaceState({ view: "list", selectedEntityId: "entity-a" });
+
+    const nextState = reduceWorkspaceState(initialState, { type: "universeEditingStarted" });
+
+    expect(nextState).toEqual({ ...initialState, isEditingUniverse: true });
+  });
+
+  it("starting the edit closes the universe creation form (FR-3)", () => {
+    const initialState = buildWorkspaceState({ isCreatingUniverse: true });
+
+    const nextState = reduceWorkspaceState(initialState, { type: "universeEditingStarted" });
+
+    expect(nextState).toEqual({ ...initialState, isCreatingUniverse: false, isEditingUniverse: true });
+  });
+
+  it.each(["work", "entity", "relationship"] as const)(
+    "starting the edit closes the open %s form and keeps the selected entity (FR-3)",
+    (openKnowledgeForm) => {
+      const initialState = buildWorkspaceState({ knowledgeForm: openKnowledgeForm, selectedEntityId: "entity-a" });
+
+      const nextState = reduceWorkspaceState(initialState, { type: "universeEditingStarted" });
+
+      expect(nextState).toEqual({ ...initialState, knowledgeForm: null, isEditingUniverse: true });
+    },
+  );
+
+  it("starting the edit with no universe selected is ignored, answering the same state", () => {
+    const stateWithoutUniverse = buildWorkspaceState({ selectedUniverseId: null, isCreatingUniverse: true });
+
+    const nextState = reduceWorkspaceState(stateWithoutUniverse, { type: "universeEditingStarted" });
+
+    expect(nextState).toBe(stateWithoutUniverse);
+    expect(nextState.isEditingUniverse).toBe(false);
+  });
+
+  it("starting the edit while the form is open answers the same state, so the typed values stay (FR-2)", () => {
+    const stateEditingUniverse = buildWorkspaceState({ isEditingUniverse: true, view: "list" });
+
+    const nextState = reduceWorkspaceState(stateEditingUniverse, { type: "universeEditingStarted" });
+
+    expect(nextState).toBe(stateEditingUniverse);
+  });
+
+  it("closing the edit form closes it and leaves everything else unchanged (FR-3)", () => {
+    const stateEditingUniverse = buildWorkspaceState({ isEditingUniverse: true, view: "list", selectedEntityId: "entity-a" });
+
+    const nextState = reduceWorkspaceState(stateEditingUniverse, { type: "universeEditingClosed" });
+
+    expect(nextState).toEqual({ ...stateEditingUniverse, isEditingUniverse: false });
+  });
+
+  it("selecting another universe closes the edit form (FR-3)", () => {
+    const nextState = reduceWorkspaceState(buildWorkspaceState({ isEditingUniverse: true }), {
+      type: "universeSelected",
+      universeId: "universe-b",
+    });
+
+    expect(nextState.selectedUniverseId).toBe("universe-b");
+    expect(nextState.isEditingUniverse).toBe(false);
+  });
+
+  it("selecting the universe already selected closes the edit form and keeps the selection (FR-3)", () => {
+    const nextState = reduceWorkspaceState(buildWorkspaceState({ isEditingUniverse: true }), {
+      type: "universeSelected",
+      universeId: "universe-a",
+    });
+
+    expect(nextState.selectedUniverseId).toBe("universe-a");
+    expect(nextState.isEditingUniverse).toBe(false);
+  });
+
+  it("a created universe, also one confirmed late, closes the edit form and is selected (FR-3)", () => {
+    const nextState = reduceWorkspaceState(buildWorkspaceState({ isEditingUniverse: true }), {
+      type: "universeCreated",
+      universeId: "universe-new",
+    });
+
+    expect(nextState.selectedUniverseId).toBe("universe-new");
+    expect(nextState.isEditingUniverse).toBe(false);
+  });
+
+  it("starting a universe creation closes the edit form and opens the creation form (FR-3)", () => {
+    const nextState = reduceWorkspaceState(buildWorkspaceState({ isEditingUniverse: true }), {
+      type: "universeCreationStarted",
+    });
+
+    expect(nextState.isCreatingUniverse).toBe(true);
+    expect(nextState.isEditingUniverse).toBe(false);
+    expect(nextState.selectedUniverseId).toBe("universe-a");
+  });
+
+  it("opening a knowledge form closes the edit form and opens that form (FR-3)", () => {
+    const nextState = reduceWorkspaceState(buildWorkspaceState({ isEditingUniverse: true }), {
+      type: "knowledgeFormOpened",
+      form: "entity",
+    });
+
+    expect(nextState.knowledgeForm).toBe("entity");
+    expect(nextState.isEditingUniverse).toBe(false);
+    expect(nextState.selectedUniverseId).toBe("universe-a");
+  });
+
+  it("changing the view keeps the edit form open (FR-3)", () => {
+    const stateEditingUniverse = buildWorkspaceState({ isEditingUniverse: true });
+
+    const nextState = reduceWorkspaceState(stateEditingUniverse, { type: "viewChanged", view: "list" });
+
+    expect(nextState).toEqual({ ...stateEditingUniverse, view: "list" });
+  });
+
+  it("selecting an entity keeps the edit form open (FR-3)", () => {
+    const stateEditingUniverse = buildWorkspaceState({ isEditingUniverse: true });
+
+    const nextState = reduceWorkspaceState(stateEditingUniverse, { type: "entitySelected", entityId: "entity-b" });
+
+    expect(nextState).toEqual({ ...stateEditingUniverse, selectedEntityId: "entity-b" });
+  });
+
+  it("cancelling a universe creation or closing a knowledge form keeps the edit form as it is", () => {
+    const stateEditingUniverse = buildWorkspaceState({ isEditingUniverse: true });
+
+    const afterCreationCancelled = reduceWorkspaceState(stateEditingUniverse, { type: "universeCreationCancelled" });
+    const afterKnowledgeFormClosed = reduceWorkspaceState(stateEditingUniverse, { type: "knowledgeFormClosed" });
+
+    expect(afterCreationCancelled.isEditingUniverse).toBe(true);
+    expect(afterKnowledgeFormClosed.isEditingUniverse).toBe(true);
   });
 });
