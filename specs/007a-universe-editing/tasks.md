@@ -30,7 +30,7 @@ Test support (not classified): fake repository, contract scenarios, builders and
 
 ## Tasks
 
-- [ ] **T1. Record the split of spec 007 into 007a and 007b in the documentation.** Completion criterion (documentation of the split)
+- [x] **T1. Record the split of spec 007 into 007a and 007b in the documentation.** Completion criterion (documentation of the split)
   - Tests: none (docs only; no test gate).
   - Done when: `docs/roadmap.md` Phase 1 row, `docs/open-decisions.md` OD-6, `.claude/rules/data-model.md` (Universe and RememberedUniverse) and the "Current status" of `CLAUDE.md` name 007a (next) and 007b (trash, restore, purge) instead of the single 007; `prisma/schema.prisma` is untouched.
 
