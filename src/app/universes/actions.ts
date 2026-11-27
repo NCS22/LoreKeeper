@@ -10,6 +10,7 @@ import { getActingUser } from "@/shared/presentation/get-acting-user";
 import { parseActionInput } from "@/shared/presentation/parse-action-input";
 import { runAction } from "@/shared/presentation/run-action";
 import { createUniverseInputSchema } from "./create-universe-input-schema";
+import { editUniverseInputSchema } from "./edit-universe-input-schema";
 import { isUniverseNameInUseInputSchema } from "./is-universe-name-in-use-input-schema";
 import { rememberUniverseInputSchema } from "./remember-universe-input-schema";
 
@@ -24,6 +25,20 @@ export async function createUniverseAction(input: unknown) {
     const actor = await getActingUser();
     const createUniverseCommand = parseActionInput(createUniverseInputSchema, input);
     return { universe: await createUniversesModule().createUniverse(actor, createUniverseCommand) };
+  });
+}
+
+/**
+ * Changes the name and the description of an own universe of the acting account. Input arrives
+ * untyped from the client; the use case checks the identifier, the ownership, the fields and
+ * whether there is a real change, in that order (spec 007a FR-9).
+ */
+export async function editUniverseAction(input: unknown) {
+  return runAction(async () => {
+    assertSameSiteRequest(await headers());
+    const actor = await getActingUser();
+    const editUniverseCommand = parseActionInput(editUniverseInputSchema, input);
+    return { universe: await createUniversesModule().editUniverse(actor, editUniverseCommand) };
   });
 }
 

@@ -2,11 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 import {
   confirmAccountAction,
   createUniverseAction,
+  editUniverseAction,
   isUniverseNameInUseAction,
   rememberUniverseAction,
 } from "@/app/universes/actions";
 import { createAccountsModule } from "@/modules/accounts";
-import { createUniversesModule } from "@/modules/universes";
+import {
+  UNIVERSE_DESCRIPTION_TOO_LONG_CODE,
+  UNIVERSE_NAME_REQUIRED_CODE,
+  createUniversesModule,
+} from "@/modules/universes";
 import { UNIVERSE_ID_INVALID_CODE } from "@/modules/universes/domain/universe-id";
 import {
   AUTHENTICATION_ERROR_CODE,
@@ -86,7 +91,10 @@ type ActionUnderTest = {
   readonly run: () => Promise<unknown>;
 };
 
-/** One call to each of the four actions with input that would succeed for a signed-in person. */
+/**
+ * One call to each of the five actions with input that a signed-in person could send. The edit
+ * names a nonexistent universe, so even with a session nothing could change.
+ */
 const EVERY_ACTION: readonly ActionUnderTest[] = [
   { label: "createUniverseAction", run: () => createUniverseAction(VALID_CREATION_INPUT) },
   { label: "isUniverseNameInUseAction", run: () => isUniverseNameInUseAction({ name: "Anything" }) },
@@ -95,6 +103,11 @@ const EVERY_ACTION: readonly ActionUnderTest[] = [
     run: () => rememberUniverseAction({ universeId: NONEXISTENT_UNIVERSE_ID }),
   },
   { label: "confirmAccountAction", run: () => confirmAccountAction() },
+  {
+    label: "editUniverseAction",
+    run: () =>
+      editUniverseAction({ universeId: NONEXISTENT_UNIVERSE_ID, name: "Arda", description: null }),
+  },
 ];
 
 describe("with a valid session", () => {
@@ -499,5 +512,368 @@ describe("two accounts (NFR-3)", () => {
     expect(await confirmAccountAction()).toEqual({ ok: true, value: { accountKey: betoActor.userId } });
     const rememberedRows = await readStoredRowsClient().rememberedUniverse.findMany();
     expect(rememberedRows.map((row) => row.userId)).toEqual([await readUserId(ANA_EMAIL)]);
+  });
+});
+
+const LONG_AGO = new Date("2026-01-15T08:00:00.000Z");
+
+/** Creates a universe through the action with the session the browser holds, and returns its id. */
+async function createUniverseThroughTheAction(
+  name: string,
+  description: string | null,
+  mode: "READER" | "AUTHOR",
+): Promise<string> {
+  const creation = await createUniverseAction({ name, description, mode });
+  if (!creation.ok) {
+    throw new Error(`the universe ${name} could not be created for the test`);
+  }
+  return creation.value.universe.id;
+}
+
+/** Moves the update time of a stored universe back, so that a new write is always visible. */
+async function setUpdateTimeLongAgo(universeId: string): Promise<void> {
+  await readStoredRowsClient().universe.update({
+    where: { id: universeId },
+    data: { updatedAt: LONG_AGO },
+  });
+}
+
+async function readStoredUniverse(universeId: string) {
+  return readStoredRowsClient().universe.findUniqueOrThrow({ where: { id: universeId } });
+}
+
+const NOT_FOUND_ANSWER = {
+  ok: false,
+  error: { code: NOT_FOUND_ERROR_CODE, message: ERROR_MESSAGE_BY_CODE[NOT_FOUND_ERROR_CODE] },
+};
+
+describe("editUniverseAction (spec 007a)", () => {
+  it("stores the trimmed name and description of an own universe and answers it, keeping its id, owner, mode and creation time (FR-4)", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const universeId = await createUniverseThroughTheAction("Middle-earth", "An old world.", "READER");
+    await setUpdateTimeLongAgo(universeId);
+    const storedBefore = await readStoredUniverse(universeId);
+
+    const result = await editUniverseAction({
+      universeId,
+      name: "  Arda  ",
+      description: "  The whole world.  ",
+    });
+
+    const storedAfter = await readStoredUniverse(universeId);
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        universe: {
+          id: universeId,
+          name: "Arda",
+          description: "The whole world.",
+          mode: "READER",
+          createdAt: storedBefore.createdAt.toISOString(),
+          updatedAt: storedAfter.updatedAt.toISOString(),
+        },
+      },
+    });
+    expect(storedAfter).toMatchObject({
+      id: universeId,
+      ownerId: await readUserId(ANA_EMAIL),
+      name: "Arda",
+      description: "The whole world.",
+      mode: "READER",
+      createdAt: storedBefore.createdAt,
+      deletedAt: null,
+    });
+    expect(storedAfter.updatedAt.getTime()).toBeGreaterThan(LONG_AGO.getTime());
+  });
+
+  it("answers success with the stored universe for a save with no real change, leaving updatedAt as it was (FR-7)", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const universeId = await createUniverseThroughTheAction("Middle-earth", "An old world.", "AUTHOR");
+    await setUpdateTimeLongAgo(universeId);
+
+    const result = await editUniverseAction({
+      universeId,
+      name: " Middle-earth ",
+      description: "An old world.  ",
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: { universe: { id: universeId, name: "Middle-earth", updatedAt: LONG_AGO.toISOString() } },
+    });
+    expect((await readStoredUniverse(universeId)).updatedAt).toEqual(LONG_AGO);
+  });
+
+  it("reports every failing field together, keyed by field, and changes nothing (FR-6)", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const universeId = await createUniverseThroughTheAction("Middle-earth", "An old world.", "READER");
+    const storedBefore = await readStoredUniverse(universeId);
+
+    const result = await editUniverseAction({ universeId, name: "   ", description: "x".repeat(2001) });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: VALIDATION_ERROR_CODE,
+        fieldErrors: {
+          name: [{ code: UNIVERSE_NAME_REQUIRED_CODE }],
+          description: [{ code: UNIVERSE_DESCRIPTION_TOO_LONG_CODE }],
+        },
+      },
+    });
+    expect(await readStoredUniverse(universeId)).toEqual(storedBefore);
+  });
+
+  it("reports an input of the wrong shape as a validation error on each failing field and changes nothing", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const universeId = await createUniverseThroughTheAction("Middle-earth", null, "READER");
+    const storedBefore = await readStoredUniverse(universeId);
+
+    const result = await editUniverseAction({ universeId, name: 12 });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: VALIDATION_ERROR_CODE,
+        fieldErrors: {
+          name: [{ code: INVALID_INPUT_ISSUE_CODE }],
+          description: [{ code: INVALID_INPUT_ISSUE_CODE }],
+        },
+      },
+    });
+    expect(await readStoredUniverse(universeId)).toEqual(storedBefore);
+  });
+
+  it.each([
+    { label: "malformed", universeId: "not-an-identifier" },
+    { label: "empty", universeId: "" },
+  ])("rejects a $label identifier with the domain issue on universeId (FR-11)", async ({ universeId }) => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+
+    const result = await editUniverseAction({ universeId, name: "Arda", description: null });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: VALIDATION_ERROR_CODE,
+        fieldErrors: { universeId: [{ code: UNIVERSE_ID_INVALID_CODE }] },
+      },
+    });
+  });
+
+  it.each([
+    { label: "missing", input: { name: "Arda", description: null } },
+    { label: "not a string", input: { universeId: 42, name: "Arda", description: null } },
+  ])("rejects a universeId that is $label as a shape failure on universeId (FR-11)", async ({ input }) => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+
+    const result = await editUniverseAction(input);
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: VALIDATION_ERROR_CODE,
+        fieldErrors: { universeId: [{ code: INVALID_INPUT_ISSUE_CODE }] },
+      },
+    });
+  });
+
+  it("gives the same not found answer for a universe of another account, a nonexistent one and a deleted one, also with values equal to the stored ones, and changes nothing (FR-9, FR-11)", async () => {
+    const { anaSessionToken } = await signUpAnaThenBeto();
+    const betoUniverseId = await createUniverseThroughTheAction("Beto's world", "Beto's notes.", "READER");
+    switchToSession(anaSessionToken);
+    const deletedUniverseId = await createUniverseThroughTheAction("Lost world", "Gone.", "AUTHOR");
+    await readStoredRowsClient().universe.update({
+      where: { id: deletedUniverseId },
+      data: { deletedAt: new Date("2026-02-02T10:00:00.000Z") },
+    });
+    const betoUniverseBefore = await readStoredUniverse(betoUniverseId);
+    const deletedUniverseBefore = await readStoredUniverse(deletedUniverseId);
+    const betoUserId = await readUserId(BETO_EMAIL);
+
+    const answers = [
+      await editUniverseAction({ universeId: betoUniverseId, name: "Taken over", description: null }),
+      await editUniverseAction({ universeId: betoUniverseId, name: "Beto's world", description: "Beto's notes." }),
+      await editUniverseAction({ universeId: betoUniverseId, name: "   ", description: "x".repeat(2001) }),
+      await editUniverseAction({
+        universeId: betoUniverseId,
+        name: "Taken over",
+        description: null,
+        ownerId: betoUserId,
+        userId: betoUserId,
+        accountId: betoUserId,
+      }),
+      await editUniverseAction({ universeId: NONEXISTENT_UNIVERSE_ID, name: "Taken over", description: null }),
+      await editUniverseAction({ universeId: NONEXISTENT_UNIVERSE_ID, name: "   ", description: null }),
+      await editUniverseAction({ universeId: deletedUniverseId, name: "Found again", description: null }),
+      await editUniverseAction({ universeId: deletedUniverseId, name: "Lost world", description: "Gone." }),
+    ];
+
+    for (const answer of answers) {
+      expect(answer).toEqual(NOT_FOUND_ANSWER);
+    }
+    expect(await readStoredUniverse(betoUniverseId)).toEqual(betoUniverseBefore);
+    expect(await readStoredUniverse(deletedUniverseId)).toEqual(deletedUniverseBefore);
+  });
+
+  it("gives the same result with forged ownerId, userId, accountId and mode, and the stored owner and mode stay (FR-4, FR-9)", async () => {
+    const { betoSessionToken } = await signUpAnaThenBeto();
+    const anaUserId = await readUserId(ANA_EMAIL);
+    const betoUserId = await readUserId(BETO_EMAIL);
+    switchToSession(betoSessionToken);
+    const plainUniverseId = await createUniverseThroughTheAction("Plain world", null, "READER");
+    const forgedUniverseId = await createUniverseThroughTheAction("Forged world", null, "READER");
+    const forgedKeys = { ownerId: anaUserId, userId: anaUserId, accountId: anaUserId, mode: "AUTHOR" };
+
+    const plainResult = await editUniverseAction({
+      universeId: plainUniverseId,
+      name: "Edited world",
+      description: "Edited.",
+    });
+    const forgedResult = await editUniverseAction({
+      universeId: forgedUniverseId,
+      name: "Edited world",
+      description: "Edited.",
+      ...forgedKeys,
+    });
+
+    expect(plainResult.ok).toBe(true);
+    expect(forgedResult).toMatchObject({
+      ok: true,
+      value: { universe: { id: forgedUniverseId, name: "Edited world", mode: "READER" } },
+    });
+    expect(forgedResult.ok && Object.keys(forgedResult.value.universe).sort()).toEqual(
+      plainResult.ok ? Object.keys(plainResult.value.universe).sort() : [],
+    );
+    expect(await readStoredUniverse(forgedUniverseId)).toMatchObject({
+      ownerId: betoUserId,
+      mode: "READER",
+      name: "Edited world",
+    });
+    expect(await readStoredRowsClient().universe.count({ where: { ownerId: anaUserId } })).toBe(0);
+  });
+
+  it("changes nothing without a session, and invalid input does not turn the answer into a validation error (FR-10)", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const universeId = await createUniverseThroughTheAction("Middle-earth", "An old world.", "READER");
+    const storedBefore = await readStoredUniverse(universeId);
+    emulatedBrowser.clear();
+
+    const withValidInput = await editUniverseAction({ universeId, name: "Arda", description: null });
+    const withInvalidInput = await editUniverseAction({ universeId: "bad", name: 12 });
+
+    expect(withValidInput).toEqual({
+      ok: false,
+      error: { code: AUTHENTICATION_ERROR_CODE, message: ERROR_MESSAGE_BY_CODE[AUTHENTICATION_ERROR_CODE] },
+    });
+    expect(withInvalidInput).toEqual(withValidInput);
+    expect(await readStoredUniverse(universeId)).toEqual(storedBefore);
+  });
+
+  it("changes nothing when the session cannot be checked, answering the infrastructure error (FR-10)", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const universeId = await createUniverseThroughTheAction("Middle-earth", "An old world.", "READER");
+    const storedBefore = await readStoredUniverse(universeId);
+    vi.spyOn(getBetterAuthInstance().api, "getSession").mockRejectedValue(
+      new Error("connection to db-host-7 refused"),
+    );
+    silenceServerLog();
+
+    const result = await editUniverseAction({ universeId, name: "Arda", description: null });
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: INFRASTRUCTURE_ERROR_CODE,
+        message: ERROR_MESSAGE_BY_CODE[INFRASTRUCTURE_ERROR_CODE],
+      },
+    });
+    expect(await readStoredUniverse(universeId)).toEqual(storedBefore);
+  });
+
+  it.each(CROSS_SITE_REQUEST_EMULATIONS)(
+    "rejects a request with $label, even for an own universe with a valid session, and changes nothing",
+    async ({ emulate }) => {
+      await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+      const universeId = await createUniverseThroughTheAction("Middle-earth", "An old world.", "READER");
+      const storedBefore = await readStoredUniverse(universeId);
+      emulate();
+
+      const result = await editUniverseAction({ universeId, name: "Arda", description: null });
+
+      expect(result).toMatchObject({
+        ok: false,
+        error: {
+          code: VALIDATION_ERROR_CODE,
+          fieldErrors: { request: [{ code: CROSS_SITE_REQUEST_ISSUE_CODE }] },
+        },
+      });
+      expect(await readStoredUniverse(universeId)).toEqual(storedBefore);
+    },
+  );
+
+  it("answers the generic infrastructure result when the storage fails, changing nothing", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+    const universeId = await createUniverseThroughTheAction("Middle-earth", "An old world.", "READER");
+    const storedBefore = await readStoredUniverse(universeId);
+    vi.spyOn(getPrismaClient().universe, "updateManyAndReturn").mockRejectedValue(
+      new Error("connection to db-host-7 refused: update Universe"),
+    );
+    silenceServerLog();
+
+    const result = await editUniverseAction({ universeId, name: "Arda", description: null });
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: INFRASTRUCTURE_ERROR_CODE,
+        message: ERROR_MESSAGE_BY_CODE[INFRASTRUCTURE_ERROR_CODE],
+      },
+    });
+    expect(JSON.stringify(result)).not.toMatch(/db-host-7|update|stack|Universe/i);
+    expect(await readStoredUniverse(universeId)).toEqual(storedBefore);
+  });
+});
+
+describe("two accounts editing (spec 007a FR-9, NFR-2)", () => {
+  it("never see each other's change, in their universes or in the name check", async () => {
+    const { anaSessionToken, betoSessionToken } = await signUpAnaThenBeto();
+    const anaActor = { userId: await readUserId(ANA_EMAIL), displayName: "Ana Torres", email: ANA_EMAIL };
+    const betoActor = { userId: await readUserId(BETO_EMAIL), displayName: "Beto Ruiz", email: BETO_EMAIL };
+    const betoUniverseId = await createUniverseThroughTheAction("Beto's world", null, "AUTHOR");
+    switchToSession(anaSessionToken);
+    const anaUniverseId = await createUniverseThroughTheAction("Ana's world", null, "READER");
+
+    const anaEdit = await editUniverseAction({
+      universeId: anaUniverseId,
+      name: "Ana's secret world",
+      description: "Only for Ana.",
+    });
+    switchToSession(betoSessionToken);
+    const betoEdit = await editUniverseAction({
+      universeId: betoUniverseId,
+      name: "Beto's secret world",
+      description: "Only for Beto.",
+    });
+
+    expect(anaEdit.ok).toBe(true);
+    expect(betoEdit.ok).toBe(true);
+    expect(await isUniverseNameInUseAction({ name: "Ana's secret world" })).toEqual({
+      ok: true,
+      value: { isInUse: false },
+    });
+    const betoUniverses = await createUniversesModule().loadWorkspaceUniverses(betoActor);
+    expect(
+      betoUniverses.universes.map((universe) => [universe.id, universe.name, universe.description]),
+    ).toEqual([[betoUniverseId, "Beto's secret world", "Only for Beto."]]);
+    switchToSession(anaSessionToken);
+    expect(await isUniverseNameInUseAction({ name: "Beto's secret world" })).toEqual({
+      ok: true,
+      value: { isInUse: false },
+    });
+    const anaUniverses = await createUniversesModule().loadWorkspaceUniverses(anaActor);
+    expect(
+      anaUniverses.universes.map((universe) => [universe.id, universe.name, universe.description]),
+    ).toEqual([[anaUniverseId, "Ana's secret world", "Only for Ana."]]);
   });
 });
