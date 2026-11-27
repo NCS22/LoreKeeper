@@ -95,5 +95,23 @@ export function createFakeUniverseRepository(
     async add(universe) {
       storeRow(universe);
     },
+    async updateNameAndDescription(ownerId, universeId, change) {
+      const storedRow = rowsByUniverseId.get(universeId);
+      if (storedRow === undefined) {
+        return null;
+      }
+      const storedUniverse = deserializeUniverse(storedRow.serializedUniverse);
+      if (storedUniverse.ownerId !== ownerId) {
+        return null;
+      }
+      const updatedUniverse: Universe = {
+        ...storedUniverse,
+        name: change.name,
+        description: change.description,
+        updatedAt: change.updatedAt,
+      };
+      rowsByUniverseId.set(universeId, { serializedUniverse: serializeUniverse(updatedUniverse) });
+      return deserializeUniverse(serializeUniverse(updatedUniverse));
+    },
   };
 }

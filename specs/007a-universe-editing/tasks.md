@@ -39,10 +39,10 @@ Test support (not classified): fake repository, contract scenarios, builders and
   - Done when: the new tests pass and UNI-1 lists `universe-change.ts`.
   - Evidence: red then green: tests/modules/universes/domain/universe-change.test.ts > isRealUniverseChange (all 19 tests, for example "is no change when the name is the same text composed and decomposed", "is a change when the name differs in %s", "is a change when the description is replaced by only whitespace, which counts as none")
 
-- [ ] **T3. Add the owner-scoped storage update of name, description and update time.** FR-4, FR-9
+- [x] **T3. Add the owner-scoped storage update of name, description and update time.** FR-4, FR-9
   - Tests: new scenarios in `tests/support/contracts/universe-repository-contract.ts`, red first, run on the fake and on PostgreSQL; failure and deleted-row cases in `prisma-universe-repository.test.ts`.
   - Done when: the repository port, the fake and the Prisma repository pass the new scenarios (including "answers null for a universe of another owner, changing nothing"), the outdated "no update method" comment is fixed and UNI-4 and UNI-6 are current.
-  - Evidence: <filled when the task is done>
+  - Evidence: red then green: tests/support/contracts/universe-repository-contract.ts > name and description update (7 scenarios, run on the fake by tests/modules/universes/application/fake-universe-storage.test.ts and on PostgreSQL by tests/modules/universes/infrastructure/prisma-universe-repository.test.ts, for example "answers null for a universe of another owner, changing nothing", "answers null for a universe that does not exist, changing nothing", "changes only the name, description and update time of an own universe and returns what a later read returns"); tests/modules/universes/infrastructure/prisma-universe-repository.test.ts > deleted universes > "are not updated, answering null and changing nothing", storage failures > "turn a refused update into an InfrastructureError that keeps the cause and changes nothing", "turn an update that cannot reach the database into an InfrastructureError that keeps the cause"
 
 - [ ] **T4. Add `editUniverse`: store a valid edit, report validation failures, and answer success without writing when nothing really changed.** FR-4, FR-6, FR-7
   - Tests: `tests/modules/universes/application/edit-universe.test.ts` (fake and PostgreSQL), red first; `composition.test.ts` list of use cases gains `editUniverse`.

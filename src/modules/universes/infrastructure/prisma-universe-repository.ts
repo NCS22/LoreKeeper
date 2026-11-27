@@ -59,5 +59,21 @@ export function createPrismaUniverseRepository(
         });
       });
     },
+    updateNameAndDescription(ownerId, universeId, change) {
+      return runUniverseStorageOperation("update the name and description of a universe", async () => {
+        // One conditional UPDATE ... RETURNING: it matches the identifier, the owner and not deleted,
+        // and writes only these three columns, so the mode, owner and creation time cannot change.
+        const updatedRows = await getPrismaClient().universe.updateManyAndReturn({
+          where: { id: universeId, ownerId, deletedAt: null },
+          data: {
+            name: change.name,
+            description: change.description,
+            updatedAt: change.updatedAt,
+          },
+        });
+        const [updatedRow] = updatedRows;
+        return updatedRow === undefined ? null : toDomainUniverse(updatedRow);
+      });
+    },
   };
 }

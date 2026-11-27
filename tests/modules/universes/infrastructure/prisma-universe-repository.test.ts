@@ -49,6 +49,28 @@ describe("PostgreSQL universe repository", () => {
       expect(await universeRepository.findOwnedById(FIRST_OWNER_ID, deletedUniverse.id)).toBeNull();
     });
 
+    it("are not updated, answering null and changing nothing", async () => {
+      await insertDeletedUniverse();
+
+      expect(
+        await universeRepository.updateNameAndDescription(FIRST_OWNER_ID, deletedUniverse.id, {
+          name: "Renamed universe",
+          description: "A new description",
+          updatedAt: new Date("2026-06-01T10:00:00.000Z"),
+        }),
+      ).toBeNull();
+      expect(
+        await client.universe.findUnique({
+          where: { id: deletedUniverse.id },
+          select: { name: true, description: true, updatedAt: true },
+        }),
+      ).toEqual({
+        name: deletedUniverse.name,
+        description: deletedUniverse.description,
+        updatedAt: deletedUniverse.updatedAt,
+      });
+    });
+
     it("are not counted by the name check", async () => {
       await insertDeletedUniverse();
 
@@ -160,6 +182,52 @@ describe("PostgreSQL universe repository", () => {
           },
         },
       });
+    });
+
+    it("turn a refused update into an InfrastructureError that keeps the cause and changes nothing", async () => {
+      const universe = buildUniverse();
+      await universeRepository.add(universe);
+
+      const failure = await universeRepository
+        .updateNameAndDescription(FIRST_OWNER_ID, universe.id, {
+          name: "",
+          description: null,
+          updatedAt: new Date("2026-06-01T10:00:00.000Z"),
+        })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(InfrastructureError);
+      expect((failure as InfrastructureError).cause).toMatchObject({
+        name: "PrismaClientKnownRequestError",
+        code: "P2039",
+        meta: {
+          driverAdapterError: {
+            cause: {
+              originalCode: "23514",
+              originalMessage: expect.stringContaining('check constraint "Universe_name_length_check"'),
+            },
+          },
+        },
+      });
+      expect(await universeRepository.findOwnedById(FIRST_OWNER_ID, universe.id)).toEqual(universe);
+    });
+
+    it("turn an update that cannot reach the database into an InfrastructureError that keeps the cause", async () => {
+      const cause = new Error("connection lost");
+      const failingRepository = createPrismaUniverseRepository(() => {
+        throw cause;
+      });
+
+      const failure = await failingRepository
+        .updateNameAndDescription(FIRST_OWNER_ID, buildUniverse().id, {
+          name: "Renamed universe",
+          description: null,
+          updatedAt: new Date("2026-06-01T10:00:00.000Z"),
+        })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(InfrastructureError);
+      expect((failure as InfrastructureError).cause).toBe(cause);
     });
 
     it("turn a failed read into an InfrastructureError that keeps the cause", async () => {

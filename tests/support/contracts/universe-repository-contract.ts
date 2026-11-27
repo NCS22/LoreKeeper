@@ -187,6 +187,143 @@ export function describeUniverseStorageContract(
       });
     });
 
+    describe("name and description update", () => {
+      const editTime = new Date("2026-06-01T10:00:00.000Z");
+      const nameAndDescriptionChange = {
+        name: "Renamed universe",
+        description: "A new description",
+        updatedAt: editTime,
+      };
+
+      it("changes only the name, description and update time of an own universe and returns what a later read returns", async () => {
+        const { universeRepository } = await createStorage([oldestUniverse, newestUniverse]);
+
+        const updatedUniverse = await universeRepository.updateNameAndDescription(
+          FIRST_OWNER_ID,
+          newestUniverse.id,
+          nameAndDescriptionChange,
+        );
+
+        const expectedUniverse: Universe = {
+          ...newestUniverse,
+          name: "Renamed universe",
+          description: "A new description",
+          updatedAt: editTime,
+        };
+        expect(updatedUniverse).toEqual(expectedUniverse);
+        expect(await universeRepository.findOwnedById(FIRST_OWNER_ID, newestUniverse.id)).toEqual(
+          expectedUniverse,
+        );
+      });
+
+      it("clears the description when the change has none", async () => {
+        const { universeRepository } = await createStorage([newestUniverse]);
+
+        const updatedUniverse = await universeRepository.updateNameAndDescription(
+          FIRST_OWNER_ID,
+          newestUniverse.id,
+          { name: newestUniverse.name, description: null, updatedAt: editTime },
+        );
+
+        expect(updatedUniverse?.description).toBeNull();
+        expect(
+          (await universeRepository.findOwnedById(FIRST_OWNER_ID, newestUniverse.id))?.description,
+        ).toBeNull();
+      });
+
+      it("does not change the other universes of the owner or of another owner", async () => {
+        const { universeRepository } = await createStorage([
+          oldestUniverse,
+          newestUniverse,
+          otherOwnerUniverse,
+        ]);
+
+        await universeRepository.updateNameAndDescription(
+          FIRST_OWNER_ID,
+          newestUniverse.id,
+          nameAndDescriptionChange,
+        );
+
+        expect((await universeRepository.findAllOwnedBy(FIRST_OWNER_ID))[0]).toEqual(oldestUniverse);
+        expect(await universeRepository.findAllOwnedBy(SECOND_OWNER_ID)).toEqual([
+          otherOwnerUniverse,
+        ]);
+      });
+
+      it("keeps the relationship types of the universe as they were", async () => {
+        const { universeRepository, relationshipTypeRepository } = await createStorage([
+          newestUniverse,
+        ]);
+        const typesBefore = await relationshipTypeRepository.findAllInOwnedUniverse(
+          FIRST_OWNER_ID,
+          newestUniverse.id,
+        );
+
+        await universeRepository.updateNameAndDescription(
+          FIRST_OWNER_ID,
+          newestUniverse.id,
+          nameAndDescriptionChange,
+        );
+
+        expect(
+          await relationshipTypeRepository.findAllInOwnedUniverse(FIRST_OWNER_ID, newestUniverse.id),
+        ).toEqual(typesBefore);
+      });
+
+      it("answers null for a universe of another owner, changing nothing", async () => {
+        const { universeRepository } = await createStorage([oldestUniverse, otherOwnerUniverse]);
+
+        expect(
+          await universeRepository.updateNameAndDescription(
+            FIRST_OWNER_ID,
+            otherOwnerUniverse.id,
+            nameAndDescriptionChange,
+          ),
+        ).toBeNull();
+        expect(await universeRepository.findAllOwnedBy(SECOND_OWNER_ID)).toEqual([
+          otherOwnerUniverse,
+        ]);
+        expect(await universeRepository.findAllOwnedBy(FIRST_OWNER_ID)).toEqual([oldestUniverse]);
+      });
+
+      it("answers null for a universe that does not exist, changing nothing", async () => {
+        const { universeRepository } = await createStorage([oldestUniverse, otherOwnerUniverse]);
+
+        expect(
+          await universeRepository.updateNameAndDescription(
+            FIRST_OWNER_ID,
+            "00000000-0000-4000-8000-0000000000ff",
+            nameAndDescriptionChange,
+          ),
+        ).toBeNull();
+        expect(await universeRepository.findAllOwnedBy(FIRST_OWNER_ID)).toEqual([oldestUniverse]);
+        expect(await universeRepository.findAllOwnedBy(SECOND_OWNER_ID)).toEqual([
+          otherOwnerUniverse,
+        ]);
+      });
+
+      it("does not let the caller alter the stored universe through the change or the returned universe", async () => {
+        const { universeRepository } = await createStorage([oldestUniverse]);
+        const changeWithOwnDate = { ...nameAndDescriptionChange, updatedAt: new Date(editTime) };
+
+        const updatedUniverse = await universeRepository.updateNameAndDescription(
+          FIRST_OWNER_ID,
+          oldestUniverse.id,
+          changeWithOwnDate,
+        );
+        changeWithOwnDate.updatedAt.setUTCFullYear(1999);
+        updatedUniverse?.updatedAt.setUTCFullYear(1999);
+        updatedUniverse?.createdAt.setUTCFullYear(1999);
+
+        expect(await universeRepository.findOwnedById(FIRST_OWNER_ID, oldestUniverse.id)).toEqual({
+          ...oldestUniverse,
+          name: "Renamed universe",
+          description: "A new description",
+          updatedAt: editTime,
+        });
+      });
+    });
+
     describe("relationship types", () => {
       it("stores an added universe with exactly the eight predefined types, their labels and symmetric flags", async () => {
         const { universeRepository, relationshipTypeRepository } = await createStorage();
