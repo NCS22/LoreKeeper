@@ -1,6 +1,7 @@
 import { getPrismaClient } from "@/shared/infrastructure/prisma-client";
 import type { ActingUser } from "@/shared/domain/acting-user";
 import { createUniverse, type CreateUniverseCommand } from "./application/create-universe";
+import { editUniverse, type EditUniverseCommand } from "./application/edit-universe";
 import { findOwnUniverse } from "./application/find-own-universe";
 import { isUniverseNameInUse } from "./application/is-universe-name-in-use";
 import { listRelationshipTypes } from "./application/list-relationship-types";
@@ -18,6 +19,7 @@ import { createPrismaUniverseRepository } from "./infrastructure/prisma-universe
 /** The use cases of the module, already bound to PostgreSQL. Each one takes the acting user first. */
 export type UniversesModule = {
   readonly createUniverse: (actor: ActingUser, command: CreateUniverseCommand) => Promise<UniverseDto>;
+  readonly editUniverse: (actor: ActingUser, command: EditUniverseCommand) => Promise<UniverseDto>;
   readonly loadWorkspaceUniverses: (actor: ActingUser) => Promise<WorkspaceUniverses>;
   readonly isUniverseNameInUse: (actor: ActingUser, name: string) => Promise<boolean>;
   readonly rememberUniverse: (actor: ActingUser, command: RememberUniverseCommand) => Promise<void>;
@@ -30,7 +32,7 @@ export type UniversesModule = {
 };
 
 /**
- * Wires the six use cases to the Prisma repositories. Creating the module touches nothing: the
+ * Wires the seven use cases to the Prisma repositories. Creating the module touches nothing: the
  * environment and the Prisma client are built the first time a use case needs them, so importing
  * this file and calling this function work without a database or a `.env`.
  */
@@ -38,14 +40,17 @@ export function createUniversesModule(): UniversesModule {
   const universeRepository = createPrismaUniverseRepository(getPrismaClient);
   const rememberedUniverseRepository = createPrismaRememberedUniverseRepository(getPrismaClient);
   const relationshipTypeRepository = createPrismaRelationshipTypeRepository(getPrismaClient);
+  const getCurrentTime = () => new Date();
   const createUniverseDependencies = {
     universeRepository,
     generateUniverseId: () => crypto.randomUUID(),
-    getCurrentTime: () => new Date(),
+    getCurrentTime,
   };
 
   return {
     createUniverse: (actor, command) => createUniverse(createUniverseDependencies, actor, command),
+    editUniverse: (actor, command) =>
+      editUniverse({ universeRepository, getCurrentTime }, actor, command),
     loadWorkspaceUniverses: (actor) =>
       loadWorkspaceUniverses({ universeRepository, rememberedUniverseRepository }, actor),
     isUniverseNameInUse: (actor, name) => isUniverseNameInUse({ universeRepository }, actor, name),

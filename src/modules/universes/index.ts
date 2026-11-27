@@ -2,6 +2,7 @@
 export { createUniversesModule } from "./composition";
 export type { UniversesModule } from "./composition";
 export type { CreateUniverseCommand } from "./application/create-universe";
+export type { EditUniverseCommand } from "./application/edit-universe";
 export type { RememberUniverseCommand } from "./application/remember-universe";
 export type { WorkspaceUniverses } from "./application/load-workspace-universes";
 export type { UniverseDto } from "./application/universe-dto";
