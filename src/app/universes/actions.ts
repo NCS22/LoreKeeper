@@ -27,13 +27,18 @@ export async function createUniverseAction(input: unknown) {
   });
 }
 
-/** Tells whether the acting account already has a universe with this name. Never blocks creation. */
+/**
+ * Tells whether the acting account already has a universe with this name, leaving out the
+ * universe being edited when its identifier is given. Never blocks creation or editing.
+ */
 export async function isUniverseNameInUseAction(input: unknown) {
   return runAction(async () => {
     assertSameSiteRequest(await headers());
     const actor = await getActingUser();
-    const { name } = parseActionInput(isUniverseNameInUseInputSchema, input);
-    return { isInUse: await createUniversesModule().isUniverseNameInUse(actor, name) };
+    const { name, excludedUniverseId } = parseActionInput(isUniverseNameInUseInputSchema, input);
+    return {
+      isInUse: await createUniversesModule().isUniverseNameInUse(actor, name, excludedUniverseId),
+    };
   });
 }
 

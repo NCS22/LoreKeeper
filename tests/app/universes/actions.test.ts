@@ -160,6 +160,48 @@ describe("with a valid session", () => {
     });
   });
 
+  it("isUniverseNameInUseAction leaves out the excluded universe and still counts another own one (spec 007a FR-8)", async () => {
+    const { anaSessionToken, betoSessionToken } = await signUpAnaThenBeto();
+    const betoCreation = await createUniverseAction({ name: "Cosmère", description: null, mode: "READER" });
+    const betoUniverseId = betoCreation.ok ? betoCreation.value.universe.id : "";
+    switchToSession(anaSessionToken);
+    const cosmereCreation = await createUniverseAction({ name: "Cosmère", description: null, mode: "READER" });
+    const cosmereUniverseId = cosmereCreation.ok ? cosmereCreation.value.universe.id : "";
+
+    expect(
+      await isUniverseNameInUseAction({ name: "  COSMERE ", excludedUniverseId: cosmereUniverseId }),
+    ).toEqual({ ok: true, value: { isInUse: false } });
+    expect(
+      await isUniverseNameInUseAction({ name: "Cosmère", excludedUniverseId: betoUniverseId }),
+    ).toEqual({ ok: true, value: { isInUse: true } });
+    expect(
+      await isUniverseNameInUseAction({ name: "Cosmère", excludedUniverseId: "not-a-universe-id" }),
+    ).toEqual({ ok: true, value: { isInUse: true } });
+
+    await createUniverseAction({ name: "cosmere", description: null, mode: "AUTHOR" });
+    expect(
+      await isUniverseNameInUseAction({ name: "Cosmère", excludedUniverseId: cosmereUniverseId }),
+    ).toEqual({ ok: true, value: { isInUse: true } });
+    switchToSession(betoSessionToken);
+    expect(
+      await isUniverseNameInUseAction({ name: "Cosmère", excludedUniverseId: betoUniverseId }),
+    ).toEqual({ ok: true, value: { isInUse: false } });
+  });
+
+  it("isUniverseNameInUseAction reports an excluded identifier that is not a string as a validation error on that field", async () => {
+    await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
+
+    const result = await isUniverseNameInUseAction({ name: "Anything", excludedUniverseId: 12 });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: VALIDATION_ERROR_CODE,
+        fieldErrors: { excludedUniverseId: [{ code: INVALID_INPUT_ISSUE_CODE }] },
+      },
+    });
+  });
+
   it("rememberUniverseAction remembers an own universe and the next load selects it (FR-11, FR-27)", async () => {
     await signUpThroughTheUseCase("Ana Torres", ANA_EMAIL);
     await createUniverseAction({ name: "First", description: null, mode: "READER" });

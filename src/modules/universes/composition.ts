@@ -21,7 +21,11 @@ export type UniversesModule = {
   readonly createUniverse: (actor: ActingUser, command: CreateUniverseCommand) => Promise<UniverseDto>;
   readonly editUniverse: (actor: ActingUser, command: EditUniverseCommand) => Promise<UniverseDto>;
   readonly loadWorkspaceUniverses: (actor: ActingUser) => Promise<WorkspaceUniverses>;
-  readonly isUniverseNameInUse: (actor: ActingUser, name: string) => Promise<boolean>;
+  readonly isUniverseNameInUse: (
+    actor: ActingUser,
+    name: string,
+    excludedUniverseId?: string,
+  ) => Promise<boolean>;
   readonly rememberUniverse: (actor: ActingUser, command: RememberUniverseCommand) => Promise<void>;
   /** The own universe, or `null` for a foreign, deleted or nonexistent one (the ownership check of other modules). */
   readonly findOwnUniverse: (actor: ActingUser, universeId: string) => Promise<UniverseDto | null>;
@@ -53,7 +57,8 @@ export function createUniversesModule(): UniversesModule {
       editUniverse({ universeRepository, getCurrentTime }, actor, command),
     loadWorkspaceUniverses: (actor) =>
       loadWorkspaceUniverses({ universeRepository, rememberedUniverseRepository }, actor),
-    isUniverseNameInUse: (actor, name) => isUniverseNameInUse({ universeRepository }, actor, name),
+    isUniverseNameInUse: (actor, name, excludedUniverseId) =>
+      isUniverseNameInUse({ universeRepository }, actor, name, excludedUniverseId),
     rememberUniverse: (actor, command) =>
       rememberUniverse({ universeRepository, rememberedUniverseRepository }, actor, command),
     findOwnUniverse: (actor, universeId) => findOwnUniverse({ universeRepository }, actor, universeId),

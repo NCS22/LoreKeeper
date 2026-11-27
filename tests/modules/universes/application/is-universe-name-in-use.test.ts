@@ -70,4 +70,106 @@ describe.each(universeStorageFactories)("isUniverseNameInUse: %s", (_name, creat
       await isUniverseNameInUse(dependencies, buildActingUser(SECOND_OWNER_ID), "Second universe"),
     ).toBe(false);
   });
+
+  describe("leaving out one universe (spec 007a FR-8)", () => {
+    const ICE_CHRONICLES_ID = "00000000-0000-4000-8000-000000000001";
+    const SECOND_UNIVERSE_ID = "00000000-0000-4000-8000-000000000002";
+    const OTHER_ACCOUNT_UNIVERSE_ID = "00000000-0000-4000-8000-000000000003";
+    const NONEXISTENT_UNIVERSE_ID = "00000000-0000-4000-8000-000000000009";
+
+    it("never counts the excluded universe itself for its own name", async () => {
+      expect(
+        await isUniverseNameInUse(await setUp(), actor, "Crónicas de Hielo", ICE_CHRONICLES_ID),
+      ).toBe(false);
+    });
+
+    it.each([
+      ["case", "crónicas DE hielo"],
+      ["accents", "Cronicas de Hiélo"],
+      ["spacing", "  Crónicas   de Hielo "],
+      ["composition", "Crónicas de Hielo"],
+    ])(
+      "never counts the excluded universe itself when the name changes only in %s",
+      async (_difference, typedName) => {
+        expect(await isUniverseNameInUse(await setUp(), actor, typedName, ICE_CHRONICLES_ID)).toBe(
+          false,
+        );
+      },
+    );
+
+    it("leaves out the excluded universe when its identifier arrives in upper case", async () => {
+      expect(
+        await isUniverseNameInUse(
+          await setUp(),
+          actor,
+          "Crónicas de Hielo",
+          ICE_CHRONICLES_ID.toUpperCase(),
+        ),
+      ).toBe(false);
+    });
+
+    it("still counts another own universe with the same comparable name", async () => {
+      const { universeRepository } = await createStorage([
+        buildUniverse({ id: ICE_CHRONICLES_ID, name: "Crónicas de Hielo" }),
+        buildUniverse({ id: SECOND_UNIVERSE_ID, name: "CRONICAS  de hielo" }),
+      ]);
+
+      expect(
+        await isUniverseNameInUse(
+          { universeRepository },
+          actor,
+          "Crónicas de Hielo",
+          ICE_CHRONICLES_ID,
+        ),
+      ).toBe(true);
+    });
+
+    it("still counts another own universe when the excluded one has another name", async () => {
+      expect(
+        await isUniverseNameInUse(await setUp(), actor, "Second universe", ICE_CHRONICLES_ID),
+      ).toBe(true);
+    });
+
+    it.each(["", "   ", "not-a-universe-id", "00000000-0000-4000-8000-00000000000"])(
+      "excludes nothing, and never throws, for the malformed identifier %j",
+      async (malformedUniverseId) => {
+        expect(
+          await isUniverseNameInUse(await setUp(), actor, "Crónicas de Hielo", malformedUniverseId),
+        ).toBe(true);
+      },
+    );
+
+    it("excludes nothing for the identifier of a universe of another account", async () => {
+      const dependencies = await setUp();
+
+      expect(
+        await isUniverseNameInUse(dependencies, actor, "Second universe", OTHER_ACCOUNT_UNIVERSE_ID),
+      ).toBe(true);
+      expect(
+        await isUniverseNameInUse(
+          dependencies,
+          actor,
+          "Only of the other account",
+          OTHER_ACCOUNT_UNIVERSE_ID,
+        ),
+      ).toBe(false);
+    });
+
+    it("excludes nothing for the identifier of a nonexistent universe", async () => {
+      expect(
+        await isUniverseNameInUse(await setUp(), actor, "Second universe", NONEXISTENT_UNIVERSE_ID),
+      ).toBe(true);
+    });
+
+    it("never counts the names of another account, also with an own universe excluded", async () => {
+      expect(
+        await isUniverseNameInUse(
+          await setUp(),
+          actor,
+          "Only of the other account",
+          SECOND_UNIVERSE_ID,
+        ),
+      ).toBe(false);
+    });
+  });
 });
