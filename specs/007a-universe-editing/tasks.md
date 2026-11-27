@@ -34,10 +34,10 @@ Test support (not classified): fake repository, contract scenarios, builders and
   - Tests: none (docs only; no test gate).
   - Done when: `docs/roadmap.md` Phase 1 row, `docs/open-decisions.md` OD-6, `.claude/rules/data-model.md` (Universe and RememberedUniverse) and the "Current status" of `CLAUDE.md` name 007a (next) and 007b (trash, restore, purge) instead of the single 007; `prisma/schema.prisma` is untouched.
 
-- [ ] **T2. Add the domain rule that decides a real change of name and description.** FR-4, FR-7
+- [x] **T2. Add the domain rule that decides a real change of name and description.** FR-4, FR-7
   - Tests: `tests/modules/universes/domain/universe-change.test.ts`, first, per rule of the Definition "Real change".
   - Done when: the new tests pass and UNI-1 lists `universe-change.ts`.
-  - Evidence: <filled when the task is done>
+  - Evidence: red then green: tests/modules/universes/domain/universe-change.test.ts > isRealUniverseChange (all 19 tests, for example "is no change when the name is the same text composed and decomposed", "is a change when the name differs in %s", "is a change when the description is replaced by only whitespace, which counts as none")
 
 - [ ] **T3. Add the owner-scoped storage update of name, description and update time.** FR-4, FR-9
   - Tests: new scenarios in `tests/support/contracts/universe-repository-contract.ts`, red first, run on the fake and on PostgreSQL; failure and deleted-row cases in `prisma-universe-repository.test.ts`.
