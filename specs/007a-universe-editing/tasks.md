@@ -1,6 +1,6 @@
 # Tasks 007a — Universe editing
 
-Status: draft
+Status: approved
 
 Spec: `specs/007a-universe-editing/spec.md`. Plan: `specs/007a-universe-editing/plan.md` (approved). Section numbers below refer to the plan.
 
