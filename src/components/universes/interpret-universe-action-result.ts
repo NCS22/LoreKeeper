@@ -121,7 +121,8 @@ function interpretCreatedUniverse(value: unknown, vocabulary: UniverseFormVocabu
   return { status: "created", universe: value.universe };
 }
 
-function interpretFieldErrors(fieldErrors: unknown, vocabulary: UniverseFormVocabulary): CreationOutcome {
+/** The message under each creation form field the server rejected; no such field is a generic failure. */
+export function interpretFieldErrors(fieldErrors: unknown, vocabulary: UniverseFormVocabulary): CreationOutcome {
   if (!isRecord(fieldErrors)) return { status: "generic-failure" };
 
   const messagesByField: UniverseFieldMessages = {};
@@ -151,7 +152,8 @@ function isFieldIssue(candidate: unknown): candidate is ActionFieldIssue {
   );
 }
 
-function isUniverseDto(candidate: unknown, vocabulary: UniverseFormVocabulary): candidate is UniverseDto {
+/** True when an answer carries a universe with every field the screen reads, in a mode it knows. */
+export function isUniverseDto(candidate: unknown, vocabulary: UniverseFormVocabulary): candidate is UniverseDto {
   return (
     isRecord(candidate) &&
     typeof candidate.id === "string" &&
