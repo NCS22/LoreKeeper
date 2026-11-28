@@ -15,3 +15,17 @@ Decisions taken after the plan was approved. Design decisions of the plan stay i
 - **Why:** T4 already read the universe before the real-change decision and turned a null read or write into the not found error, so these scenarios hold before the reordering; the evidence line must say what really happened (skill `quality-testing-core`, section 8).
 - **Discarded:** writing an artificial failure into the code to make them start red, which proves nothing about the change; calling them characterization tests, which are for a change that keeps behavior on a known gap, while T5 changes behavior.
 - **Approved by:** the user, 2026-11-27, at the implementation gate after T4.
+
+## D-T9-1. The edit block and the edit notice are read for one universe
+
+- **Decided:** `universe-edit-state.ts` offers `isEditBlocked(state, universeId)` and `editNoticeFor(state, universeId)`, which answer for the universe asked about only; for any other universe they answer "not blocked" and "no notice".
+- **Why:** a universe selected while another universe's request is alive must never inherit that request's block or message (spec 006 FR-12, plan section 5, "Edit state of one request").
+- **Discarded:** selectors without the universe identifier, as `isCreationBlocked(state)` of the creation state; the caller would then have to compare identifiers itself, and a forgotten comparison would show one universe's message on another.
+- **Approved by:** the user, 2026-11-28, at the implementation gate after T9.
+
+## D-T9-2. Opening the edit form of another universe starts a clean state
+
+- **Decided:** a `formOpened` event for a universe other than the one in the state replaces the state (that universe, no block, no notice), even while the earlier request is alive; its later answers are then ignored by the reducer, while they still reach the navigation entry (T10, T14).
+- **Why:** the plan says a submission for another universe replaces the state; applying the same rule when the form of another universe opens keeps the earlier universe's block and messages out of the new form before anything is sent (spec 006 FR-12).
+- **Discarded:** keeping the earlier universe's state until the next submission; the selectors of D-T9-1 would hide it, but a late answer of the earlier request could still turn into a stale confirmation once the person returned to that universe.
+- **Approved by:** the user, 2026-11-28, at the implementation gate after T9.
